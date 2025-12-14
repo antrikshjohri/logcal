@@ -14,10 +14,18 @@ import Combine
 class LogViewModel: ObservableObject {
     @Published var foodText: String = "" {
         didSet {
-            updateInferredMealType()
+            if !isMealTypeManuallySet {
+                updateInferredMealType()
+            }
         }
     }
     @Published var inferredMealType: MealType = .snack
+    @Published var selectedMealType: MealType = .snack
+    @Published var isMealTypeManuallySet: Bool = false
+    @Published var selectedDate: Date = Date()
+    @Published var showDatePicker: Bool = false
+    
+    private var isUpdatingFromInference: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var latestResult: MealLogResponse?
@@ -28,6 +36,9 @@ class LogViewModel: ObservableObject {
     let speechService = SpeechRecognitionService()
     
     init() {
+        // Initialize selected meal type with inferred type
+        selectedMealType = inferredMealType
+        
         // Update foodText when speech recognition updates (only when actively listening)
         speechService.$recognizedText
             .combineLatest(speechService.$isListening)
@@ -59,6 +70,26 @@ class LogViewModel: ObservableObject {
         if newType != inferredMealType {
             inferredMealType = newType
             print("DEBUG: Updated inferred meal type to: \(newType.rawValue)")
+            
+            // Update selected meal type if not manually set
+            if !isMealTypeManuallySet {
+                isUpdatingFromInference = true
+                selectedMealType = newType
+                isUpdatingFromInference = false
+            }
+        }
+    }
+    
+    func setMealType(_ mealType: MealType, isManual: Bool = true) {
+        selectedMealType = mealType
+        isMealTypeManuallySet = isManual
+        print("DEBUG: Meal type set to: \(mealType.rawValue), manual: \(isManual)")
+    }
+    
+    func handleMealTypeChange(_ newValue: MealType) {
+        // Only mark as manual if change didn't come from inference
+        if !isUpdatingFromInference {
+            setMealType(newValue, isManual: true)
         }
     }
     
@@ -75,7 +106,7 @@ class LogViewModel: ObservableObject {
         print("DEBUG: Starting meal log for: \(foodText)")
         
         do {
-            let mealTypeString = inferredMealType.rawValue
+            let mealTypeString = selectedMealType.rawValue
             let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString)
             
             print("DEBUG: Received response: \(response.totalCalories) calories")
@@ -86,7 +117,10 @@ class LogViewModel: ObservableObject {
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 
+                // Create entry with selected date
                 let entry = MealEntry(
+                    id: UUID(),
+                    timestamp: selectedDate,
                     foodText: foodText,
                     mealType: response.mealType,
                     totalCalories: response.totalCalories,
@@ -95,11 +129,13 @@ class LogViewModel: ObservableObject {
                 
                 context.insert(entry)
                 try context.save()
-                print("DEBUG: Saved meal entry to SwiftData")
+                print("DEBUG: Saved meal entry to SwiftData with date: \(selectedDate)")
             }
             
             latestResult = response
             foodText = "" // Clear input after successful log
+            isMealTypeManuallySet = false // Reset manual selection
+            selectedDate = Date() // Reset to today
             
         } catch {
             print("DEBUG: Error logging meal: \(error.localizedDescription)")

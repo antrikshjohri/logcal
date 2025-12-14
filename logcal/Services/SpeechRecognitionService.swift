@@ -21,6 +21,8 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     @Published var recognizedText = ""
     @Published var errorMessage: String?
     
+    private var isUserInitiatedStop = false
+    
     override init() {
         super.init()
         print("DEBUG: SpeechRecognitionService initialized")
@@ -141,7 +143,18 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             if let error = error {
                 print("DEBUG: Recognition error: \(error.localizedDescription)")
                 Task { @MainActor in
-                    self.errorMessage = error.localizedDescription
+                    // Only show error if it wasn't a user-initiated cancellation
+                    if !self.isUserInitiatedStop {
+                        // Check if it's a cancellation error (which is expected when user stops)
+                        let nsError = error as NSError
+                        if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 216 {
+                            // This is a cancellation error, don't show it
+                            print("DEBUG: Recognition cancelled (expected)")
+                        } else {
+                            // It's a real error, show it
+                            self.errorMessage = error.localizedDescription
+                        }
+                    }
                     self.stopListening()
                 }
             }
@@ -150,6 +163,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         isListening = true
         recognizedText = ""
         errorMessage = nil
+        isUserInitiatedStop = false // Reset flag when starting
         print("DEBUG: Speech recognition started successfully")
     }
     
@@ -160,6 +174,12 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
         
         print("DEBUG: Stopping speech recognition")
+        
+        // Mark as user-initiated stop to avoid showing cancellation errors
+        isUserInitiatedStop = true
+        
+        // Clear any error message since this is intentional
+        errorMessage = nil
         
         // Set isListening to false first to update UI immediately
         isListening = false

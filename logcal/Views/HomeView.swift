@@ -47,15 +47,80 @@ struct HomeView: View {
                     }
                     .padding(.horizontal)
                     
-                    // Inferred meal type
-                    HStack {
-                        Text("Meal Type:")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text(viewModel.inferredMealType.rawValue.capitalized)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.blue)
+                    // Date picker
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Date")
+                            .font(.headline)
+                        
+                        Button(action: {
+                            viewModel.showDatePicker = true
+                        }) {
+                            HStack {
+                                Text(viewModel.selectedDate, style: .date)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "calendar")
+                                    .foregroundColor(.blue)
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .sheet(isPresented: $viewModel.showDatePicker) {
+                        NavigationView {
+                            VStack {
+                                DatePicker(
+                                    "Select Date",
+                                    selection: $viewModel.selectedDate,
+                                    displayedComponents: [.date]
+                                )
+                                .datePickerStyle(.graphical)
+                                .padding()
+                                
+                                Spacer()
+                            }
+                            .navigationTitle("Select Date")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Done") {
+                                        viewModel.showDatePicker = false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Meal type picker
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Meal Type")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            if viewModel.isMealTypeManuallySet {
+                                Text("(Manual)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("(Auto)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Picker("Meal Type", selection: $viewModel.selectedMealType) {
+                            ForEach(MealType.allCases, id: \.self) { mealType in
+                                Text(mealType.rawValue.capitalized).tag(mealType)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: viewModel.selectedMealType) { oldValue, newValue in
+                            viewModel.handleMealTypeChange(newValue)
+                        }
                     }
                     .padding(.horizontal)
                     
