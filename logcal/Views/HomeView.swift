@@ -43,22 +43,8 @@ struct HomeView: View {
                         
                         // Meal type picker
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Meal Type")
-                                    .font(.headline)
-                                
-                                Spacer()
-                                
-                                if viewModel.isMealTypeManuallySet {
-                                    Text("(Manual)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text("(Auto)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
+                            Text("Meal Type")
+                                .font(.headline)
                             
                             Picker("Meal Type", selection: $viewModel.selectedMealType) {
                                 ForEach(MealType.allCases, id: \.self) { mealType in
@@ -103,7 +89,7 @@ struct HomeView: View {
                         Text("What did you eat?")
                             .font(.headline)
                         
-                        ZStack(alignment: .bottomTrailing) {
+                        ZStack(alignment: .topLeading) {
                             TextEditor(text: $viewModel.foodText)
                                 .frame(minHeight: 100)
                                 .padding(8)
@@ -112,19 +98,34 @@ struct HomeView: View {
                                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                                 )
                             
-                            // Mic button
-                            Button(action: {
-                                viewModel.toggleSpeechRecognition()
-                            }) {
-                                Image(systemName: viewModel.isListening ? "mic.fill" : "mic")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(viewModel.isListening ? .red : .blue)
-                                    .padding(8)
-                                    .background(viewModel.isListening ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
-                                    .clipShape(Circle())
+                            // Placeholder text
+                            if viewModel.foodText.isEmpty {
+                                Text("Speak naturally about what you ate...")
+                                    .foregroundColor(.gray)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 16)
+                                    .allowsHitTesting(false)
                             }
-                            .padding(.trailing, 12)
-                            .padding(.bottom, 8)
+                            
+                            // Mic button
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    Button(action: {
+                                        viewModel.toggleSpeechRecognition()
+                                    }) {
+                                        Image(systemName: viewModel.isListening ? "mic.fill" : "mic")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(viewModel.isListening ? .red : .blue)
+                                            .padding(8)
+                                            .background(viewModel.isListening ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
+                                            .clipShape(Circle())
+                                    }
+                                    .padding(.trailing, 12)
+                                    .padding(.bottom, 8)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal)

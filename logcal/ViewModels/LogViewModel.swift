@@ -19,8 +19,8 @@ class LogViewModel: ObservableObject {
             }
         }
     }
-    @Published var inferredMealType: MealType = .snack
-    @Published var selectedMealType: MealType = .snack
+    @Published var inferredMealType: MealType
+    @Published var selectedMealType: MealType
     @Published var isMealTypeManuallySet: Bool = false
     @Published var selectedDate: Date = Date()
     @Published var showDatePicker: Bool = false
@@ -36,8 +36,11 @@ class LogViewModel: ObservableObject {
     let speechService = SpeechRecognitionService()
     
     init() {
-        // Initialize selected meal type with inferred type
-        selectedMealType = inferredMealType
+        // Initialize meal type based on IST time on app launch
+        let initialMealType = MealTypeInference.inferMealTypeFromISTNow()
+        inferredMealType = initialMealType
+        selectedMealType = initialMealType
+        print("DEBUG: Initialized meal type on app launch: \(initialMealType.rawValue)")
         
         // Update foodText when speech recognition updates (only when actively listening)
         speechService.$recognizedText
