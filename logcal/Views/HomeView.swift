@@ -16,56 +16,60 @@ struct HomeView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Food text input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("What did you eat?")
-                            .font(.headline)
-                        
-                        ZStack(alignment: .bottomTrailing) {
-                            TextEditor(text: $viewModel.foodText)
-                                .frame(minHeight: 100)
-                                .padding(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                                )
+                    // Date and Meal Type in same line
+                    HStack(spacing: 16) {
+                        // Date picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Date")
+                                .font(.headline)
                             
-                            // Mic button
                             Button(action: {
-                                viewModel.toggleSpeechRecognition()
+                                viewModel.showDatePicker = true
                             }) {
-                                Image(systemName: viewModel.isListening ? "mic.fill" : "mic")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(viewModel.isListening ? .red : .blue)
-                                    .padding(8)
-                                    .background(viewModel.isListening ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
-                                    .clipShape(Circle())
+                                HStack {
+                                    Text(viewModel.selectedDate, style: .date)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "calendar")
+                                        .foregroundColor(.blue)
+                                }
+                                .padding()
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(8)
                             }
-                            .padding(.trailing, 12)
-                            .padding(.bottom, 8)
                         }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Date picker
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Date")
-                            .font(.headline)
+                        .frame(maxWidth: .infinity)
                         
-                        Button(action: {
-                            viewModel.showDatePicker = true
-                        }) {
+                        // Meal type picker
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(viewModel.selectedDate, style: .date)
-                                    .foregroundColor(.primary)
+                                Text("Meal Type")
+                                    .font(.headline)
+                                
                                 Spacer()
-                                Image(systemName: "calendar")
-                                    .foregroundColor(.blue)
+                                
+                                if viewModel.isMealTypeManuallySet {
+                                    Text("(Manual)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("(Auto)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
+                            
+                            Picker("Meal Type", selection: $viewModel.selectedMealType) {
+                                ForEach(MealType.allCases, id: \.self) { mealType in
+                                    Text(mealType.rawValue.capitalized).tag(mealType)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .onChange(of: viewModel.selectedMealType) { oldValue, newValue in
+                                viewModel.handleMealTypeChange(newValue)
+                            }
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .padding(.horizontal)
                     .sheet(isPresented: $viewModel.showDatePicker) {
@@ -93,33 +97,33 @@ struct HomeView: View {
                         }
                     }
                     
-                    // Meal type picker
+                    // Food text input
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Meal Type")
-                                .font(.headline)
-                            
-                            Spacer()
-                            
-                            if viewModel.isMealTypeManuallySet {
-                                Text("(Manual)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            } else {
-                                Text("(Auto)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                        Text("What did you eat?")
+                            .font(.headline)
                         
-                        Picker("Meal Type", selection: $viewModel.selectedMealType) {
-                            ForEach(MealType.allCases, id: \.self) { mealType in
-                                Text(mealType.rawValue.capitalized).tag(mealType)
+                        ZStack(alignment: .bottomTrailing) {
+                            TextEditor(text: $viewModel.foodText)
+                                .frame(minHeight: 100)
+                                .padding(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                )
+                            
+                            // Mic button
+                            Button(action: {
+                                viewModel.toggleSpeechRecognition()
+                            }) {
+                                Image(systemName: viewModel.isListening ? "mic.fill" : "mic")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(viewModel.isListening ? .red : .blue)
+                                    .padding(8)
+                                    .background(viewModel.isListening ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
+                                    .clipShape(Circle())
                             }
-                        }
-                        .pickerStyle(.menu)
-                        .onChange(of: viewModel.selectedMealType) { oldValue, newValue in
-                            viewModel.handleMealTypeChange(newValue)
+                            .padding(.trailing, 12)
+                            .padding(.bottom, 8)
                         }
                     }
                     .padding(.horizontal)
