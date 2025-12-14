@@ -27,8 +27,9 @@ struct HomeView: View {
                                 viewModel.showDatePicker = true
                             }) {
                                 HStack {
-                                    Text(viewModel.selectedDate, style: .date)
+                                    Text(formatDate(viewModel.selectedDate))
                                         .foregroundColor(.primary)
+                                        .lineLimit(1)
                                     Spacer()
                                     Image(systemName: "calendar")
                                         .foregroundColor(.blue)
@@ -250,6 +251,13 @@ struct HomeView: View {
                 viewModel.setModelContext(modelContext)
             }
         }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
 
