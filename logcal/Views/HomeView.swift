@@ -100,7 +100,7 @@ struct HomeView: View {
                             
                             // Placeholder text
                             if viewModel.foodText.isEmpty {
-                                Text("Speak naturally about what you ate...")
+                                Text("Speak naturally about your meal...")
                                     .foregroundColor(.gray)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 16)
