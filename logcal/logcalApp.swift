@@ -6,12 +6,24 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct logcalApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                HomeView()
+                    .tabItem {
+                        Label("Log", systemImage: "plus.circle")
+                    }
+                
+                HistoryView()
+                    .tabItem {
+                        Label("History", systemImage: "list.bullet")
+                    }
+            }
+            .modelContainer(for: MealEntry.self)
         }
     }
 }
