@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 9B2C7FBF2EEF6FE400707824 /* Build configuration list for PBXProject "CaloriesAI" */;
+			buildConfigurationList = 9B2C7FBF2EEF6FE400707824 /* Build configuration list for PBXProject "logcal" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -317,7 +317,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9B2C7FBF2EEF6FE400707824 /* Build configuration list for PBXProject "CaloriesAI" */ = {
+		9B2C7FBF2EEF6FE400707824 /* Build configuration list for PBXProject "logcal" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9B2C7FCD2EEF6FE700707824 /* Debug */,
