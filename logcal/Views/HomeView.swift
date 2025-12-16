@@ -11,6 +11,7 @@ import SwiftData
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
     @Environment(\.modelContext) private var modelContext
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -93,6 +94,7 @@ struct HomeView: View {
                             TextEditor(text: $viewModel.foodText)
                                 .frame(minHeight: 100)
                                 .padding(8)
+                                .focused($isTextFieldFocused)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
@@ -132,6 +134,8 @@ struct HomeView: View {
                     
                     // Log button
                     Button(action: {
+                        // Dismiss keyboard
+                        isTextFieldFocused = false
                         Task {
                             await viewModel.logMeal()
                         }
@@ -251,6 +255,13 @@ struct HomeView: View {
             .onAppear {
                 viewModel.setModelContext(modelContext)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .simultaneousGesture(
+                TapGesture().onEnded { _ in
+                    // Dismiss keyboard when tapping anywhere (buttons will still work)
+                    isTextFieldFocused = false
+                }
+            )
         }
     }
     
