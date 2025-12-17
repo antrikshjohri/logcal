@@ -120,10 +120,11 @@ class LogViewModel: ObservableObject {
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 
-                // Create entry with selected date
+                // Create entry with selected date and current creation time
                 let entry = MealEntry(
                     id: UUID(),
                     timestamp: selectedDate,
+                    createdAt: Date(),  // Actual creation time
                     foodText: foodText,
                     mealType: response.mealType,
                     totalCalories: response.totalCalories,

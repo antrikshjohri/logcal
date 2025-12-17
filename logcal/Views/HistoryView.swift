@@ -27,9 +27,11 @@ struct HistoryView: View {
         
         return grouped.map { (date, meals) in
             let total = meals.reduce(0) { $0 + $1.totalCalories }
-            return (date: date, meals: meals.sorted { $0.timestamp > $1.timestamp }, totalCalories: total)
+            // Sort meals within each day by createdAt (most recently added first)
+            let sortedMeals = meals.sorted { $0.effectiveCreatedAt > $1.effectiveCreatedAt }
+            return (date: date, meals: sortedMeals, totalCalories: total)
         }
-        .sorted { $0.date > $1.date }
+        .sorted { $0.date > $1.date } // Sort days (newest first)
     }
     
     // Initialize expanded dates - only latest day expanded by default (only on first launch)

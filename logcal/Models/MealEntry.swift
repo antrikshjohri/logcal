@@ -11,19 +11,26 @@ import SwiftData
 @Model
 final class MealEntry: Identifiable {
     var id: UUID
-    var timestamp: Date
+    var timestamp: Date          // User-selected date for the meal
+    var createdAt: Date?         // When the record was actually created (optional for migration)
     var foodText: String
     var mealType: String
     var totalCalories: Double
     var rawResponseJson: String
     
-    init(id: UUID = UUID(), timestamp: Date = Date(), foodText: String, mealType: String, totalCalories: Double, rawResponseJson: String) {
+    init(id: UUID = UUID(), timestamp: Date = Date(), createdAt: Date? = nil, foodText: String, mealType: String, totalCalories: Double, rawResponseJson: String) {
         self.id = id
         self.timestamp = timestamp
+        self.createdAt = createdAt ?? Date()
         self.foodText = foodText
         self.mealType = mealType
         self.totalCalories = totalCalories
         self.rawResponseJson = rawResponseJson
+    }
+    
+    // Helper to get createdAt with fallback to timestamp for old records
+    var effectiveCreatedAt: Date {
+        createdAt ?? timestamp
     }
     
     var response: MealLogResponse? {
