@@ -41,10 +41,13 @@ struct HistoryView: View {
             return
         }
         
+        hasInitialized = true  // Mark as initialized regardless of whether there are meals
+        
         if let latestDate = groupedMeals.first?.date {
             expandedDates = [latestDate]
-            hasInitialized = true
             print("DEBUG: Initialized with latest date expanded: \(latestDate)")
+        } else {
+            print("DEBUG: Initialized with no meals")
         }
     }
     
