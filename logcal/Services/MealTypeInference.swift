@@ -17,57 +17,48 @@ enum MealType: String, CaseIterable {
 struct MealTypeInference {
     static func detectExplicitMealType(text: String) -> MealType? {
         let lowercased = text.lowercased()
-        print("DEBUG: Checking for explicit meal type in text: \(text)")
         
         if lowercased.contains("breakfast") || lowercased.contains("brunch") {
-            print("DEBUG: Detected breakfast/brunch")
             return .breakfast
         }
         if lowercased.contains("lunch") {
-            print("DEBUG: Detected lunch")
             return .lunch
         }
         if lowercased.contains("dinner") {
-            print("DEBUG: Detected dinner")
             return .dinner
         }
         if lowercased.contains("snack") {
-            print("DEBUG: Detected snack")
             return .snack
         }
         
-        print("DEBUG: No explicit meal type found")
         return nil
     }
     
     static func inferMealTypeFromISTNow() -> MealType {
-        let istTimeZone = TimeZone(identifier: "Asia/Kolkata")!
+        guard let istTimeZone = TimeZone(identifier: Constants.Locale.timeZone) else {
+            return .snack // Default fallback
+        }
         let now = Date()
         let calendar = Calendar.current
         var istCalendar = calendar
         istCalendar.timeZone = istTimeZone
         
         let hour = istCalendar.component(.hour, from: now)
-        print("DEBUG: Current IST hour: \(hour)")
         
-        let mealType: MealType
         switch hour {
-        case 5...10:
-            mealType = .breakfast
-        case 11...15:
-            mealType = .lunch
-        case 16...18:
-            mealType = .snack
-        case 19...23:
-            mealType = .dinner
-        case 0...4:
-            mealType = .snack
+        case Constants.MealTypeRanges.breakfast:
+            return .breakfast
+        case Constants.MealTypeRanges.lunch:
+            return .lunch
+        case Constants.MealTypeRanges.snack:
+            return .snack
+        case Constants.MealTypeRanges.dinner:
+            return .dinner
+        case Constants.MealTypeRanges.lateNightSnack:
+            return .snack
         default:
-            mealType = .snack
+            return .snack
         }
-        
-        print("DEBUG: Inferred meal type from IST: \(mealType.rawValue)")
-        return mealType
     }
     
     static func determineMealType(text: String) -> MealType {

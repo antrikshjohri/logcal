@@ -28,16 +28,16 @@ struct HomeView: View {
                                 viewModel.showDatePicker = true
                             }) {
                                 HStack {
-                                    Text(formatDate(viewModel.selectedDate))
+                                    Text(DateFormatterCache.formatDate(viewModel.selectedDate))
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                     Spacer()
                                     Image(systemName: "calendar")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(Constants.Colors.primaryBlue)
                                 }
                                 .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(8)
+                                .background(Constants.Colors.primaryBackground)
+                                .cornerRadius(Constants.Sizes.cornerRadius)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -92,20 +92,20 @@ struct HomeView: View {
                         
                         ZStack(alignment: .topLeading) {
                             TextEditor(text: $viewModel.foodText)
-                                .frame(minHeight: 100)
-                                .padding(8)
+                                .frame(minHeight: Constants.Sizes.textEditorMinHeight)
+                                .padding(Constants.Spacing.medium)
                                 .focused($isTextFieldFocused)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
+                                        .stroke(Constants.Colors.borderGray, lineWidth: Constants.Sizes.borderWidth)
                                 )
                             
                             // Placeholder text
                             if viewModel.foodText.isEmpty {
                                 Text("Speak naturally about your meal...")
-                                    .foregroundColor(.gray)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 16)
+                                    .foregroundColor(Constants.Colors.primaryGray)
+                                    .padding(.horizontal, Constants.Spacing.regular)
+                                    .padding(.vertical, Constants.Spacing.large)
                                     .allowsHitTesting(false)
                             }
                             
@@ -118,14 +118,14 @@ struct HomeView: View {
                                         viewModel.toggleSpeechRecognition()
                                     }) {
                                         Image(systemName: viewModel.isListening ? "mic.fill" : "mic")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(viewModel.isListening ? .red : .blue)
-                                            .padding(8)
-                                            .background(viewModel.isListening ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
+                                            .font(.system(size: Constants.Sizes.micIcon))
+                                            .foregroundColor(viewModel.isListening ? Constants.Colors.primaryRed : Constants.Colors.primaryBlue)
+                                            .padding(Constants.Spacing.medium)
+                                            .background(viewModel.isListening ? Constants.Colors.micActiveBackground : Constants.Colors.micInactiveBackground)
                                             .clipShape(Circle())
                                     }
-                                    .padding(.trailing, 12)
-                                    .padding(.bottom, 8)
+                                    .padding(.trailing, Constants.Spacing.regular)
+                                    .padding(.bottom, Constants.Spacing.medium)
                                 }
                             }
                         }
@@ -151,43 +151,29 @@ struct HomeView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.blue)
+                        .background(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Constants.Colors.primaryGray : Constants.Colors.primaryBlue)
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .cornerRadius(Constants.Sizes.cornerRadius + 2)
                     }
                     .disabled(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
                     .padding(.horizontal)
                     
                     // Error banner
                     if let errorMessage = viewModel.errorMessage {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Error")
-                                .font(.headline)
-                            Text(errorMessage)
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
-                        .cornerRadius(8)
-                        .padding(.horizontal)
+                        ErrorBanner(
+                            title: "Error",
+                            message: errorMessage,
+                            type: .error
+                        )
                     }
                     
                     // Speech recognition error banner
                     if let speechError = viewModel.speechService.errorMessage {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Speech Recognition Error")
-                                .font(.headline)
-                            Text(speechError)
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color.orange.opacity(0.1))
-                        .foregroundColor(.orange)
-                        .cornerRadius(8)
-                        .padding(.horizontal)
+                        ErrorBanner(
+                            title: "Speech Recognition Error",
+                            message: speechError,
+                            type: .warning
+                        )
                     }
                     
                     // Result card
@@ -199,10 +185,10 @@ struct HomeView: View {
                                 Spacer()
                                 Text(result.mealType.capitalized)
                                     .font(.caption)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.2))
-                                    .cornerRadius(4)
+                                    .padding(.horizontal, Constants.Spacing.medium)
+                                    .padding(.vertical, Constants.Spacing.small)
+                                    .background(Constants.Colors.badgeBackground)
+                                    .cornerRadius(Constants.Spacing.small)
                             }
                             
                             Text("Total Calories: \(Int(result.totalCalories))")
@@ -244,8 +230,8 @@ struct HomeView: View {
                             }
                         }
                         .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(12)
+                        .background(Constants.Colors.secondaryBackground)
+                        .cornerRadius(Constants.Sizes.largeCornerRadius)
                         .padding(.horizontal)
                     }
                 }
@@ -265,12 +251,6 @@ struct HomeView: View {
         }
     }
     
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
 }
 
 #Preview {

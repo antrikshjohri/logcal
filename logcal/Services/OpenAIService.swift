@@ -9,19 +9,12 @@ import Foundation
 
 struct OpenAIService {
     private let apiKey: String
-    private let baseURL = "https://api.openai.com/v1/chat/completions"
     
-    init() {
-        guard let key = Secrets.getAPIKey() else {
-            fatalError("OPENAI_API_KEY not found in Secrets.plist")
-        }
-        self.apiKey = key
-        print("DEBUG: OpenAIService initialized with API key")
+    init() throws {
+        self.apiKey = try Secrets.getAPIKey()
     }
     
     func logMeal(foodText: String, mealType: String) async throws -> MealLogResponse {
-        print("DEBUG: Starting meal log request for: \(foodText), mealType: \(mealType)")
-        
         let systemPrompt = """
         You are a calorie logging assistant for Indian food. When given a food description, estimate calories based on typical Indian portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
         """
@@ -65,8 +58,8 @@ struct OpenAIService {
         ]
         
         let requestBody: [String: Any] = [
-            "model": "gpt-4o-2024-08-06",
-            "temperature": 0.3,
+            "model": Constants.API.model,
+            "temperature": Constants.API.temperature,
             "messages": [
                 [
                     "role": "system",
@@ -83,9 +76,8 @@ struct OpenAIService {
             ]
         ]
         
-        guard let url = URL(string: baseURL) else {
-            print("DEBUG: Invalid URL")
-            throw NSError(domain: "OpenAIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        guard let url = URL(string: Constants.API.baseURL) else {
+            throw AppError.invalidURL
         }
         
         var request = URLRequest(url: url)
@@ -95,26 +87,24 @@ struct OpenAIService {
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            print("DEBUG: Request body created successfully")
         } catch {
-            print("DEBUG: Failed to serialize request body: \(error)")
-            throw error
+            throw AppError.unknown(error)
         }
         
-        print("DEBUG: Sending request to OpenAI API")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw AppError.networkError(error)
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("DEBUG: Invalid HTTP response")
-            throw NSError(domain: "OpenAIService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid HTTP response"])
+            throw AppError.invalidHTTPResponse
         }
-        
-        print("DEBUG: Received response with status code: \(httpResponse.statusCode)")
         
         guard (200...299).contains(httpResponse.statusCode) else {
             let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("DEBUG: API error response: \(errorString)")
-            throw NSError(domain: "OpenAIService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "API error: \(errorString)"])
+            throw AppError.apiError(statusCode: httpResponse.statusCode, message: errorString)
         }
         
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -122,22 +112,19 @@ struct OpenAIService {
               let firstChoice = choices.first,
               let message = firstChoice["message"] as? [String: Any],
               let content = message["content"] as? String else {
-            print("DEBUG: Failed to parse response JSON")
-            throw NSError(domain: "OpenAIService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to parse response"])
+            throw AppError.parseError
         }
-        
-        print("DEBUG: Parsed content from response: \(content)")
         
         guard let contentData = content.data(using: .utf8) else {
-            print("DEBUG: Failed to convert content to data")
-            throw NSError(domain: "OpenAIService", code: -4, userInfo: [NSLocalizedDescriptionKey: "Failed to convert content to data"])
+            throw AppError.dataConversionError
         }
         
-        let decoder = JSONDecoder()
-        let mealResponse = try decoder.decode(MealLogResponse.self, from: contentData)
-        print("DEBUG: Successfully decoded MealLogResponse")
-        
-        return mealResponse
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(MealLogResponse.self, from: contentData)
+        } catch {
+            throw AppError.parseError
+        }
     }
 }
 

@@ -8,14 +8,12 @@
 import Foundation
 
 struct Secrets {
-    static func getAPIKey() -> String? {
+    static func getAPIKey() throws -> String {
         guard let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),
               let plist = NSDictionary(contentsOfFile: path),
               let apiKey = plist["OPENAI_API_KEY"] as? String else {
-            print("DEBUG: Failed to load OPENAI_API_KEY from Secrets.plist")
-            return nil
+            throw AppError.apiKeyNotFound
         }
-        print("DEBUG: Successfully loaded API key from Secrets.plist")
         return apiKey
     }
 }

@@ -31,16 +31,28 @@ class LogViewModel: ObservableObject {
     @Published var latestResult: MealLogResponse?
     @Published var isListening: Bool = false
     
-    private let openAIService = OpenAIService()
+    private var openAIService: OpenAIService?
+    private var openAIServiceError: AppError?
     private var modelContext: ModelContext?
     let speechService = SpeechRecognitionService()
     
     init() {
+        // Initialize OpenAI service - handle error gracefully
+        do {
+            self.openAIService = try OpenAIService()
+        } catch {
+            // Store error to show when user tries to log a meal
+            if let appError = error as? AppError {
+                self.openAIServiceError = appError
+            } else {
+                self.openAIServiceError = AppError.unknown(error)
+            }
+        }
+        
         // Initialize meal type based on IST time on app launch
         let initialMealType = MealTypeInference.inferMealTypeFromISTNow()
         inferredMealType = initialMealType
         selectedMealType = initialMealType
-        print("DEBUG: Initialized meal type on app launch: \(initialMealType.rawValue)")
         
         // Update foodText when speech recognition updates (only when actively listening)
         speechService.$recognizedText
@@ -56,7 +68,6 @@ class LogViewModel: ObservableObject {
         speechService.$isListening
             .sink { [weak self] isListening in
                 self?.isListening = isListening
-                print("DEBUG: isListening state updated to: \(isListening)")
             }
             .store(in: &cancellables)
     }
@@ -65,14 +76,12 @@ class LogViewModel: ObservableObject {
     
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
-        print("DEBUG: LogViewModel model context set")
     }
     
     private func updateInferredMealType() {
         let newType = MealTypeInference.determineMealType(text: foodText)
         if newType != inferredMealType {
             inferredMealType = newType
-            print("DEBUG: Updated inferred meal type to: \(newType.rawValue)")
             
             // Update selected meal type if not manually set
             if !isMealTypeManuallySet {
@@ -86,7 +95,6 @@ class LogViewModel: ObservableObject {
     func setMealType(_ mealType: MealType, isManual: Bool = true) {
         selectedMealType = mealType
         isMealTypeManuallySet = isManual
-        print("DEBUG: Meal type set to: \(mealType.rawValue), manual: \(isManual)")
     }
     
     func handleMealTypeChange(_ newValue: MealType) {
@@ -98,7 +106,12 @@ class LogViewModel: ObservableObject {
     
     func logMeal() async {
         guard !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            print("DEBUG: Cannot log meal - food text is empty")
+            return
+        }
+        
+        // Check if OpenAI service is available
+        guard let openAIService = openAIService else {
+            errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
             return
         }
         
@@ -106,13 +119,9 @@ class LogViewModel: ObservableObject {
         errorMessage = nil
         latestResult = nil
         
-        print("DEBUG: Starting meal log for: \(foodText)")
-        
         do {
             let mealTypeString = selectedMealType.rawValue
             let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString)
-            
-            print("DEBUG: Received response: \(response.totalCalories) calories")
             
             // Save to SwiftData
             if let context = modelContext {
@@ -133,7 +142,6 @@ class LogViewModel: ObservableObject {
                 
                 context.insert(entry)
                 try context.save()
-                print("DEBUG: Saved meal entry to SwiftData with date: \(selectedDate)")
             }
             
             latestResult = response
@@ -142,8 +150,11 @@ class LogViewModel: ObservableObject {
             selectedDate = Date() // Reset to today
             
         } catch {
-            print("DEBUG: Error logging meal: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
+            if let appError = error as? AppError {
+                errorMessage = appError.errorDescription
+            } else {
+                errorMessage = AppError.unknown(error).errorDescription
+            }
         }
         
         isLoading = false
@@ -152,7 +163,6 @@ class LogViewModel: ObservableObject {
     func toggleSpeechRecognition() {
         if speechService.isListening {
             speechService.stopListening()
-            print("DEBUG: Speech recognition stopped by user")
         } else {
             Task {
                 await speechService.startListening()

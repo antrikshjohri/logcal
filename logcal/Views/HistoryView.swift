@@ -37,7 +37,6 @@ struct HistoryView: View {
     // Initialize expanded dates - only latest day expanded by default (only on first launch)
     private func initializeExpandedDates() {
         guard !hasInitialized else {
-            print("DEBUG: Already initialized, skipping")
             return
         }
         
@@ -45,9 +44,6 @@ struct HistoryView: View {
         
         if let latestDate = groupedMeals.first?.date {
             expandedDates = [latestDate]
-            print("DEBUG: Initialized with latest date expanded: \(latestDate)")
-        } else {
-            print("DEBUG: Initialized with no meals")
         }
     }
     
@@ -63,7 +59,6 @@ struct HistoryView: View {
                             } else {
                                 expandedDates.remove(dayGroup.date)
                             }
-                            print("DEBUG: Toggled date \(dayGroup.date): \(isExpanded)")
                         }
                     )) {
                         ForEach(dayGroup.meals) { meal in
@@ -81,12 +76,12 @@ struct HistoryView: View {
                         }
                     } label: {
                         HStack {
-                            Text(formatDateHeader(dayGroup.date))
+                            Text(DateFormatterCache.formatDateHeader(dayGroup.date))
                                 .font(.headline)
                             Spacer()
                             Text("\(Int(dayGroup.totalCalories)) cal")
                                 .font(.headline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(Constants.Colors.primaryBlue)
                         }
                     }
                 }
@@ -102,7 +97,6 @@ struct HistoryView: View {
                                 editMode = .inactive
                                 selectedMeals.removeAll()
                             }
-                            print("DEBUG: Edit mode cancelled, restored expanded dates")
                         }
                     } else {
                         if !meals.isEmpty {
@@ -114,7 +108,6 @@ struct HistoryView: View {
                                     expandedDates = Set(groupedMeals.map { $0.date })
                                     editMode = .active
                                 }
-                                print("DEBUG: Edit mode activated, all sections expanded")
                             }
                         }
                     }
@@ -143,8 +136,8 @@ struct HistoryView: View {
                 if meals.isEmpty {
                     VStack {
                         Image(systemName: "fork.knife")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
+                            .font(.system(size: Constants.Sizes.emptyStateIcon))
+                            .foregroundColor(Constants.Colors.primaryGray)
                         Text("No meals logged yet")
                             .font(.headline)
                             .foregroundColor(.secondary)
@@ -164,8 +157,6 @@ struct HistoryView: View {
                 // Only initialize on first appearance (app launch)
                 if !hasInitialized {
                     initializeExpandedDates()
-                } else {
-                    print("DEBUG: View appeared, maintaining current expanded state")
                 }
             }
             .onChange(of: groupedMeals.count) { oldValue, newValue in
@@ -178,70 +169,49 @@ struct HistoryView: View {
     }
     
     private func deleteMeals(at offsets: IndexSet, in dayMeals: [MealEntry]) {
-        print("DEBUG: Deleting meals at offsets: \(offsets)")
         for index in offsets {
             let meal = dayMeals[index]
             modelContext.delete(meal)
-            print("DEBUG: Deleted meal: \(meal.foodText)")
         }
         
         do {
             try modelContext.save()
-            print("DEBUG: Successfully saved after deletion")
         } catch {
-            print("DEBUG: Error saving after deletion: \(error.localizedDescription)")
+            // Error saving - SwiftData will handle persistence
         }
     }
     
-    private func formatDateHeader(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let formatter = DateFormatter()
-        
-        if calendar.isDateInToday(date) {
-            return "Today"
-        } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
-        } else {
-            formatter.dateFormat = "EEEE, MMMM d, yyyy"
-            return formatter.string(from: date)
-        }
-    }
     
     private func deleteSelectedMeals() {
-        print("DEBUG: Deleting \(selectedMeals.count) selected meals")
         let mealsToDelete = meals.filter { selectedMeals.contains($0.id) }
         
         for meal in mealsToDelete {
             modelContext.delete(meal)
-            print("DEBUG: Deleted meal: \(meal.foodText)")
         }
         
         selectedMeals.removeAll()
         
         do {
             try modelContext.save()
-            print("DEBUG: Successfully saved after deletion")
             withAnimation {
                 // Restore previous expanded state
                 expandedDates = savedExpandedDates
                 editMode = .inactive
             }
         } catch {
-            print("DEBUG: Error saving after deletion: \(error.localizedDescription)")
+            // Error saving - SwiftData will handle persistence
         }
     }
     
     private func clearAllMeals() {
-        print("DEBUG: Clearing all \(meals.count) meals")
         for meal in meals {
             modelContext.delete(meal)
         }
         
         do {
             try modelContext.save()
-            print("DEBUG: Successfully cleared all meals")
         } catch {
-            print("DEBUG: Error saving after clearing all: \(error.localizedDescription)")
+            // Error saving - SwiftData will handle persistence
         }
     }
 }
@@ -261,8 +231,8 @@ struct MealRowView: View {
                         .font(.caption)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.2))
-                        .cornerRadius(4)
+                        .background(Constants.Colors.badgeBackground)
+                        .cornerRadius(Constants.Spacing.small)
                     
                     Text(meal.timestamp, style: .time)
                         .font(.caption)
@@ -275,7 +245,7 @@ struct MealRowView: View {
             Text("\(Int(meal.totalCalories)) cal")
                 .font(.title3)
                 .fontWeight(.semibold)
-                .foregroundColor(.blue)
+                .foregroundColor(Constants.Colors.primaryBlue)
         }
         .padding(.vertical, 4)
     }
