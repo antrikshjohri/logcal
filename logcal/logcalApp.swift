@@ -67,6 +67,15 @@ struct logcalApp: App {
                 // Hide auth view when user signs in
                 if newValue {
                     showAuthView = false
+                } else {
+                    // Show auth view when user signs out
+                    showAuthView = true
+                }
+            }
+            .onChange(of: authViewModel.currentUser) { oldValue, newValue in
+                // Show auth view when user becomes nil (signed out)
+                if newValue == nil {
+                    showAuthView = true
                 }
             }
         }

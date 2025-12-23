@@ -25,6 +25,18 @@ struct HomeView: View {
                                 .font(.headline)
                                 .foregroundColor(Constants.Colors.primaryBlue)
                             Spacer()
+                            // Sign out button (for testing)
+                            Button(action: {
+                                authViewModel.signOut()
+                            }) {
+                                Text("Sign Out")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, Constants.Spacing.medium)
+                                    .padding(.vertical, Constants.Spacing.small)
+                                    .background(Color.red.opacity(0.1))
+                                    .cornerRadius(Constants.Sizes.cornerRadius)
+                            }
                         }
                         .padding(.horizontal)
                         .padding(.top, Constants.Spacing.small)
