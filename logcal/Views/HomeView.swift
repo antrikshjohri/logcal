@@ -10,6 +10,7 @@ import SwiftData
 
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
+    @StateObject private var authViewModel = AuthViewModel()
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
     
@@ -17,6 +18,17 @@ struct HomeView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Welcome message (if signed in)
+                    if authViewModel.isSignedIn, let userName = authViewModel.userName {
+                        HStack {
+                            Text("Welcome \(userName)")
+                                .font(.headline)
+                                .foregroundColor(Constants.Colors.primaryBlue)
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, Constants.Spacing.small)
+                    }
                     // Date and Meal Type in same line
                     HStack(spacing: 16) {
                         // Date picker

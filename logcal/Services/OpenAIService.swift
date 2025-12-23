@@ -27,10 +27,10 @@ struct OpenAIService {
         // Use Firebase Functions if enabled
         if Constants.API.useFirebase {
             print("DEBUG: Using Firebase Functions path")
-            // Ensure user is authenticated
+            // Ensure user is authenticated (sign in anonymously only if not already signed in)
             if !firebaseService.isAuthenticated {
                 print("DEBUG: User not authenticated, signing in anonymously...")
-                // Try anonymous sign-in
+                // Try anonymous sign-in (fallback if user skipped auth)
                 try await firebaseService.signInAnonymously()
                 print("DEBUG: Anonymous sign-in completed")
             } else {

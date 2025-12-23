@@ -11,15 +11,30 @@
 		9B2C80A42EFB39F100707824 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80A32EFB39F100707824 /* FirebaseCore */; };
 		9B2C80A62EFB39F100707824 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80A52EFB39F100707824 /* FirebaseFunctions */; };
 		9B2C80A82EFB39F100707824 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80A72EFB39F100707824 /* FirebaseStorage */; };
+		9B2C80DF2EFB4BBC00707824 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80DE2EFB4BBC00707824 /* GoogleSignIn */; };
+		9B2C80E12EFB4BBC00707824 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9B2C7FC32EEF6FE400707824 /* logcal */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9B2C7FC62EEF6FE400707824 /* logcal */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */,
+			);
 			path = logcal;
 			sourceTree = "<group>";
 		};
@@ -30,8 +45,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9B2C80DF2EFB4BBC00707824 /* GoogleSignIn in Frameworks */,
 				9B2C80A62EFB39F100707824 /* FirebaseFunctions in Frameworks */,
 				9B2C80A82EFB39F100707824 /* FirebaseStorage in Frameworks */,
+				9B2C80E12EFB4BBC00707824 /* GoogleSignInSwift in Frameworks */,
 				9B2C80A42EFB39F100707824 /* FirebaseCore in Frameworks */,
 				9B2C80A22EFB39F100707824 /* FirebaseAuth in Frameworks */,
 			);
@@ -80,6 +97,8 @@
 				9B2C80A32EFB39F100707824 /* FirebaseCore */,
 				9B2C80A52EFB39F100707824 /* FirebaseFunctions */,
 				9B2C80A72EFB39F100707824 /* FirebaseStorage */,
+				9B2C80DE2EFB4BBC00707824 /* GoogleSignIn */,
+				9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */,
 			);
 			productName = logcal;
 			productReference = 9B2C7FC42EEF6FE400707824 /* logcal.app */;
@@ -111,6 +130,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				9B2C80DD2EFB4BBC00707824 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B2C7FC52EEF6FE400707824 /* Products */;
@@ -272,7 +292,7 @@
 				DEVELOPMENT_TEAM = Z5M4U33NJF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "";
+				INFOPLIST_FILE = logcal/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record your voice for speech-to-text conversion.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app needs speech recognition to convert your voice input into text for logging meals.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -307,7 +327,7 @@
 				DEVELOPMENT_TEAM = Z5M4U33NJF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "";
+				INFOPLIST_FILE = logcal/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record your voice for speech-to-text conversion.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app needs speech recognition to convert your voice input into text for logging meals.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -364,6 +384,14 @@
 				minimumVersion = 12.7.0;
 			};
 		};
+		9B2C80DD2EFB4BBC00707824 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -386,6 +414,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		9B2C80DE2EFB4BBC00707824 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80DD2EFB4BBC00707824 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80DD2EFB4BBC00707824 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
