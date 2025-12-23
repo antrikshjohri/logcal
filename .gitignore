@@ -3,6 +3,14 @@ Secrets.plist
 logcal/Secrets.plist
 **/Secrets.plist
 
+# Firebase
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # Xcode
 *.xcuserstate
 *.xcuserdatad
@@ -26,3 +34,8 @@ Carthage/Build/
 # macOS
 .DS_Store
 
+# Functions
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/*.log

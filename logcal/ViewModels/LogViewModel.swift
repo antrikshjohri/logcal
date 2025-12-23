@@ -105,23 +105,33 @@ class LogViewModel: ObservableObject {
     }
     
     func logMeal() async {
+        print("DEBUG: logMeal() called")
+        print("DEBUG: foodText: '\(foodText)'")
+        print("DEBUG: selectedMealType: \(selectedMealType.rawValue)")
+        print("DEBUG: Constants.API.useFirebase: \(Constants.API.useFirebase)")
+        
         guard !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("DEBUG: Food text is empty, returning")
             return
         }
         
         // Check if OpenAI service is available
         guard let openAIService = openAIService else {
+            print("DEBUG: OpenAI service is nil, error: \(openAIServiceError?.errorDescription ?? "unknown")")
             errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
             return
         }
         
+        print("DEBUG: OpenAI service is available, proceeding...")
         isLoading = true
         errorMessage = nil
         latestResult = nil
         
         do {
             let mealTypeString = selectedMealType.rawValue
+            print("DEBUG: Calling openAIService.logMeal()...")
             let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString)
+            print("DEBUG: Received response from openAIService: \(response.totalCalories) calories")
             
             // Save to SwiftData
             if let context = modelContext {
@@ -150,14 +160,21 @@ class LogViewModel: ObservableObject {
             selectedDate = Date() // Reset to today
             
         } catch {
+            print("DEBUG: Error caught in logMeal(): \(error)")
+            print("DEBUG: Error type: \(type(of: error))")
+            print("DEBUG: Error localizedDescription: \(error.localizedDescription)")
+            
             if let appError = error as? AppError {
+                print("DEBUG: It's an AppError: \(appError.errorDescription ?? "no description")")
                 errorMessage = appError.errorDescription
             } else {
+                print("DEBUG: It's an unknown error, wrapping in AppError")
                 errorMessage = AppError.unknown(error).errorDescription
             }
         }
         
         isLoading = false
+        print("DEBUG: logMeal() completed, isLoading = false")
     }
     
     func toggleSpeechRecognition() {

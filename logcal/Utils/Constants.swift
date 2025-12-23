@@ -11,9 +11,13 @@ import AVFoundation
 enum Constants {
     // MARK: - API Configuration
     enum API {
+        // Direct OpenAI (for development/fallback)
         static let baseURL = "https://api.openai.com/v1/chat/completions"
         static let model = "gpt-4o-2024-08-06"
         static let temperature: Double = 0.3
+        
+        // Firebase Functions (for production)
+        static let useFirebase = true // Set to false to use direct OpenAI
     }
     
     // MARK: - UI Colors

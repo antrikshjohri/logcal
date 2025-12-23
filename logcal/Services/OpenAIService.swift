@@ -8,13 +8,47 @@
 import Foundation
 
 struct OpenAIService {
-    private let apiKey: String
+    private let apiKey: String?
+    private let firebaseService = FirebaseService()
     
     init() throws {
-        self.apiKey = try Secrets.getAPIKey()
+        // Only load API key if not using Firebase
+        if Constants.API.useFirebase {
+            self.apiKey = nil
+        } else {
+            self.apiKey = try Secrets.getAPIKey()
+        }
     }
     
     func logMeal(foodText: String, mealType: String) async throws -> MealLogResponse {
+        print("DEBUG: OpenAIService.logMeal() called")
+        print("DEBUG: useFirebase = \(Constants.API.useFirebase)")
+        
+        // Use Firebase Functions if enabled
+        if Constants.API.useFirebase {
+            print("DEBUG: Using Firebase Functions path")
+            // Ensure user is authenticated
+            if !firebaseService.isAuthenticated {
+                print("DEBUG: User not authenticated, signing in anonymously...")
+                // Try anonymous sign-in
+                try await firebaseService.signInAnonymously()
+                print("DEBUG: Anonymous sign-in completed")
+            } else {
+                print("DEBUG: User already authenticated")
+            }
+            print("DEBUG: Calling firebaseService.logMeal()...")
+            return try await firebaseService.logMeal(foodText: foodText, mealType: mealType)
+        }
+        
+        // Fallback to direct OpenAI API (for development)
+        guard let apiKey = apiKey else {
+            throw AppError.apiKeyNotFound
+        }
+        
+        return try await logMealDirect(foodText: foodText, mealType: mealType, apiKey: apiKey)
+    }
+    
+    private func logMealDirect(foodText: String, mealType: String, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
         You are a calorie logging assistant for Indian food. When given a food description, estimate calories based on typical Indian portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
         """

@@ -137,7 +137,9 @@ struct HomeView: View {
                         // Dismiss keyboard
                         isTextFieldFocused = false
                         Task {
+                            print("DEBUG: Log Meal button tapped")
                             await viewModel.logMeal()
+                            print("DEBUG: Log Meal button action completed")
                         }
                     }) {
                         HStack {
