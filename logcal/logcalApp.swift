@@ -9,10 +9,12 @@ import SwiftUI
 import SwiftData
 import FirebaseCore
 import FirebaseAuth
+import FirebaseFirestore
 
 @main
 struct logcalApp: App {
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var cloudSyncService = CloudSyncService()
     @State private var showAuthView = false
     
     init() {
@@ -40,6 +42,8 @@ struct logcalApp: App {
                             }
                     }
                     .modelContainer(for: MealEntry.self)
+                    .environmentObject(cloudSyncService)
+                    .background(SyncHandlerView(cloudSyncService: cloudSyncService))
                 }
             }
             .task {

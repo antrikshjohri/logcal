@@ -11,6 +11,7 @@ import SwiftData
 struct HistoryView: View {
     @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
     @Environment(\.modelContext) private var modelContext
+    @StateObject private var cloudSyncService = CloudSyncService()
     @State private var editMode: EditMode = .inactive
     @State private var selectedMeals: Set<UUID> = []
     @State private var showClearAllAlert = false
@@ -171,6 +172,10 @@ struct HistoryView: View {
     private func deleteMeals(at offsets: IndexSet, in dayMeals: [MealEntry]) {
         for index in offsets {
             let meal = dayMeals[index]
+            // Delete from cloud
+            Task {
+                await cloudSyncService.deleteMealFromCloud(meal)
+            }
             modelContext.delete(meal)
         }
         
@@ -186,6 +191,10 @@ struct HistoryView: View {
         let mealsToDelete = meals.filter { selectedMeals.contains($0.id) }
         
         for meal in mealsToDelete {
+            // Delete from cloud
+            Task {
+                await cloudSyncService.deleteMealFromCloud(meal)
+            }
             modelContext.delete(meal)
         }
         
@@ -205,6 +214,10 @@ struct HistoryView: View {
     
     private func clearAllMeals() {
         for meal in meals {
+            // Delete from cloud
+            Task {
+                await cloudSyncService.deleteMealFromCloud(meal)
+            }
             modelContext.delete(meal)
         }
         

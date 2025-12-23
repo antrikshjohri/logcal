@@ -8,6 +8,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import AVFAudio
 import Combine
 
 @MainActor
@@ -35,22 +36,43 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             }
         }
         
-        let audioStatus = AVAudioSession.sharedInstance().recordPermission
-        
         if speechStatus != .authorized {
             errorMessage = AppError.permissionDenied("Speech recognition").errorDescription
             return false
         }
         
-        if audioStatus != .granted {
-            let granted = await withCheckedContinuation { continuation in
-                AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                    continuation.resume(returning: granted)
+        // Use AVAudioApplication for iOS 17+ (deprecated APIs replaced)
+        // Fallback to AVAudioSession for older iOS versions
+        if #available(iOS 17.0, *) {
+            // AVAudioApplication uses class methods, not instance methods
+            let audioStatus = AVAudioApplication.shared.recordPermission
+            
+            // Check if permission is granted (enum comparison)
+            if audioStatus != .granted {
+                let granted = await withCheckedContinuation { continuation in
+                    AVAudioApplication.requestRecordPermission { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+                if !granted {
+                    errorMessage = AppError.permissionDenied("Microphone").errorDescription
+                    return false
                 }
             }
-            if !granted {
-                errorMessage = AppError.permissionDenied("Microphone").errorDescription
-                return false
+        } else {
+            // Fallback for iOS < 17
+            let audioStatus = AVAudioSession.sharedInstance().recordPermission
+            
+            if audioStatus != .granted {
+                let granted = await withCheckedContinuation { continuation in
+                    AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+                if !granted {
+                    errorMessage = AppError.permissionDenied("Microphone").errorDescription
+                    return false
+                }
             }
         }
         

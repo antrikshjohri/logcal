@@ -34,6 +34,7 @@ class LogViewModel: ObservableObject {
     private var openAIService: OpenAIService?
     private var openAIServiceError: AppError?
     private var modelContext: ModelContext?
+    private let cloudSyncService = CloudSyncService()
     let speechService = SpeechRecognitionService()
     
     init() {
@@ -152,6 +153,11 @@ class LogViewModel: ObservableObject {
                 
                 context.insert(entry)
                 try context.save()
+                
+                // Sync to Firestore if user is signed in
+                Task {
+                    await cloudSyncService.syncMealToCloud(entry)
+                }
             }
             
             latestResult = response

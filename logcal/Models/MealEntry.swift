@@ -35,6 +35,7 @@ final class MealEntry: Identifiable {
     
     var response: MealLogResponse? {
         guard let data = rawResponseJson.data(using: .utf8) else { return nil }
+        // Decode on main actor to avoid isolation issues
         return try? JSONDecoder().decode(MealLogResponse.self, from: data)
     }
 }
