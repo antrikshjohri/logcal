@@ -199,6 +199,14 @@ struct HistoryView: View {
                 // Only initialize if we haven't initialized yet and there are new meals
                 if !hasInitialized && newValue > 0 {
                     initializeExpandedDates()
+                } else if newValue > oldValue {
+                    // New meals added - expand latest day
+                    if let latestDate = groupedMeals.first?.date {
+                        if !expandedDates.contains(latestDate) {
+                            expandedDates.insert(latestDate)
+                            print("DEBUG: Expanded latest day after new meals added")
+                        }
+                    }
                 }
             }
             .onChange(of: meals.count) { oldValue, newValue in
@@ -270,8 +278,20 @@ struct HistoryView: View {
     }
     
     private func refreshFromCloud() async {
-        print("DEBUG: Manual refresh triggered from HistoryView")
+        print("DEBUG: Refresh triggered from HistoryView")
         await cloudSyncService.syncFromCloud(modelContext: modelContext)
+        
+        // After refresh, ensure latest day is expanded
+        // Wait a moment for @Query to update with new data
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        if let latestDate = groupedMeals.first?.date {
+            // Expand latest day if not already expanded
+            if !expandedDates.contains(latestDate) {
+                expandedDates.insert(latestDate)
+                print("DEBUG: Expanded latest day after refresh: \(latestDate)")
+            }
+        }
     }
 }
 
