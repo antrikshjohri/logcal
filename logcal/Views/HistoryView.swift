@@ -7,11 +7,12 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseAuth
 
 struct HistoryView: View {
     @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var cloudSyncService = CloudSyncService()
+    @EnvironmentObject var cloudSyncService: CloudSyncService
     @State private var editMode: EditMode = .inactive
     @State private var selectedMeals: Set<UUID> = []
     @State private var showClearAllAlert = false
@@ -88,6 +89,10 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("History")
+            .refreshable {
+                // Manual refresh - sync from cloud
+                await refreshFromCloud()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if editMode == .active {
@@ -134,7 +139,20 @@ struct HistoryView: View {
             }
             .environment(\.editMode, $editMode)
             .overlay {
-                if meals.isEmpty {
+                // Show loading indicator when syncing
+                if cloudSyncService.isSyncing {
+                    VStack(spacing: Constants.Spacing.medium) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading your meals...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.top, Constants.Spacing.small)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground).opacity(0.9))
+                } else if meals.isEmpty {
+                    // Show empty state only when not syncing
                     VStack {
                         Image(systemName: "fork.knife")
                             .font(.system(size: Constants.Sizes.emptyStateIcon))
@@ -159,10 +177,33 @@ struct HistoryView: View {
                 if !hasInitialized {
                     initializeExpandedDates()
                 }
+                
+                // Auto-refresh when History tab appears if:
+                // 1. We have no meals, AND
+                // 2. User is signed in (not anonymous), AND
+                // 3. Not currently syncing
+                // This ensures data loads when user navigates to History after sign-in
+                if meals.isEmpty && !cloudSyncService.isSyncing {
+                    // Check if user is signed in (only sync for signed-in users)
+                    if let user = Auth.auth().currentUser, !user.isAnonymous {
+                        print("DEBUG: History tab appeared with no meals, triggering auto-refresh...")
+                        Task {
+                            // Small delay to ensure view is ready
+                            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            await refreshFromCloud()
+                        }
+                    }
+                }
             }
             .onChange(of: groupedMeals.count) { oldValue, newValue in
                 // Only initialize if we haven't initialized yet and there are new meals
                 if !hasInitialized && newValue > 0 {
+                    initializeExpandedDates()
+                }
+            }
+            .onChange(of: meals.count) { oldValue, newValue in
+                // When meals count changes, ensure expanded dates are initialized
+                if newValue > oldValue && !hasInitialized {
                     initializeExpandedDates()
                 }
             }
@@ -226,6 +267,11 @@ struct HistoryView: View {
         } catch {
             // Error saving - SwiftData will handle persistence
         }
+    }
+    
+    private func refreshFromCloud() async {
+        print("DEBUG: Manual refresh triggered from HistoryView")
+        await cloudSyncService.syncFromCloud(modelContext: modelContext)
     }
 }
 

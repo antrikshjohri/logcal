@@ -15,6 +15,7 @@ class CloudSyncService: ObservableObject {
     private let firestoreService = FirestoreService()
     @Published var isSyncing: Bool = false
     @Published var syncError: String?
+    @Published var lastSyncTime: Date = Date() // Trigger view updates when sync completes
     
     /// Sync meal entries to Firestore (save new ones)
     func syncMealToCloud(_ entry: MealEntry) async {
@@ -67,11 +68,33 @@ class CloudSyncService: ObservableObject {
             }
             
             if addedCount > 0 {
+                // Save the context
                 try modelContext.save()
                 print("DEBUG: Added \(addedCount) meals from cloud to local storage")
+                
+                // Verify the save worked by checking local meals again
+                let verifyDescriptor = FetchDescriptor<MealEntry>()
+                let verifyMeals = try modelContext.fetch(verifyDescriptor)
+                print("DEBUG: After save, found \(verifyMeals.count) local meals")
+                
+                // Small delay to ensure SwiftData propagates changes to @Query
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                
+                // Update lastSyncTime to trigger onChange handlers in HistoryView
+                // This will cause the view to check if refresh is needed
+                lastSyncTime = Date()
+                
+                // Another small delay to ensure the view refresh happens
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            } else {
+                print("DEBUG: No new meals to add from cloud")
             }
             
             isSyncing = false
+            // Update lastSyncTime even if no meals were added to trigger any pending updates
+            if addedCount == 0 {
+                lastSyncTime = Date()
+            }
         } catch {
             print("DEBUG: Error syncing from cloud: \(error)")
             syncError = "Failed to sync from cloud: \(error.localizedDescription)"
