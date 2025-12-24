@@ -29,22 +29,39 @@ struct SyncHandlerView: View {
                 }
             }
             .onChange(of: authViewModel.currentUser) { oldValue, newValue in
-                // Handle sync when user signs in
-                if let newUser = newValue, !newUser.isAnonymous {
+                // Handle user sign out
+                if oldValue != nil && newValue == nil {
+                    // User signed out - clear local data
+                    print("DEBUG: User signed out, clearing local data...")
+                    Task {
+                        await cloudSyncService.clearLocalMeals(modelContext: modelContext)
+                    }
+                }
+                // Handle sync when user signs in or switches accounts
+                else if let newUser = newValue, !newUser.isAnonymous {
                     let wasAnonymous = oldValue?.isAnonymous == true
                     let wasNil = oldValue == nil
+                    let oldUserId = oldValue?.uid
+                    let newUserId = newUser.uid
+                    let userChanged = oldUserId != nil && oldUserId != newUserId
                     
-                    if wasAnonymous || wasNil {
-                        // User just signed in (not anonymous) - sync data
+                    if wasAnonymous || wasNil || userChanged {
+                        // User just signed in (not anonymous) or switched accounts - sync data
                         Task {
                             // Wait a bit to ensure modelContext is ready
                             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                             
-                            print("DEBUG: User signed in, migrating and syncing data...")
-                            // First migrate local data to cloud (only if there are local meals)
-                            await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
-                            // Then fetch any cloud data
-                            await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                            if userChanged {
+                                print("DEBUG: User switched accounts, syncing new user's data...")
+                                // For account switch, syncFromCloud will clear old data automatically
+                                await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                            } else {
+                                print("DEBUG: User signed in, migrating and syncing data...")
+                                // First migrate local data to cloud (only if there are local meals)
+                                await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
+                                // Then fetch any cloud data
+                                await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                            }
                         }
                     }
                 }

@@ -16,6 +16,7 @@ class CloudSyncService: ObservableObject {
     @Published var isSyncing: Bool = false
     @Published var syncError: String?
     @Published var lastSyncTime: Date = Date() // Trigger view updates when sync completes
+    private var currentUserId: String? // Track current user ID to detect user changes
     
     /// Sync meal entries to Firestore (save new ones)
     func syncMealToCloud(_ entry: MealEntry) async {
@@ -39,8 +40,21 @@ class CloudSyncService: ObservableObject {
         // Only sync if user is signed in (not anonymous)
         guard let user = Auth.auth().currentUser, !user.isAnonymous else {
             print("DEBUG: User is anonymous or not signed in, skipping cloud sync")
+            // Clear user ID when user signs out
+            currentUserId = nil
             return
         }
+        
+        let newUserId = user.uid
+        
+        // Check if user has changed (different account signed in)
+        if let previousUserId = currentUserId, previousUserId != newUserId {
+            print("DEBUG: User changed from \(previousUserId) to \(newUserId), clearing local data first...")
+            await clearLocalMeals(modelContext: modelContext)
+        }
+        
+        // Update current user ID
+        currentUserId = newUserId
         
         isSyncing = true
         syncError = nil
@@ -146,6 +160,29 @@ class CloudSyncService: ObservableObject {
         } catch {
             print("DEBUG: Error deleting meal from cloud: \(error)")
             syncError = "Failed to delete from cloud: \(error.localizedDescription)"
+        }
+    }
+    
+    /// Clear all local meals (used when user signs out or switches accounts)
+    func clearLocalMeals(modelContext: ModelContext) async {
+        print("DEBUG: Clearing all local meals...")
+        do {
+            let descriptor = FetchDescriptor<MealEntry>()
+            let localMeals = try modelContext.fetch(descriptor)
+            print("DEBUG: Found \(localMeals.count) local meals to delete")
+            
+            for meal in localMeals {
+                modelContext.delete(meal)
+            }
+            
+            try modelContext.save()
+            print("DEBUG: Successfully cleared \(localMeals.count) local meals")
+            
+            // Clear current user ID when clearing local data
+            currentUserId = nil
+        } catch {
+            print("DEBUG: Error clearing local meals: \(error)")
+            syncError = "Failed to clear local meals: \(error.localizedDescription)"
         }
     }
 }
