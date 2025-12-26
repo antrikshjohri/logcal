@@ -260,7 +260,7 @@ struct HomeView: View {
                         .cornerRadius(Constants.Sizes.largeCornerRadius)
                         .padding(.horizontal)
                     }
-                }
+                    }
                 .padding(.vertical)
             }
             .navigationTitle("Log Calories")
