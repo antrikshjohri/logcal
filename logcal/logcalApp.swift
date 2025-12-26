@@ -48,18 +48,19 @@ struct logcalApp: App {
             }
             .task {
                 // Check if we should show auth view
-                // Show if no user exists OR if user is anonymous (give them option to upgrade)
+                // Show if no user exists (sign-in is mandatory)
                 // Use .task instead of .onAppear to ensure Firebase is fully initialized
                 let currentUser = Auth.auth().currentUser
                 print("DEBUG: Checking auth state - currentUser: \(currentUser?.uid ?? "nil"), isAnonymous: \(currentUser?.isAnonymous ?? false)")
                 
                 if currentUser == nil {
-                    // No user at all - show auth view on first launch
+                    // No user at all - show auth view (sign-in required)
                     print("DEBUG: No user found, showing auth view")
                     showAuthView = true
                 } else if let user = currentUser, user.isAnonymous {
-                    // User is anonymous - show auth view to give option to sign in
-                    print("DEBUG: Anonymous user found, showing auth view for upgrade option")
+                    // Anonymous user - sign them out and show auth view (sign-in required)
+                    print("DEBUG: Anonymous user found, signing out and showing auth view")
+                    try? Auth.auth().signOut()
                     showAuthView = true
                 } else {
                     // User is signed in with Google - don't show auth view

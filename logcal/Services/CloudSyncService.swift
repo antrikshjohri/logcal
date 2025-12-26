@@ -16,7 +16,8 @@ class CloudSyncService: ObservableObject {
     @Published var isSyncing: Bool = false
     @Published var syncError: String?
     @Published var lastSyncTime: Date = Date() // Trigger view updates when sync completes
-    private var currentUserId: String? // Track current user ID to detect user changes
+    private var currentUserId: String? // Track current authenticated user ID
+    private var isAnonymousSession: Bool = false // Track if we're in anonymous mode
     
     /// Sync meal entries to Firestore (save new ones)
     func syncMealToCloud(_ entry: MealEntry) async {
@@ -40,21 +41,38 @@ class CloudSyncService: ObservableObject {
         // Only sync if user is signed in (not anonymous)
         guard let user = Auth.auth().currentUser, !user.isAnonymous else {
             print("DEBUG: User is anonymous or not signed in, skipping cloud sync")
-            // Clear user ID when user signs out
+            // Clear authenticated session state
             currentUserId = nil
             return
         }
         
         let newUserId = user.uid
         
-        // Check if user has changed (different account signed in)
+        // Check if we're switching from anonymous to authenticated
+        if isAnonymousSession {
+            print("DEBUG: Switching from anonymous to authenticated user, clearing anonymous data...")
+            await clearLocalMeals(modelContext: modelContext)
+            isAnonymousSession = false
+        }
+        
+        // Check if user has changed (different authenticated account signed in)
         if let previousUserId = currentUserId, previousUserId != newUserId {
             print("DEBUG: User changed from \(previousUserId) to \(newUserId), clearing local data first...")
             await clearLocalMeals(modelContext: modelContext)
         }
+        // If currentUserId is nil but we have local data, we're signing in after sign-out
+        // Clear the old user's data before syncing new user's data
+        else if currentUserId == nil {
+            let descriptor = FetchDescriptor<MealEntry>()
+            if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
+                print("DEBUG: Signing in after sign-out, clearing previous user's local data...")
+                await clearLocalMeals(modelContext: modelContext)
+            }
+        }
         
-        // Update current user ID
+        // Update current user ID and session type
         currentUserId = newUserId
+        isAnonymousSession = false
         
         isSyncing = true
         syncError = nil
@@ -178,12 +196,38 @@ class CloudSyncService: ObservableObject {
             try modelContext.save()
             print("DEBUG: Successfully cleared \(localMeals.count) local meals")
             
-            // Clear current user ID when clearing local data
+            // Clear session state when clearing local data
             currentUserId = nil
+            isAnonymousSession = false
         } catch {
             print("DEBUG: Error clearing local meals: \(error)")
             syncError = "Failed to clear local meals: \(error.localizedDescription)"
         }
+    }
+    
+    /// Initialize anonymous session (clear authenticated data when switching to anonymous)
+    func initializeAnonymousSession(modelContext: ModelContext) async {
+        print("DEBUG: Initializing anonymous session...")
+        
+        // If we were in an authenticated session, clear that data
+        if let previousUserId = currentUserId {
+            print("DEBUG: Clearing authenticated user data before switching to anonymous...")
+            await clearLocalMeals(modelContext: modelContext)
+        }
+        // If currentUserId is nil but we have local data, we're switching to anonymous after sign-out
+        // Clear the old user's data
+        else {
+            let descriptor = FetchDescriptor<MealEntry>()
+            if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
+                print("DEBUG: Switching to anonymous after sign-out, clearing previous user's local data...")
+                await clearLocalMeals(modelContext: modelContext)
+            }
+        }
+        
+        // Set anonymous session state
+        currentUserId = nil
+        isAnonymousSession = true
+        print("DEBUG: Anonymous session initialized")
     }
 }
 

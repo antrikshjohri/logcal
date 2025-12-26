@@ -18,22 +18,6 @@ struct AuthView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: Constants.Spacing.extraLarge) {
-                // Close button (top right)
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        Task {
-                            await authViewModel.signInAnonymously()
-                            isPresented = false
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(Constants.Colors.secondaryGray)
-                    }
-                    .padding()
-                }
-                
                 Spacer()
                 
                 // App logo/icon
@@ -80,19 +64,6 @@ struct AuthView: View {
                     .disabled(authViewModel.isLoading)
                 }
                 .padding(.horizontal, Constants.Spacing.extraLarge)
-                
-                // Skip option
-                Button(action: {
-                    Task {
-                        await authViewModel.signInAnonymously()
-                        isPresented = false
-                    }
-                }) {
-                    Text("Continue without signing in")
-                        .font(.subheadline)
-                        .foregroundColor(Constants.Colors.secondaryGray)
-                }
-                .disabled(authViewModel.isLoading)
                 
                 // Error message
                 if let errorMessage = authViewModel.errorMessage {
