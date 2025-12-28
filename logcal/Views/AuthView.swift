@@ -28,6 +28,7 @@ enum AuthProvider {
 struct AuthView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @Binding var isPresented: Bool
+    @Environment(\.colorScheme) var colorScheme
     
     // Animation state for demo
     @State private var currentMealIndex = 0
@@ -46,16 +47,16 @@ struct AuthView: View {
     
     // Sample meals for animation - global dishes
     private let demoMeals: [(text: String, calories: Int)] = [
-        ("Grilled chicken salad and garlic bread", 520),
-        ("Beef burrito bowl with guacamole", 620),
-        ("Pasta carbonara with parmesan", 680),
-        ("Salmon teriyaki with rice", 580),
-        ("Caesar salad with grilled chicken", 450),
-        ("Margherita pizza slice", 290),
-        ("Sushi platter with miso soup", 480),
-        ("Avocado toast with poached eggs", 420),
-        ("Fish and chips", 650),
-        ("Pad Thai with vegetables", 520)
+        ("One bowl of grilled chicken salad and garlic bread", 520),
+        ("A large burrito bowl with guacamole", 620),
+        ("Butter chicken with 1 naan and rice", 680),
+        ("Salmon teriyaki and rice", 580),
+        ("One bowl of caesar salad with grilled chicken", 450),
+        ("Two slices of margherita pizza", 290),
+        ("One plate of dal makhani with roti", 480),
+        ("Two slices of avocado toast with poached eggs", 420),
+        ("1 bowl Fish and chips", 650),
+        ("One plate of pad thai with vegetables", 520)
     ]
     
     var body: some View {
@@ -126,7 +127,7 @@ struct AuthView: View {
                             }
                             .frame(width: 200) // Fixed smaller width
                             .padding(Constants.Spacing.large)
-                            .background(Constants.Colors.primaryBackground)
+                            .background(caloriesCardBackground)
                             .cornerRadius(Constants.Sizes.largeCornerRadius)
                             .opacity(showCalories ? 1 : 0)
                             .animation(.easeInOut(duration: 0.4), value: showCalories)
@@ -255,6 +256,13 @@ struct AuthView: View {
     private func stopAnimation() {
         animationTimer?.invalidate()
         animationTimer = nil
+    }
+    
+    // Calories card background - more visible in dark mode
+    private var caloriesCardBackground: Color {
+        colorScheme == .dark 
+            ? Color.gray.opacity(0.25) // More visible in dark mode
+            : Constants.Colors.primaryBackground // Light mode: subtle gray
     }
     
     private func handleAppleSignIn() {
