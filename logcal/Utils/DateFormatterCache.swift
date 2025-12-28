@@ -24,6 +24,12 @@ enum DateFormatterCache {
         return formatter
     }()
     
+    private static var shortDateHeaderFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, MMM d" // e.g., "Thu, Dec 25"
+        return formatter
+    }()
+    
     // Thread-safe access
     static func mediumDate() -> DateFormatter {
         return formattersQueue.sync {
@@ -34,6 +40,12 @@ enum DateFormatterCache {
     static func fullDate() -> DateFormatter {
         return formattersQueue.sync {
             return fullDateFormatter
+        }
+    }
+    
+    static func shortDateHeader() -> DateFormatter {
+        return formattersQueue.sync {
+            return shortDateHeaderFormatter
         }
     }
     
@@ -50,7 +62,7 @@ enum DateFormatterCache {
         } else if calendar.isDateInYesterday(date) {
             return "Yesterday"
         } else {
-            return fullDate().string(from: date)
+            return shortDateHeader().string(from: date)
         }
     }
 }

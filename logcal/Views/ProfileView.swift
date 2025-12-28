@@ -14,6 +14,7 @@ struct ProfileView: View {
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     @State private var showThemeSelector = false
     @State private var showEditProfile = false
+    @State private var profileImage: UIImage?
     
     // User info
     private var userName: String {
@@ -69,6 +70,7 @@ struct ProfileView: View {
                     ProfileCard(
                         name: userName,
                         email: userEmail,
+                        profileImage: profileImage,
                         onEditProfile: {
                             showEditProfile = true
                         }
@@ -193,6 +195,32 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showEditProfile) {
                 EditProfileView()
+            }
+            .onAppear {
+                loadProfileImage()
+            }
+            .onChange(of: authViewModel.currentUser) { oldValue, newValue in
+                loadProfileImage()
+            }
+        }
+    }
+    
+    private func loadProfileImage() {
+        guard let photoURL = Auth.auth().currentUser?.photoURL else {
+            profileImage = nil
+            return
+        }
+        
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: photoURL)
+                if let image = UIImage(data: data) {
+                    await MainActor.run {
+                        profileImage = image
+                    }
+                }
+            } catch {
+                print("DEBUG: Failed to load profile image: \(error)")
             }
         }
     }

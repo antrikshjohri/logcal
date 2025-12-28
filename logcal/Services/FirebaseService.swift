@@ -21,11 +21,20 @@ struct FirebaseService {
             print("DEBUG: Anonymous sign-in successful")
         }
         
+        // Get user's country from AppStorage
+        let userCountry = UserDefaults.standard.string(forKey: "userCountry") ?? ""
+        let countryName = getCountryName(for: userCountry)
+        
         // Prepare request data
-        let requestData: [String: Any] = [
+        var requestData: [String: Any] = [
             "foodText": foodText,
             "mealType": mealType
         ]
+        
+        // Add country if available
+        if !countryName.isEmpty {
+            requestData["country"] = countryName
+        }
         
         // Call Firebase Function (onCall automatically includes auth token)
         let function = functions.httpsCallable("logMeal")
@@ -137,6 +146,12 @@ struct FirebaseService {
     /// Sign in anonymously (for quick setup)
     func signInAnonymously() async throws {
         _ = try await Auth.auth().signInAnonymously()
+    }
+    
+    /// Get country name from country code
+    private func getCountryName(for code: String) -> String {
+        guard !code.isEmpty else { return "" }
+        return Locale.current.localizedString(forRegionCode: code) ?? ""
     }
 }
 

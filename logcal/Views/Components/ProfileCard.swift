@@ -11,20 +11,31 @@ struct ProfileCard: View {
     @Environment(\.colorScheme) var colorScheme
     let name: String
     let email: String
+    let profileImage: UIImage?
     let onEditProfile: () -> Void
     
     var body: some View {
         VStack(spacing: Constants.Spacing.large) {
             HStack(spacing: Constants.Spacing.large) {
                 // Avatar
-                ZStack {
-                    Circle()
-                        .fill(Theme.accentBlue)
-                        .frame(width: 60, height: 60)
-                    
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 30))
-                        .foregroundColor(.white)
+                Group {
+                    if let profileImage = profileImage {
+                        Image(uiImage: profileImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 60, height: 60)
+                            .clipShape(Circle())
+                    } else {
+                        ZStack {
+                            Circle()
+                                .fill(Theme.accentBlue)
+                                .frame(width: 60, height: 60)
+                            
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
+                        }
+                    }
                 }
                 
                 // Name and email
@@ -55,7 +66,7 @@ struct ProfileCard: View {
 }
 
 #Preview {
-    ProfileCard(name: "Antriksh Johri", email: "antriksh@example.com") {
+    ProfileCard(name: "Antriksh Johri", email: "antriksh@example.com", profileImage: nil) {
         print("Edit Profile")
     }
     .padding()

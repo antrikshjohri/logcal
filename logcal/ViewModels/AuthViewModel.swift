@@ -42,7 +42,7 @@ class AuthViewModel: ObservableObject {
     }
     
     /// Get display name from user (from social profile or email)
-    private func updateUserName() {
+    func updateUserName() {
         guard let user = currentUser else {
             userName = nil
             return
