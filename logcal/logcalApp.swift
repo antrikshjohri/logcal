@@ -31,6 +31,11 @@ struct logcalApp: App {
                     AuthView(isPresented: $showAuthView)
                 } else {
                     TabView {
+                        DashboardView()
+                            .tabItem {
+                                Label("Home", systemImage: "house.fill")
+                            }
+                        
                         HomeView()
                             .tabItem {
                                 Label("Log", systemImage: "plus.circle")
@@ -39,6 +44,11 @@ struct logcalApp: App {
                         HistoryView()
                             .tabItem {
                                 Label("History", systemImage: "list.bullet")
+                            }
+                        
+                        ProfileView()
+                            .tabItem {
+                                Label("Profile", systemImage: "person.fill")
                             }
                     }
                     .modelContainer(for: MealEntry.self)
