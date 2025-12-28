@@ -43,6 +43,10 @@ struct AuthView: View {
     @State private var showCalories = false
     @State private var animationPhase: AnimationPhase = .mealText
     
+    // Store Apple Sign-In delegates to prevent deallocation
+    @State private var appleSignInDelegate: AppleSignInDelegate?
+    @State private var appleSignInPresentationContext: AppleSignInPresentationContextProvider?
+    
     enum AnimationPhase {
         case mealText
         case arrow
@@ -277,8 +281,8 @@ struct AuthView: View {
         let request = appleIDProvider.createRequest()
         request.requestedScopes = [.fullName, .email]
         
-        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
-        authorizationController.delegate = AppleSignInDelegate(
+        // Create and store delegates to prevent deallocation
+        let delegate = AppleSignInDelegate(
             onSuccess: { authorization in
                 Task {
                     await authViewModel.handleAppleSignIn(authorization: authorization)
@@ -297,7 +301,15 @@ struct AuthView: View {
                 }
             }
         )
-        authorizationController.presentationContextProvider = AppleSignInPresentationContextProvider()
+        let presentationContext = AppleSignInPresentationContextProvider()
+        
+        // Store references to keep them alive
+        appleSignInDelegate = delegate
+        appleSignInPresentationContext = presentationContext
+        
+        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+        authorizationController.delegate = delegate
+        authorizationController.presentationContextProvider = presentationContext
         authorizationController.performRequests()
     }
 }

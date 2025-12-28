@@ -210,7 +210,7 @@ class CloudSyncService: ObservableObject {
         print("DEBUG: Initializing anonymous session...")
         
         // If we were in an authenticated session, clear that data
-        if let previousUserId = currentUserId {
+        if currentUserId != nil {
             print("DEBUG: Clearing authenticated user data before switching to anonymous...")
             await clearLocalMeals(modelContext: modelContext)
         }
