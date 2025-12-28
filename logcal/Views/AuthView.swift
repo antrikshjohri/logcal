@@ -8,6 +8,23 @@
 import SwiftUI
 import AuthenticationServices
 
+// Provider enum for authentication providers
+enum AuthProvider {
+    case apple
+    case google
+    case facebook  // Reserved for future
+    case adobe      // Reserved for future
+    
+    var title: String {
+        switch self {
+        case .apple: return "Sign in with Apple"
+        case .google: return "Sign in with Google"
+        case .facebook: return "Sign in with Facebook"
+        case .adobe: return "Sign in with Adobe"
+        }
+    }
+}
+
 struct AuthView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @Binding var isPresented: Bool
@@ -128,46 +145,25 @@ struct AuthView: View {
                     // Sign-in buttons
                     VStack(spacing: Constants.Spacing.regular) {
                         // Apple Sign-In
-                        SignInWithAppleButton(
-                            onRequest: { request in
-                                request.requestedScopes = [.fullName, .email]
-                            },
-                            onCompletion: { result in
-                                switch result {
-                                case .success(let authorization):
-                                    Task {
-                                        await authViewModel.handleAppleSignIn(authorization: authorization)
-                                        if authViewModel.isSignedIn {
-                                            isPresented = false
-                                        }
-                                    }
-                                case .failure(let error):
-                                    // Error code 1000 is user cancellation - don't show error
-                                    if (error as NSError).code != 1000 {
-                                        print("DEBUG: Apple sign-in error: \(error)")
-                                        authViewModel.errorMessage = error.localizedDescription
-                                    } else {
-                                        print("DEBUG: Apple sign-in cancelled by user")
-                                    }
-                                }
-                            }
-                        )
-                        .signInWithAppleButtonStyle(.white)
-                        .frame(height: 50)
-                        .cornerRadius(Constants.Sizes.cornerRadius)
-                        .disabled(authViewModel.isLoading)
+                        AuthProviderButton(
+                            provider: .apple,
+                            isDisabled: authViewModel.isLoading
+                        ) {
+                            handleAppleSignIn()
+                        }
                         
-                        // Google Sign-In - following Google branding guidelines
-                        GoogleSignInButton()
-                            .disabled(authViewModel.isLoading)
-                            .onTapGesture {
-                                Task {
-                                    await authViewModel.signInWithGoogle()
-                                    if authViewModel.isSignedIn {
-                                        isPresented = false
-                                    }
+                        // Google Sign-In
+                        AuthProviderButton(
+                            provider: .google,
+                            isDisabled: authViewModel.isLoading
+                        ) {
+                            Task {
+                                await authViewModel.signInWithGoogle()
+                                if authViewModel.isSignedIn {
+                                    isPresented = false
                                 }
                             }
+                        }
                     }
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     .padding(.bottom, Constants.Spacing.large)
@@ -260,53 +256,182 @@ struct AuthView: View {
         animationTimer?.invalidate()
         animationTimer = nil
     }
+    
+    private func handleAppleSignIn() {
+        let appleIDProvider = ASAuthorizationAppleIDProvider()
+        let request = appleIDProvider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        
+        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+        authorizationController.delegate = AppleSignInDelegate(
+            onSuccess: { authorization in
+                Task {
+                    await authViewModel.handleAppleSignIn(authorization: authorization)
+                    if authViewModel.isSignedIn {
+                        isPresented = false
+                    }
+                }
+            },
+            onError: { error in
+                // Error code 1000 is user cancellation - don't show error
+                if (error as NSError).code != 1000 {
+                    print("DEBUG: Apple sign-in error: \(error)")
+                    authViewModel.errorMessage = error.localizedDescription
+                } else {
+                    print("DEBUG: Apple sign-in cancelled by user")
+                }
+            }
+        )
+        authorizationController.presentationContextProvider = AppleSignInPresentationContextProvider()
+        authorizationController.performRequests()
+    }
 }
 
-// Google Sign-In Button following Google branding guidelines
-// Reference: https://developers.google.com/identity/branding-guidelines
-struct GoogleSignInButton: View {
+// MARK: - Apple Sign-In Helpers
+private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate {
+    let onSuccess: (ASAuthorization) -> Void
+    let onError: (Error) -> Void
+    
+    init(onSuccess: @escaping (ASAuthorization) -> Void, onError: @escaping (Error) -> Void) {
+        self.onSuccess = onSuccess
+        self.onError = onError
+    }
+    
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        onSuccess(authorization)
+    }
+    
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        onError(error)
+    }
+}
+
+private class AppleSignInPresentationContextProvider: NSObject, ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            fatalError("No window found")
+        }
+        return window
+    }
+}
+
+// MARK: - Reusable Auth Provider Button Component
+struct AuthProviderButton: View {
     @Environment(\.colorScheme) var colorScheme
+    @State private var isPressed = false
+    
+    let provider: AuthProvider
+    let isDisabled: Bool
+    let action: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Google "G" logo - colorful Google logo on white background
-            // According to guidelines: logo must be standard color on white background
+        Button(action: {
+            action()
+        }) {
             ZStack {
-                // White background for Google logo (required by guidelines)
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white)
-                    .frame(width: 20, height: 20)
+                // Background and border
+                RoundedRectangle(cornerRadius: 25) // Capsule: height/2
+                    .fill(backgroundColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 25)
+                            .stroke(borderColor, lineWidth: 1)
+                    )
                 
-                // Google logo image asset
-                Image("GoogleLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
+                // Content - label visually centered, icon on left
+                HStack {
+                    // Icon - 18-20pt size, left aligned
+                    providerIcon
+                        .frame(width: 20, height: 20)
+                    
+                    // Spacer to push text toward center
+                    Spacer()
+                    
+                    // Label - visually centered
+                    Text(provider.title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(textColor)
+                    
+                    // Spacer to balance icon on left
+                    Spacer()
+                    
+                    // Invisible spacer matching icon width to balance layout
+                    Color.clear
+                        .frame(width: 20, height: 20)
+                }
+                .padding(.horizontal, 16) // Horizontal padding
             }
-            .frame(width: 20, height: 20)
-            .padding(.leading, 4) // 12px left padding per iOS guidelines
-            
-            Text("Sign in with Google")
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(colorScheme == .dark ? Color(red: 0.89, green: 0.89, blue: 0.89) : Color(red: 0.12, green: 0.12, blue: 0.12))
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .opacity(isPressed ? 0.8 : 1.0)
+            .scaleEffect(isPressed ? 0.98 : 1.0)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .background(
-            colorScheme == .dark 
-                ? Color(red: 0.075, green: 0.075, blue: 0.078) // Dark theme: #131314
-                : Color.white // Light theme: #FFFFFF
+        .disabled(isDisabled)
+        .buttonStyle(PlainButtonStyle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    if !isDisabled {
+                        withAnimation(.easeInOut(duration: 0.1)) {
+                            isPressed = true
+                        }
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = false
+                    }
+                }
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                .stroke(
-                    colorScheme == .dark 
-                        ? Color(red: 0.56, green: 0.57, blue: 0.56) // Dark theme border: #8E918F
-                        : Color(red: 0.45, green: 0.47, blue: 0.46), // Light theme border: #747775
-                    lineWidth: 1
-                )
-        )
-        .cornerRadius(Constants.Sizes.cornerRadius)
+        .accessibilityLabel(provider.title)
+        .accessibilityHint("Tap to sign in with \(provider.title.replacingOccurrences(of: "Sign in with ", with: ""))")
+    }
+    
+    // MARK: - Theme Colors
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color.white : Color.black
+    }
+    
+    private var borderColor: Color {
+        colorScheme == .dark 
+            ? Color.gray.opacity(0.3) // Dark gray border in dark mode
+            : Color.gray.opacity(0.2)  // Light gray border in light mode
+    }
+    
+    private var textColor: Color {
+        colorScheme == .dark ? Color.black : Color.white
+    }
+    
+    // MARK: - Provider Icons
+    @ViewBuilder
+    private var providerIcon: some View {
+        switch provider {
+        case .apple:
+            // Apple icon - matches text color
+            Image(systemName: "applelogo")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(textColor)
+            
+        case .google:
+            // Google logo - full color, no tinting
+            // Slightly larger to compensate for image padding and match Apple logo visual size
+            Image("GoogleLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
+            
+        case .facebook:
+            // Placeholder for future
+            Image(systemName: "f.circle.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(textColor)
+            
+        case .adobe:
+            // Placeholder for future
+            Image(systemName: "a.circle.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(textColor)
+        }
     }
 }
 
