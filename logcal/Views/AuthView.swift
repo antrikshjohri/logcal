@@ -30,6 +30,11 @@ struct AuthView: View {
     @Binding var isPresented: Bool
     @Environment(\.colorScheme) var colorScheme
     
+    // Flag to show/hide Apple Sign-In button
+    // Set to false to hide Apple Sign-In (e.g., if you don't have Apple Developer Program)
+    // Set to true to show Apple Sign-In (requires: paid Apple Developer account, capability in Xcode, Firebase enabled)
+    private let showAppleSignIn = true
+    
     // Animation state for demo
     @State private var currentMealIndex = 0
     @State private var animationTimer: Timer?
@@ -146,11 +151,13 @@ struct AuthView: View {
                     // Sign-in buttons
                     VStack(spacing: Constants.Spacing.regular) {
                         // Apple Sign-In
-                        AuthProviderButton(
-                            provider: .apple,
-                            isDisabled: authViewModel.isLoading
-                        ) {
-                            handleAppleSignIn()
+                        if showAppleSignIn {
+                            AuthProviderButton(
+                                provider: .apple,
+                                isDisabled: authViewModel.isLoading
+                            ) {
+                                handleAppleSignIn()
+                            }
                         }
                         
                         // Google Sign-In
