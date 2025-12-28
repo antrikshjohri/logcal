@@ -30,7 +30,7 @@ struct ThisWeekCard: View {
                 
                 // Bar chart
                 WeeklyBarChartView(data: weeklyData)
-                    .frame(height: 120)
+                    .frame(height: 130) // Increased to accommodate calorie labels
                 
                 // Divider
                 Divider()
