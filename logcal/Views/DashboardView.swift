@@ -12,9 +12,7 @@ struct DashboardView: View {
     @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
-    
-    // Daily goal - will be moved to Profile/UserSettings later
-    private let dailyGoal: Double = 2000
+    @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     
     // Today's calories
     private var todayCalories: Double {

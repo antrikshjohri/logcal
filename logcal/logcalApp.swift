@@ -16,6 +16,7 @@ struct logcalApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var cloudSyncService = CloudSyncService()
     @State private var showAuthView = false
+    @AppStorage("appTheme") private var appThemeString: String = AppTheme.system.rawValue
     
     init() {
         print("DEBUG: App initializing...")
@@ -56,6 +57,7 @@ struct logcalApp: App {
                     .background(SyncHandlerView(cloudSyncService: cloudSyncService))
                 }
             }
+            .preferredColorScheme(appTheme.colorScheme)
             .task {
                 // Check if we should show auth view
                 // Show if no user exists (sign-in is mandatory)
@@ -94,5 +96,10 @@ struct logcalApp: App {
                 }
             }
         }
+    }
+    
+    // Get current theme from AppStorage
+    private var appTheme: AppTheme {
+        AppTheme(rawValue: appThemeString) ?? .system
     }
 }
