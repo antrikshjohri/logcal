@@ -13,7 +13,7 @@ import PhotosUI
 struct EditProfileView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var countryList = CountryList()
     
     // User data
@@ -23,6 +23,12 @@ struct EditProfileView: View {
     @State private var profileImage: UIImage?
     @State private var selectedPhoto: PhotosPickerItem?
     
+    // Original values to track changes
+    @State private var originalFullName: String = ""
+    @State private var originalCountryCode: String = ""
+    @State private var originalPhotoURL: URL?
+    @State private var hasPhotoChanged: Bool = false
+    
     // UI state
     @State private var isLoading = false
     @State private var showCountryPicker = false
@@ -30,6 +36,13 @@ struct EditProfileView: View {
     
     // Country picker search
     @State private var countrySearchText = ""
+    
+    // Computed property to check if any changes were made
+    private var hasChanges: Bool {
+        let nameChanged = fullName != originalFullName
+        let countryChanged = userCountryCode != originalCountryCode
+        return nameChanged || countryChanged || hasPhotoChanged
+    }
     
     var body: some View {
         NavigationView {
@@ -58,9 +71,7 @@ struct EditProfileView: View {
                             }
                             
                             // Camera icon button
-                            Button(action: {
-                                // Photo picker will be triggered via PhotosPicker
-                            }) {
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
                                 ZStack {
                                     Circle()
                                         .fill(Theme.cardBackground(colorScheme: colorScheme))
@@ -182,12 +193,11 @@ struct EditProfileView: View {
                     }
                     
                     // Save Button
-                    PrimaryButton(title: "Save Changes") {
+                    PrimaryButton(title: "Save Changes", isDisabled: isLoading || !hasChanges) {
                         Task {
                             await saveChanges()
                         }
                     }
-                    .disabled(isLoading)
                     .padding(.bottom, Constants.Spacing.extraLarge)
                 }
                 .padding(.horizontal, Constants.Spacing.extraLarge)
@@ -228,14 +238,22 @@ struct EditProfileView: View {
         // Load name
         if let displayName = user.displayName {
             fullName = displayName
+            originalFullName = displayName
         } else if let email = user.email {
-            fullName = String(email.split(separator: "@").first ?? "")
+            let nameFromEmail = String(email.split(separator: "@").first ?? "")
+            fullName = nameFromEmail
+            originalFullName = nameFromEmail
         }
         
         // Load email
         userEmail = user.email ?? ""
         
-        // Load profile photo
+        // Load original country code
+        originalCountryCode = userCountryCode
+        
+        // Load profile photo and store original URL
+        originalPhotoURL = user.photoURL
+        hasPhotoChanged = false
         if let photoURL = user.photoURL {
             Task {
                 await loadProfilePhoto(from: photoURL)
@@ -264,6 +282,7 @@ struct EditProfileView: View {
         
         await MainActor.run {
             profileImage = image
+            hasPhotoChanged = true // Mark that photo was changed
         }
     }
     
@@ -278,19 +297,27 @@ struct EditProfileView: View {
         }
         
         do {
-            // Update profile photo if changed
-            if let profileImage = profileImage {
+            // Update profile photo only if it was changed
+            if hasPhotoChanged, let profileImage = profileImage {
                 try await uploadProfilePhoto(image: profileImage, userId: user.uid)
             }
             
-            // Update display name
-            let changeRequest = user.createProfileChangeRequest()
-            changeRequest.displayName = fullName.isEmpty ? nil : fullName
-            try await changeRequest.commitChanges()
-            
-            // Update AuthViewModel immediately
-            await MainActor.run {
-                authViewModel.updateUserName()
+            // Update display name only if it changed
+            if fullName != originalFullName {
+                let changeRequest = user.createProfileChangeRequest()
+                changeRequest.displayName = fullName.isEmpty ? nil : fullName
+                try await changeRequest.commitChanges()
+                
+                // Reload the user to get updated profile data
+                // This ensures the auth state listener in AuthViewModel picks up the change
+                try? await user.reload()
+                
+                // Update AuthViewModel immediately
+                await MainActor.run {
+                    authViewModel.updateUserName()
+                    // Trigger refresh in other views by updating AppStorage
+                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "profileUpdated")
+                }
             }
             
             print("DEBUG: Profile updated successfully")
@@ -315,34 +342,95 @@ struct EditProfileView: View {
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
         
+        print("DEBUG: Starting profile photo upload...")
+        
+        // Upload the image - this will create the file if it doesn't exist, or overwrite if it does
         // Use continuation to convert callback-based API to async/await
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            _ = photoRef.putData(imageData, metadata: metadata) { metadata, error in
+        // Wait for the upload to fully complete before proceeding
+        let uploadMetadata = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<StorageMetadata?, Error>) in
+            let uploadTask = photoRef.putData(imageData, metadata: metadata) { metadata, error in
                 if let error = error {
+                    print("DEBUG: Upload error: \(error)")
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume()
+                    print("DEBUG: Upload callback received, metadata: \(metadata?.path ?? "nil")")
+                    continuation.resume(returning: metadata)
+                }
+            }
+            
+            // Also observe the upload task state to ensure it's fully complete
+            uploadTask.observe(.success) { snapshot in
+                print("DEBUG: Upload task completed successfully")
+            }
+            
+            uploadTask.observe(.failure) { snapshot in
+                if let error = snapshot.error {
+                    print("DEBUG: Upload task failed: \(error)")
                 }
             }
         }
         
-        // Get download URL
-        let downloadURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
-            photoRef.downloadURL { url, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let url = url {
-                    continuation.resume(returning: url)
-                } else {
-                    continuation.resume(throwing: NSError(domain: "EditProfileView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL"]))
+        print("DEBUG: Upload finished, metadata received: \(uploadMetadata?.path ?? "nil")")
+        
+        // Wait a moment for the file to be fully indexed in Firebase Storage
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Get download URL with retry logic
+        var downloadURL: URL?
+        var lastError: Error?
+        
+        print("DEBUG: Fetching download URL with retry logic...")
+        
+        // Try up to 5 times with increasing delays
+            for attempt in 1...5 {
+                do {
+                    downloadURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+                        photoRef.downloadURL { url, error in
+                            if let error = error {
+                                print("DEBUG: downloadURL attempt \(attempt) failed: \(error.localizedDescription)")
+                                continuation.resume(throwing: error)
+                            } else if let url = url {
+                                print("DEBUG: downloadURL attempt \(attempt) succeeded: \(url.absoluteString)")
+                                continuation.resume(returning: url)
+                            } else {
+                                continuation.resume(throwing: NSError(domain: "EditProfileView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL"]))
+                            }
+                        }
+                    }
+                    break // Success, exit retry loop
+                } catch {
+                    lastError = error
+                    print("DEBUG: downloadURL attempt \(attempt) exception: \(error.localizedDescription)")
+                    if attempt < 5 {
+                        // Wait longer before retry: 0.5s, 1s, 1.5s, 2s
+                        let delay = UInt64(attempt * 500_000_000)
+                        print("DEBUG: Waiting \(Double(delay) / 1_000_000_000) seconds before retry...")
+                        try? await Task.sleep(nanoseconds: delay)
+                    }
                 }
             }
+        
+        guard let url = downloadURL else {
+            let errorMsg = lastError?.localizedDescription ?? "Unknown error"
+            print("DEBUG: Failed to get download URL after all retries: \(errorMsg)")
+            throw lastError ?? NSError(domain: "EditProfileView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL after retries: \(errorMsg)"])
         }
+        
+        print("DEBUG: Got download URL: \(url)")
         
         // Update user's photoURL
-        let changeRequest = Auth.auth().currentUser?.createProfileChangeRequest()
-        changeRequest?.photoURL = downloadURL
-        try await changeRequest?.commitChanges()
+        guard let user = Auth.auth().currentUser else {
+            throw NSError(domain: "EditProfileView", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not signed in"])
+        }
+        
+        let changeRequest = user.createProfileChangeRequest()
+        changeRequest.photoURL = url
+        try await changeRequest.commitChanges()
+        
+        print("DEBUG: Updated user photoURL in Firebase Auth")
+        
+        // Reload user to ensure changes are reflected
+        try? await user.reload()
         
         print("DEBUG: Profile photo uploaded successfully")
     }

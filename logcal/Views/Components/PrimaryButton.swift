@@ -10,17 +10,19 @@ import SwiftUI
 struct PrimaryButton: View {
     let title: String
     let action: () -> Void
+    var isDisabled: Bool = false
     
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(isDisabled ? .gray : .white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(Theme.accentBlue)
+                .background(isDisabled ? Color.gray.opacity(0.3) : Theme.accentBlue)
                 .cornerRadius(25) // Pill shape
         }
+        .disabled(isDisabled)
     }
 }
 

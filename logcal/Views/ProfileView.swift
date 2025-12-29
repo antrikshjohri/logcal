@@ -202,6 +202,24 @@ struct ProfileView: View {
             .onChange(of: authViewModel.currentUser) { oldValue, newValue in
                 loadProfileImage()
             }
+            .onChange(of: authViewModel.userName) { oldValue, newValue in
+                // Refresh when userName changes (e.g., after profile update)
+            }
+            .onChange(of: showEditProfile) { oldValue, newValue in
+                // When EditProfile sheet is dismissed, refresh profile data
+                if oldValue && !newValue {
+                    // Sheet was dismissed - refresh user data
+                    if let user = Auth.auth().currentUser {
+                        Task {
+                            try? await user.reload()
+                            await MainActor.run {
+                                authViewModel.updateUserName()
+                                loadProfileImage()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     

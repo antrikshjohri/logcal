@@ -10,7 +10,7 @@ import SwiftData
 
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
     
