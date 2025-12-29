@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AuthenticationServices
+import FirebaseAuth
 
 // Provider enum for authentication providers
 enum AuthProvider {
@@ -170,8 +171,17 @@ struct AuthView: View {
                             isDisabled: authViewModel.isLoading
                         ) {
                             Task {
+                                // #region agent log
+                                DebugLogger.log(location: "AuthView.swift:172", message: "Google sign-in button tapped", data: [:], hypothesisId: "C")
+                                // #endregion
                                 await authViewModel.signInWithGoogle()
+                                // #region agent log
+                                DebugLogger.log(location: "AuthView.swift:175", message: "After signInWithGoogle, checking isSignedIn", data: ["isSignedIn": authViewModel.isSignedIn, "userId": authViewModel.currentUser?.uid ?? "nil"], hypothesisId: "C")
+                                // #endregion
                                 if authViewModel.isSignedIn {
+                                    // #region agent log
+                                    DebugLogger.log(location: "AuthView.swift:177", message: "Setting isPresented to false", data: [:], hypothesisId: "C")
+                                    // #endregion
                                     isPresented = false
                                 }
                             }

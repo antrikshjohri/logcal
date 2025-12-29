@@ -98,6 +98,9 @@ class AuthViewModel: ObservableObject {
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: result.user.accessToken.tokenString)
             let authResult = try await Auth.auth().signIn(with: credential)
             
+            // #region agent log
+            DebugLogger.log(location: "AuthViewModel.swift:99", message: "Google sign-in completed", data: ["userId": authResult.user.uid, "email": authResult.user.email ?? "no email"], hypothesisId: "A")
+            // #endregion
             print("DEBUG: Google sign-in successful: \(authResult.user.email ?? "no email")")
             isLoading = false
         } catch {

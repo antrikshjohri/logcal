@@ -14,6 +14,12 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     
+    init() {
+        // #region agent log
+        DebugLogger.log(location: "DashboardView.swift:12", message: "DashboardView init", data: [:], hypothesisId: "B")
+        // #endregion
+    }
+    
     // Today's calories
     private var todayCalories: Double {
         let calendar = Calendar.current
@@ -143,6 +149,16 @@ struct DashboardView: View {
             .navigationTitle("")
             .navigationBarHidden(true)
             .background(Theme.backgroundColor(colorScheme: colorScheme))
+            .onAppear {
+                // #region agent log
+                DebugLogger.log(location: "DashboardView.swift:onAppear", message: "DashboardView appeared", data: ["mealCount": meals.count], hypothesisId: "B")
+                // #endregion
+            }
+            .onChange(of: meals.count) { oldValue, newValue in
+                // #region agent log
+                DebugLogger.log(location: "DashboardView.swift:onChange", message: "Meals count changed", data: ["oldCount": oldValue, "newCount": newValue], hypothesisId: "B")
+                // #endregion
+            }
         }
     }
 }

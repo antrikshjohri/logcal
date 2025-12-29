@@ -12,13 +12,13 @@ import FirebaseAuth
 struct SyncHandlerView: View {
     @Environment(\.modelContext) private var modelContext
     @ObservedObject var cloudSyncService: CloudSyncService
-    @StateObject private var authViewModel = AuthViewModel()
+    @ObservedObject var authViewModel: AuthViewModel
     @State private var hasSyncedOnLaunch = false
     
     var body: some View {
         Color.clear
             .task {
-                // Wait a bit to ensure modelContext is ready
+                // Wait a bit to ensure modelContext is ready and SwiftData has loaded persisted data
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                 
                 // Handle app launch based on auth state
@@ -28,23 +28,30 @@ struct SyncHandlerView: View {
                         await cloudSyncService.initializeAnonymousSession(modelContext: modelContext)
                         hasSyncedOnLaunch = true
                     } else {
-                        print("DEBUG: User is signed in on launch, syncing from cloud...")
-                        await cloudSyncService.syncFromCloud(modelContext: modelContext)
-                        hasSyncedOnLaunch = true
+                        // Check if we already have local data before syncing
+                        let descriptor = FetchDescriptor<MealEntry>()
+                        if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
+                            print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping sync")
+                            hasSyncedOnLaunch = true
+                        } else {
+                            print("DEBUG: User is signed in on launch with no local data, syncing from cloud...")
+                            await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                            hasSyncedOnLaunch = true
+                        }
                     }
                 }
             }
             .onChange(of: authViewModel.currentUser) { oldValue, newValue in
-                // Handle user sign out (no user)
-                if oldValue != nil && newValue == nil {
-                    // User signed out - clear local data
-                    print("DEBUG: User signed out, clearing local data...")
-                    Task {
-                        await cloudSyncService.clearLocalMeals(modelContext: modelContext)
-                    }
-                }
+                // #region agent log
+                DebugLogger.log(location: "SyncHandlerView.swift:37", message: "onChange triggered for currentUser", data: ["oldUserId": oldValue?.uid ?? "nil", "newUserId": newValue?.uid ?? "nil", "oldIsAnonymous": oldValue?.isAnonymous ?? false, "newIsAnonymous": newValue?.isAnonymous ?? false], hypothesisId: "A")
+                // #endregion
+                // Note: We don't clear data on sign-out here because:
+                // 1. The view might be removed from hierarchy, making modelContext invalid
+                // 2. Data will be cleared automatically when a new user signs in (handled in syncFromCloud)
+                // 3. If the same user signs in again, we don't want to clear their data
+                
                 // Handle switching to anonymous
-                else if let newUser = newValue, newUser.isAnonymous {
+                if let newUser = newValue, newUser.isAnonymous {
                     let wasAuthenticated = oldValue != nil && !oldValue!.isAnonymous
                     
                     if wasAuthenticated {
@@ -70,10 +77,14 @@ struct SyncHandlerView: View {
                     let userChanged = oldUserId != nil && !oldValue!.isAnonymous && oldUserId != newUserId
                     
                     if wasAnonymous || wasNil || userChanged {
+                        // #region agent log
+                        DebugLogger.log(location: "SyncHandlerView.swift:72", message: "Starting sync after sign-in in onChange", data: ["wasAnonymous": wasAnonymous, "wasNil": wasNil, "userChanged": userChanged, "newUserId": newUser.uid], hypothesisId: "A")
+                        // #endregion
                         // User just signed in (not anonymous) or switched accounts - sync data
                         Task {
                             // Wait a bit to ensure modelContext is ready
-                            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                            // Use a shorter delay since we're already in the onChange handler
+                            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
                             
                             if userChanged {
                                 print("DEBUG: User switched accounts, syncing new user's data...")
@@ -92,23 +103,51 @@ struct SyncHandlerView: View {
                                 // Then fetch any cloud data
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                             }
+                            
+                            // #region agent log
+                            DebugLogger.log(location: "SyncHandlerView.swift:onChange", message: "Sync completed in onChange", data: ["newUserId": newUser.uid], hypothesisId: "A")
+                            // #endregion
                         }
                     }
                 }
             }
             .onAppear {
+                // #region agent log
+                DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "SyncHandlerView appeared", data: ["hasSyncedOnLaunch": hasSyncedOnLaunch, "currentUserId": Auth.auth().currentUser?.uid ?? "nil"], hypothesisId: "A")
+                // #endregion
                 // Also try to sync when view appears (as a fallback)
-                if !hasSyncedOnLaunch {
-                    Task {
-                        if let user = Auth.auth().currentUser {
-                            if user.isAnonymous {
+                // This is important when the view appears after sign-in
+                // But only if we haven't synced yet and don't have local data
+                Task { @MainActor in
+                    // Wait a moment to ensure modelContext is fully ready and SwiftData has loaded persisted data
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    
+                    if let user = Auth.auth().currentUser {
+                        if user.isAnonymous {
+                            if !hasSyncedOnLaunch {
                                 print("DEBUG: SyncHandlerView appeared with anonymous user, initializing...")
                                 await cloudSyncService.initializeAnonymousSession(modelContext: modelContext)
-                            } else {
-                                print("DEBUG: SyncHandlerView appeared, syncing from cloud...")
-                                await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                hasSyncedOnLaunch = true
                             }
-                            hasSyncedOnLaunch = true
+                        } else {
+                            // Check if we already have local data before syncing
+                            let descriptor = FetchDescriptor<MealEntry>()
+                            if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
+                                print("DEBUG: SyncHandlerView appeared with authenticated user and existing local data (\(localMeals.count) meals), skipping sync")
+                                hasSyncedOnLaunch = true
+                            } else if !hasSyncedOnLaunch {
+                                // Only sync if we haven't synced yet and have no local data
+                                // This ensures data loads when TabView appears after sign-in
+                                print("DEBUG: SyncHandlerView appeared with authenticated user and no local data, syncing from cloud...")
+                                // #region agent log
+                                DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "Starting sync in onAppear", data: ["userId": user.uid], hypothesisId: "A")
+                                // #endregion
+                                await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                // #region agent log
+                                DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "Sync completed in onAppear", data: ["userId": user.uid], hypothesisId: "A")
+                                // #endregion
+                                hasSyncedOnLaunch = true
+                            }
                         }
                     }
                 }
