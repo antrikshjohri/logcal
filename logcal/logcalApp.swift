@@ -17,6 +17,7 @@ struct logcalApp: App {
     @StateObject private var cloudSyncService = CloudSyncService()
     @State private var showAuthView = false
     @State private var isInitialSyncAfterSignIn = false
+    @State private var selectedTab: Int = 0
     @AppStorage("appTheme") private var appThemeString: String = AppTheme.system.rawValue
     
     init() {
@@ -33,26 +34,30 @@ struct logcalApp: App {
                     AuthView(isPresented: $showAuthView)
                 } else {
                     ZStack {
-                        TabView {
+                        TabView(selection: $selectedTab) {
                             DashboardView()
                                 .tabItem {
                                     Label("Home", systemImage: "house.fill")
                                 }
+                                .tag(0)
                             
                             HomeView()
                                 .tabItem {
                                     Label("Log", systemImage: "plus.circle")
                                 }
+                                .tag(1)
                             
-                            HistoryView()
+                            HistoryView(selectedTab: $selectedTab)
                                 .tabItem {
                                     Label("History", systemImage: "list.bullet")
                                 }
+                                .tag(2)
                             
                             ProfileView()
                                 .tabItem {
                                     Label("Profile", systemImage: "person.fill")
                                 }
+                                .tag(3)
                         }
                         
                         // SyncHandlerView as an overlay to ensure it has access to the same modelContext

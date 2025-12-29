@@ -13,12 +13,14 @@ struct HistoryView: View {
     @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var cloudSyncService: CloudSyncService
+    @Binding var selectedTab: Int
     @State private var editMode: EditMode = .inactive
     @State private var selectedMeals: Set<UUID> = []
     @State private var showClearAllAlert = false
     @State private var expandedDates: Set<Date> = []
     @State private var savedExpandedDates: Set<Date> = []
     @State private var hasInitialized: Bool = false
+    @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     
     // Group meals by date
     private var groupedMeals: [(date: Date, meals: [MealEntry], totalCalories: Double)] {
@@ -33,10 +35,26 @@ struct HistoryView: View {
             let sortedMeals = meals.sorted { $0.effectiveCreatedAt > $1.effectiveCreatedAt }
             return (date: date, meals: sortedMeals, totalCalories: total)
         }
-        .sorted { $0.date > $1.date } // Sort days (newest first)
+        .sorted { date1, date2 in
+            // Today always comes first
+            if isToday(date1.date) { return true }
+            if isToday(date2.date) { return false }
+            // Then sort by newest first
+            return date1.date > date2.date
+        }
     }
     
-    // Initialize expanded dates - only latest day expanded by default (only on first launch)
+    // Get today's date (start of day)
+    private var todayDate: Date {
+        Calendar.current.startOfDay(for: Date())
+    }
+    
+    // Check if a date is today
+    private func isToday(_ date: Date) -> Bool {
+        Calendar.current.isDate(date, inSameDayAs: Date())
+    }
+    
+    // Initialize expanded dates - expand Today by default on first launch
     private func initializeExpandedDates() {
         guard !hasInitialized else {
             return
@@ -44,15 +62,31 @@ struct HistoryView: View {
         
         hasInitialized = true  // Mark as initialized regardless of whether there are meals
         
-        if let latestDate = groupedMeals.first?.date {
-            expandedDates = [latestDate]
+        // Expand Today by default on first launch
+        expandedDates.insert(todayDate)
+    }
+    
+    // All dates including Today (even if Today has no meals)
+    private var allDates: [(date: Date, meals: [MealEntry], totalCalories: Double)] {
+        var dates = groupedMeals
+        
+        // If Today is not in groupedMeals, add it with empty meals
+        if !dates.contains(where: { isToday($0.date) }) {
+            dates.insert((date: todayDate, meals: [], totalCalories: 0), at: 0)
+        }
+        
+        // Ensure Today is always first
+        return dates.sorted { date1, date2 in
+            if isToday(date1.date) { return true }
+            if isToday(date2.date) { return false }
+            return date1.date > date2.date
         }
     }
     
     var body: some View {
         NavigationView {
             List(selection: $selectedMeals) {
-                ForEach(groupedMeals, id: \.date) { dayGroup in
+                ForEach(allDates, id: \.date) { dayGroup in
                     DisclosureGroup(isExpanded: Binding(
                         get: { expandedDates.contains(dayGroup.date) },
                         set: { isExpanded in
@@ -63,27 +97,75 @@ struct HistoryView: View {
                             }
                         }
                     )) {
-                        ForEach(dayGroup.meals) { meal in
-                            if editMode == .active {
-                                MealRowView(meal: meal)
-                                    .tag(meal.id)
-                            } else {
-                                NavigationLink(destination: MealDetailView(meal: meal)) {
+                        if dayGroup.meals.isEmpty && isToday(dayGroup.date) {
+                            // Empty state for Today
+                            VStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Constants.Colors.primaryBlue.opacity(0.1))
+                                        .frame(width: 80, height: 80)
+                                    
+                                    Image(systemName: "calendar")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(Constants.Colors.primaryBlue)
+                                }
+                                
+                                VStack(spacing: 4) {
+                                    Text("No meals logged today")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("Start tracking your calories")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Button(action: {
+                                    // Navigate to Log tab with today's date
+                                    navigateToDateTimestamp = Date().timeIntervalSince1970
+                                    selectedTab = 1 // Log tab
+                                }) {
+                                    Text("Log your first meal")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 50)
+                                        .background(Constants.Colors.primaryBlue)
+                                        .cornerRadius(25)
+                                }
+                                .padding(.horizontal, 40)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
+                        } else {
+                            ForEach(dayGroup.meals) { meal in
+                                if editMode == .active {
                                     MealRowView(meal: meal)
+                                        .tag(meal.id)
+                                } else {
+                                    NavigationLink(destination: MealDetailView(meal: meal)) {
+                                        MealRowView(meal: meal)
+                                    }
                                 }
                             }
-                        }
-                        .onDelete { offsets in
-                            deleteMeals(at: offsets, in: dayGroup.meals)
+                            .onDelete { offsets in
+                                deleteMeals(at: offsets, in: dayGroup.meals)
+                            }
                         }
                     } label: {
                         HStack {
                             Text(DateFormatterCache.formatDateHeader(dayGroup.date))
                                 .font(.headline)
                             Spacer()
-                            Text("\(Int(dayGroup.totalCalories)) cal")
-                                .font(.headline)
-                                .foregroundColor(Constants.Colors.primaryBlue)
+                            if !dayGroup.meals.isEmpty {
+                                Text("\(Int(dayGroup.totalCalories)) cal")
+                                    .font(.headline)
+                                    .foregroundColor(Constants.Colors.primaryBlue)
+                            } else if isToday(dayGroup.date) {
+                                Text("0 cal")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }
@@ -199,14 +281,6 @@ struct HistoryView: View {
                 // Only initialize if we haven't initialized yet and there are new meals
                 if !hasInitialized && newValue > 0 {
                     initializeExpandedDates()
-                } else if newValue > oldValue {
-                    // New meals added - expand latest day
-                    if let latestDate = groupedMeals.first?.date {
-                        if !expandedDates.contains(latestDate) {
-                            expandedDates.insert(latestDate)
-                            print("DEBUG: Expanded latest day after new meals added")
-                        }
-                    }
                 }
             }
             .onChange(of: meals.count) { oldValue, newValue in
@@ -281,17 +355,8 @@ struct HistoryView: View {
         print("DEBUG: Refresh triggered from HistoryView")
         await cloudSyncService.syncFromCloud(modelContext: modelContext)
         
-        // After refresh, ensure latest day is expanded
         // Wait a moment for @Query to update with new data
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-        
-        if let latestDate = groupedMeals.first?.date {
-            // Expand latest day if not already expanded
-            if !expandedDates.contains(latestDate) {
-                expandedDates.insert(latestDate)
-                print("DEBUG: Expanded latest day after refresh: \(latestDate)")
-            }
-        }
     }
 }
 
@@ -331,7 +396,7 @@ struct MealRowView: View {
 }
 
 #Preview {
-    HistoryView()
+    HistoryView(selectedTab: .constant(2))
         .modelContainer(for: MealEntry.self)
 }
 

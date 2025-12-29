@@ -13,6 +13,7 @@ struct HomeView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
+    @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     
     var body: some View {
         NavigationView {
@@ -254,6 +255,15 @@ struct HomeView: View {
             .navigationTitle("Log Calories")
             .onAppear {
                 viewModel.setModelContext(modelContext)
+            }
+            .onChange(of: navigateToDateTimestamp) { oldValue, newValue in
+                // When date is set from HistoryView, update viewModel
+                if newValue > 0 && newValue != oldValue {
+                    let date = Date(timeIntervalSince1970: newValue)
+                    viewModel.selectedDate = date
+                    // Reset the timestamp to prevent re-triggering
+                    navigateToDateTimestamp = 0
+                }
             }
             .scrollDismissesKeyboard(.interactively)
             .simultaneousGesture(
