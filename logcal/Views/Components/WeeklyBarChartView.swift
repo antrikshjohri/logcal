@@ -9,11 +9,23 @@ import SwiftUI
 
 struct WeeklyBarChartView: View {
     let data: [(day: String, calories: Double, isToday: Bool)]
+    let dailyGoal: Double
     
     // Calculate max calories with 20% padding above
     private var chartMax: Double {
         let max = data.map { $0.calories }.max() ?? 1
         return max > 0 ? max * 1.2 : 1 // Add 20% padding above max
+    }
+    
+    // Determine bar color based on calories and goal
+    private func barColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
+        if dayData.calories > dailyGoal {
+            return Color.red
+        } else if dayData.isToday {
+            return Theme.accentBlue
+        } else {
+            return Theme.secondaryText.opacity(0.3)
+        }
     }
     
     // Format calories in compact form (e.g., 2.5k, 1.2k, 500)
@@ -51,7 +63,7 @@ struct WeeklyBarChartView: View {
                         VStack {
                             Spacer()
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(dayData.isToday ? Theme.accentBlue : Theme.secondaryText.opacity(0.3))
+                                .fill(barColor(for: dayData))
                                 .frame(height: max(geometry.size.height * (dayData.calories / chartMax), 4))
                         }
                     }
@@ -79,7 +91,7 @@ struct WeeklyBarChartView: View {
         ("F", 2000, false),
         ("S", 1850, false),
         ("T", 1795, true)
-    ])
+    ], dailyGoal: 2000)
     .frame(height: 120)
     .padding()
 }

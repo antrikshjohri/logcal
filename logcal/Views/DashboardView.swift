@@ -133,7 +133,8 @@ struct DashboardView: View {
                     // This Week Card
                     ThisWeekCard(
                         weeklyData: weeklyData,
-                        weeklyAverage: weeklyAverage
+                        weeklyAverage: weeklyAverage,
+                        dailyGoal: dailyGoal
                     )
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     

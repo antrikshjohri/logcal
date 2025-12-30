@@ -11,6 +11,7 @@ struct ThisWeekCard: View {
     @Environment(\.colorScheme) var colorScheme
     let weeklyData: [(day: String, calories: Double, isToday: Bool)]
     let weeklyAverage: Double
+    let dailyGoal: Double
     
     var body: some View {
         DashboardCard {
@@ -29,7 +30,7 @@ struct ThisWeekCard: View {
                 }
                 
                 // Bar chart
-                WeeklyBarChartView(data: weeklyData)
+                WeeklyBarChartView(data: weeklyData, dailyGoal: dailyGoal)
                     .frame(height: 130) // Increased to accommodate calorie labels
                 
                 // Divider
