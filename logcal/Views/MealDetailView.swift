@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MealDetailView: View {
     let meal: MealEntry
+    @State private var showEditSheet: Bool = false
     
     var body: some View {
         ScrollView {
@@ -112,6 +113,16 @@ struct MealDetailView: View {
         }
         .navigationTitle("Meal Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Edit") {
+                    showEditSheet = true
+                }
+            }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            MealEditView(meal: meal)
+        }
     }
 }
 

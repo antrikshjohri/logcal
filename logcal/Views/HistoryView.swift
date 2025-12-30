@@ -86,7 +86,7 @@ struct HistoryView: View {
     var body: some View {
         NavigationView {
             List(selection: $selectedMeals) {
-                ForEach(allDates, id: \.date) { dayGroup in
+                ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
                     DisclosureGroup(isExpanded: Binding(
                         get: { expandedDates.contains(dayGroup.date) },
                         set: { isExpanded in
@@ -99,51 +99,59 @@ struct HistoryView: View {
                     )) {
                         if dayGroup.meals.isEmpty && isToday(dayGroup.date) {
                             // Empty state for Today
-                            VStack(spacing: 12) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Constants.Colors.primaryBlue.opacity(0.1))
-                                        .frame(width: 80, height: 80)
+                            VStack(spacing: 0) {
+                                VStack(spacing: 12) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Constants.Colors.primaryBlue.opacity(0.1))
+                                            .frame(width: 80, height: 80)
+                                        
+                                        Image(systemName: "calendar")
+                                            .font(.system(size: 40))
+                                            .foregroundColor(Constants.Colors.primaryBlue)
+                                    }
                                     
-                                    Image(systemName: "calendar")
-                                        .font(.system(size: 40))
-                                        .foregroundColor(Constants.Colors.primaryBlue)
-                                }
-                                
-                                VStack(spacing: 4) {
-                                    Text("No meals logged today")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
+                                    VStack(spacing: 4) {
+                                        Text("No meals logged today")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("Start tracking your calories")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                     
-                                    Text("Start tracking your calories")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                    Button(action: {
+                                        // Navigate to Log tab with today's date
+                                        navigateToDateTimestamp = Date().timeIntervalSince1970
+                                        selectedTab = 1 // Log tab
+                                    }) {
+                                        Text("Log your first meal")
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 50)
+                                            .background(Constants.Colors.primaryBlue)
+                                            .cornerRadius(25)
+                                    }
+                                    .padding(.horizontal, 40)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
                                 
-                                Button(action: {
-                                    // Navigate to Log tab with today's date
-                                    navigateToDateTimestamp = Date().timeIntervalSince1970
-                                    selectedTab = 1 // Log tab
-                                }) {
-                                    Text("Log your first meal")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 50)
-                                        .background(Constants.Colors.primaryBlue)
-                                        .cornerRadius(25)
-                                }
-                                .padding(.horizontal, 40)
+                                // Explicit separator to ensure full width
+                                Divider()
+                                    .padding(.leading, 0)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
                         } else {
                             ForEach(dayGroup.meals) { meal in
                                 if editMode == .active {
                                     MealRowView(meal: meal)
                                         .tag(meal.id)
                                 } else {
-                                    NavigationLink(destination: MealDetailView(meal: meal)) {
+                                    NavigationLink(destination: MealEditView(meal: meal)) {
                                         MealRowView(meal: meal)
                                     }
                                 }
@@ -168,8 +176,10 @@ struct HistoryView: View {
                             }
                         }
                     }
+                    .listRowSeparator(index == 0 ? .hidden : .visible)
                 }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("History")
             .refreshable {
                 // Manual refresh - sync from cloud
