@@ -93,9 +93,9 @@ struct MealEditView: View {
                             }
                         }
                         .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                         .frame(height: 44)
-                        .frame(maxWidth: .infinity)
                         .background(Theme.cardBackground(colorScheme: colorScheme))
                         .cornerRadius(Constants.Sizes.cornerRadius)
                         .overlay(
@@ -154,20 +154,31 @@ struct MealEditView: View {
                     
                     VStack(spacing: Constants.Spacing.regular) {
                         HStack {
-                            if isEditingCalories {
+                            ZStack(alignment: .leading) {
+                                // Always render TextField but hide when not editing
                                 TextField("Calories", value: $editedCalories, format: .number)
                                     .keyboardType(.decimalPad)
                                     .textFieldStyle(.plain)
                                     .font(.system(size: 24, weight: .bold))
                                     .foregroundColor(Constants.Colors.primaryBlue)
                                     .focused($isCaloriesFieldFocused)
-                            } else {
-                                Text("\(Int(editedCalories)) cal")
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(Constants.Colors.primaryBlue)
+                                    .opacity(isEditingCalories ? 1 : 0)
+                                    .allowsHitTesting(isEditingCalories)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.clear)
+                                
+                                // Show text when not editing
+                                if !isEditingCalories {
+                                    HStack {
+                                        Text("\(Int(editedCalories)) cal")
+                                            .font(.system(size: 24, weight: .bold))
+                                            .foregroundColor(Constants.Colors.primaryBlue)
+                                        Spacer()
+                                    }
+                                    .allowsHitTesting(false)
+                                }
                             }
-                            
-                            Spacer()
                             
                             if !isEditingCalories {
                                 Button(action: {
@@ -214,6 +225,12 @@ struct MealEditView: View {
                                 .cornerRadius(Constants.Sizes.cornerRadius)
                             }
                         }
+                    }
+                }
+                .onChange(of: isEditingCalories) { oldValue, newValue in
+                    if !newValue {
+                        // When editing ends, remove focus
+                        isCaloriesFieldFocused = false
                     }
                 }
                 
@@ -311,6 +328,7 @@ struct MealEditView: View {
             }
             .padding()
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Meal Details")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -503,6 +521,80 @@ struct MealEditView: View {
             dismiss()
         } catch {
             print("DEBUG: Error deleting meal: \(error)")
+        }
+    }
+    
+    // Helper function to find TextField in view hierarchy
+    private func findTextField(in view: UIView) -> UITextField? {
+        if let textField = view as? UITextField {
+            return textField
+        }
+        for subview in view.subviews {
+            if let textField = findTextField(in: subview) {
+                return textField
+            }
+        }
+        return nil
+    }
+}
+
+// UIViewRepresentable wrapper for TextField that allows direct UIKit access
+struct FocusableTextField: UIViewRepresentable {
+    @Binding var value: Double
+    @Binding var isFocused: Bool
+    let placeholder: String
+    
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.keyboardType = .decimalPad
+        textField.font = .systemFont(ofSize: 24, weight: .bold)
+        textField.textColor = UIColor.systemBlue
+        textField.placeholder = placeholder
+        textField.delegate = context.coordinator
+        return textField
+    }
+    
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        let stringValue = value == 0 ? "" : "\(Int(value))"
+        if uiView.text != stringValue {
+            uiView.text = stringValue
+        }
+        
+        // Handle focus
+        if isFocused && !uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                uiView.becomeFirstResponder()
+            }
+        } else if !isFocused && uiView.isFirstResponder {
+            uiView.resignFirstResponder()
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UITextFieldDelegate {
+        let parent: FocusableTextField
+        
+        init(_ parent: FocusableTextField) {
+            self.parent = parent
+        }
+        
+        func textFieldDidChangeSelection(_ textField: UITextField) {
+            if let text = textField.text, let doubleValue = Double(text) {
+                parent.value = doubleValue
+            } else if textField.text?.isEmpty == true {
+                parent.value = 0
+            }
+        }
+        
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            parent.isFocused = true
+        }
+        
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            parent.isFocused = false
         }
     }
 }

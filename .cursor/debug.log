@@ -1,0 +1,4 @@
+{"runId":"run1","id":"log_1767158089361_63FDDED8","location":"DashboardView.swift:12","sessionId":"debug-session","hypothesisId":"B","timestamp":1767158089361,"message":"DashboardView init","data":{}}
+{"id":"log_1767158089578_28C3B782","timestamp":1767158089578,"runId":"run1","hypothesisId":"A","data":{"currentUserId":"hOsPHrEpO9drGhW3xJX8oLgSpQA3","hasSyncedOnLaunch":false},"location":"SyncHandlerView.swift:onAppear","sessionId":"debug-session","message":"SyncHandlerView appeared"}
+{"hypothesisId":"B","id":"log_1767158089792_8FF1993B","message":"DashboardView appeared","data":{"mealCount":15},"sessionId":"debug-session","runId":"run1","location":"DashboardView.swift:onAppear","timestamp":1767158089792}
+{"location":"DashboardView.swift:12","data":{},"message":"DashboardView init","id":"log_1767158090968_9DBE9940","runId":"run1","sessionId":"debug-session","timestamp":1767158090968,"hypothesisId":"B"}
