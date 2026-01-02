@@ -15,6 +15,7 @@ import FirebaseFirestore
 struct logcalApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var cloudSyncService = CloudSyncService()
+    @StateObject private var toastManager = ToastManager()
     @State private var showAuthView = false
     @State private var isInitialSyncAfterSignIn = false
     @State private var selectedTab: Int = 0
@@ -32,6 +33,8 @@ struct logcalApp: App {
             Group {
                 if showAuthView {
                     AuthView(isPresented: $showAuthView)
+                        .toastNotification(toastManager: toastManager)
+                        .environmentObject(toastManager)
                 } else {
                     ZStack {
                         TabView(selection: $selectedTab) {
@@ -81,6 +84,8 @@ struct logcalApp: App {
                     .modelContainer(for: MealEntry.self)
                     .environmentObject(cloudSyncService)
                     .environmentObject(authViewModel)
+                    .toastNotification(toastManager: toastManager)
+                    .environmentObject(toastManager)
                 }
             }
             .preferredColorScheme(appTheme.colorScheme)

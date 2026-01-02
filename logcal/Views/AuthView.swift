@@ -28,6 +28,7 @@ enum AuthProvider {
 
 struct AuthView: View {
     @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var toastManager: ToastManager
     @Binding var isPresented: Bool
     @Environment(\.colorScheme) var colorScheme
     
@@ -190,16 +191,6 @@ struct AuthView: View {
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     .padding(.bottom, Constants.Spacing.large)
                     
-                    // Error message
-                    if let errorMessage = authViewModel.errorMessage {
-                        ErrorBanner(
-                            title: "Sign-In Error",
-                            message: errorMessage,
-                            type: .error
-                        )
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                        .padding(.bottom, Constants.Spacing.regular)
-                    }
                     
                     // Loading indicator
                     if authViewModel.isLoading {
@@ -224,6 +215,15 @@ struct AuthView: View {
         }
         .onDisappear {
             stopAnimation()
+        }
+        .onChange(of: authViewModel.errorMessage) { oldValue, newValue in
+            if let message = newValue, message != oldValue {
+                toastManager.show(ToastMessage(
+                    title: "Sign-In Error",
+                    message: message,
+                    type: .error
+                ))
+            }
         }
     }
     

@@ -11,6 +11,7 @@ import SwiftData
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var toastManager: ToastManager
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
@@ -194,23 +195,6 @@ struct HomeView: View {
                         }
                     }
                     
-                    // Error banner
-                    if let errorMessage = viewModel.errorMessage {
-                        ErrorBanner(
-                            title: "Error",
-                            message: errorMessage,
-                            type: .error
-                        )
-                    }
-                    
-                    // Speech recognition error banner
-                    if let speechError = viewModel.speechService.errorMessage {
-                        ErrorBanner(
-                            title: "Speech Recognition Error",
-                            message: speechError,
-                            type: .warning
-                        )
-                    }
                     
                     // Result card
                     if let result = viewModel.latestResult {
@@ -296,6 +280,24 @@ struct HomeView: View {
                     isTextFieldFocused = false
                 }
             )
+            .onChange(of: viewModel.errorMessage) { oldValue, newValue in
+                if let message = newValue, message != oldValue {
+                    toastManager.show(ToastMessage(
+                        title: "Error",
+                        message: message,
+                        type: .error
+                    ))
+                }
+            }
+            .onChange(of: viewModel.speechService.errorMessage) { oldValue, newValue in
+                if let message = newValue, message != oldValue {
+                    toastManager.show(ToastMessage(
+                        title: "Speech Recognition Error",
+                        message: message,
+                        type: .warning
+                    ))
+                }
+            }
         }
     }
     
