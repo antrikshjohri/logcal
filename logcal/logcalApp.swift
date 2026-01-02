@@ -115,6 +115,8 @@ struct logcalApp: App {
                     showAuthView = false
                     // Mark that we're doing initial sync after sign-in
                     isInitialSyncAfterSignIn = true
+                    // Navigate to HomeView (Log tab) when user signs in
+                    selectedTab = 1
                 } else {
                     // Show auth view when user signs out
                     showAuthView = true
@@ -140,6 +142,8 @@ struct logcalApp: App {
                         // #region agent log
                         DebugLogger.log(location: "logcalApp.swift:108", message: "User signed in, triggering sync", data: ["wasNil": wasNil, "wasAnonymous": wasAnonymous, "userId": newUser.uid], hypothesisId: "C")
                         // #endregion
+                        // Navigate to HomeView (Log tab) when user signs in
+                        selectedTab = 1
                         Task {
                             // Wait a moment for TabView to be created and modelContext to be available
                             try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds

@@ -312,3 +312,4 @@
 {"runId":"run1","location":"DashboardView.swift:12","timestamp":1767381601773,"hypothesisId":"B","id":"log_1767381601773_35D6386B","message":"DashboardView init","data":{},"sessionId":"debug-session"}
 {"location":"CloudSyncService.swift:82","message":"Fetched meals from Firestore","id":"log_1767381601807_6296DADA","sessionId":"debug-session","runId":"run1","data":{"mealCount":0},"timestamp":1767381601807,"hypothesisId":"B"}
 {"hypothesisId":"B","id":"log_1767381601812_4B17F8C3","timestamp":1767381601812,"runId":"run1","location":"DashboardView.swift:12","message":"DashboardView init","data":{},"sessionId":"debug-session"}
+{"hypothesisId":"B","data":{"mealCount":0},"location":"DashboardView.swift:onAppear","sessionId":"debug-session","runId":"run1","timestamp":1767381675239,"message":"DashboardView appeared","id":"log_1767381675239_FCCA437F"}
