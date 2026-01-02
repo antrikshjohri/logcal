@@ -10,8 +10,10 @@ import SwiftUI
 struct DailyGoalView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var cloudSyncService: CloudSyncService
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     @State private var currentGoal: Double = 2000
+    @State private var isSaving = false
     
     var body: some View {
         ScrollView {
@@ -93,10 +95,17 @@ struct DailyGoalView: View {
                 .padding(.horizontal, Constants.Spacing.extraLarge)
                 
                 // Save button
-                PrimaryButton(title: "Save Goal") {
-                    dailyGoal = currentGoal
-                    dismiss()
+                PrimaryButton(title: isSaving ? "Saving..." : "Save Goal") {
+                    Task {
+                        isSaving = true
+                        dailyGoal = currentGoal
+                        // Sync to Firestore
+                        await cloudSyncService.syncDailyGoalToCloud(currentGoal)
+                        isSaving = false
+                        dismiss()
+                    }
                 }
+                .disabled(isSaving)
                 .padding(.horizontal, Constants.Spacing.extraLarge)
                 .padding(.bottom, Constants.Spacing.extraLarge)
             }

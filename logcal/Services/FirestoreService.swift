@@ -144,5 +144,73 @@ struct FirestoreService {
             print("DEBUG: Successfully synced \(count) meals to Firestore")
         }
     }
+    
+    /// Save daily goal to Firestore
+    func saveDailyGoal(_ goal: Double) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, skipping Firestore save for daily goal")
+            return
+        }
+        
+        let userData: [String: Any] = [
+            "dailyGoal": goal,
+            "updatedAt": Timestamp(date: Date())
+        ]
+        
+        do {
+            try await db.collection("users").document(userId).setData(userData, merge: true)
+            print("DEBUG: Successfully saved daily goal to Firestore: \(goal)")
+        } catch {
+            print("DEBUG: Error saving daily goal to Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
+    /// Fetch daily goal from Firestore
+    func fetchDailyGoal() async throws -> Double? {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, cannot fetch daily goal from Firestore")
+            return nil
+        }
+        
+        print("DEBUG: Fetching daily goal from Firestore for user: \(userId)")
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            
+            print("DEBUG: Firestore document exists: \(document.exists)")
+            if document.exists {
+                let data = document.data()
+                print("DEBUG: Firestore document data keys: \(data?.keys.joined(separator: ", ") ?? "nil")")
+                
+                // Try Double first
+                if let goal = data?["dailyGoal"] as? Double {
+                    print("DEBUG: Fetched daily goal from Firestore (as Double): \(goal)")
+                    return goal
+                }
+                // Try Int (Firestore might store as Int)
+                else if let goalInt = data?["dailyGoal"] as? Int {
+                    let goal = Double(goalInt)
+                    print("DEBUG: Fetched daily goal from Firestore (as Int, converted): \(goal)")
+                    return goal
+                }
+                // Try NSNumber (another possible format)
+                else if let goalNumber = data?["dailyGoal"] as? NSNumber {
+                    let goal = goalNumber.doubleValue
+                    print("DEBUG: Fetched daily goal from Firestore (as NSNumber, converted): \(goal)")
+                    return goal
+                }
+                else {
+                    print("DEBUG: Daily goal not found in Firestore document or wrong type. Data: \(String(describing: data?["dailyGoal"]))")
+                    return nil
+                }
+            } else {
+                print("DEBUG: User document does not exist in Firestore")
+                return nil
+            }
+        } catch {
+            print("DEBUG: Error fetching daily goal from Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
 }
 

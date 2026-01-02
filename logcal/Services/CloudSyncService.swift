@@ -179,6 +179,15 @@ class CloudSyncService: ObservableObject {
                 print("DEBUG: Successfully migrated \(localMeals.count) meals to cloud")
             }
             
+            // Also migrate daily goal if it exists in UserDefaults
+            // Note: We can't access @AppStorage here, so we'll read from UserDefaults directly
+            let localDailyGoal = UserDefaults.standard.double(forKey: "dailyGoal")
+            if localDailyGoal > 0 && localDailyGoal != 2000 { // Only migrate if it's been changed from default
+                print("DEBUG: Migrating daily goal to cloud: \(localDailyGoal)")
+                try await firestoreService.saveDailyGoal(localDailyGoal)
+                print("DEBUG: Successfully migrated daily goal to cloud")
+            }
+            
             isSyncing = false
         } catch {
             print("DEBUG: Error migrating to cloud: \(error)")
@@ -260,6 +269,43 @@ class CloudSyncService: ObservableObject {
         currentUserId = nil
         isAnonymousSession = true
         print("DEBUG: Anonymous session initialized")
+    }
+    
+    /// Sync daily goal to Firestore
+    func syncDailyGoalToCloud(_ goal: Double) async {
+        // Only sync if user is signed in (not anonymous)
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else {
+            print("DEBUG: User is anonymous or not signed in, skipping cloud sync for daily goal")
+            return
+        }
+        
+        do {
+            try await firestoreService.saveDailyGoal(goal)
+            print("DEBUG: Successfully synced daily goal to cloud: \(goal)")
+        } catch {
+            print("DEBUG: Error syncing daily goal to cloud: \(error)")
+            syncError = "Failed to sync daily goal to cloud: \(error.localizedDescription)"
+        }
+    }
+    
+    /// Fetch daily goal from Firestore
+    func fetchDailyGoalFromCloud() async -> Double? {
+        // Only fetch if user is signed in (not anonymous)
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else {
+            print("DEBUG: User is anonymous or not signed in, skipping cloud fetch for daily goal")
+            return nil
+        }
+        
+        print("DEBUG: Fetching daily goal from cloud for user: \(user.uid)")
+        do {
+            let goal = try await firestoreService.fetchDailyGoal()
+            print("DEBUG: fetchDailyGoalFromCloud result: \(goal?.description ?? "nil")")
+            return goal
+        } catch {
+            print("DEBUG: Error fetching daily goal from cloud: \(error)")
+            syncError = "Failed to fetch daily goal from cloud: \(error.localizedDescription)"
+            return nil
+        }
     }
 }
 

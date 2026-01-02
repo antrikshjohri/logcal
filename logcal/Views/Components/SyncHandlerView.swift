@@ -13,6 +13,7 @@ struct SyncHandlerView: View {
     @Environment(\.modelContext) private var modelContext
     @ObservedObject var cloudSyncService: CloudSyncService
     @ObservedObject var authViewModel: AuthViewModel
+    @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     @State private var hasSyncedOnLaunch = false
     
     var body: some View {
@@ -31,11 +32,15 @@ struct SyncHandlerView: View {
                         // Check if we already have local data before syncing
                         let descriptor = FetchDescriptor<MealEntry>()
                         if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
-                            print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping sync")
+                            print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping meal sync but fetching daily goal")
+                            // Still fetch daily goal even if we have local meals
+                            await fetchDailyGoalFromCloud()
                             hasSyncedOnLaunch = true
                         } else {
                             print("DEBUG: User is signed in on launch with no local data, syncing from cloud...")
                             await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                            // Fetch daily goal from cloud
+                            await fetchDailyGoalFromCloud()
                             hasSyncedOnLaunch = true
                         }
                     }
@@ -90,18 +95,24 @@ struct SyncHandlerView: View {
                                 print("DEBUG: User switched accounts, syncing new user's data...")
                                 // For account switch, syncFromCloud will clear old data automatically
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                // Fetch daily goal from cloud
+                                await fetchDailyGoalFromCloud()
                             } else if wasAnonymous {
                                 print("DEBUG: Switching from anonymous to authenticated, migrating anonymous data...")
                                 // First migrate anonymous local data to cloud
                                 await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
                                 // Then fetch any cloud data for authenticated user
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                // Fetch daily goal from cloud
+                                await fetchDailyGoalFromCloud()
                             } else {
                                 print("DEBUG: User signed in, migrating and syncing data...")
                                 // First migrate local data to cloud (only if there are local meals)
                                 await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
                                 // Then fetch any cloud data
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                // Fetch daily goal from cloud
+                                await fetchDailyGoalFromCloud()
                             }
                             
                             // #region agent log
@@ -143,6 +154,8 @@ struct SyncHandlerView: View {
                                 DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "Starting sync in onAppear", data: ["userId": user.uid], hypothesisId: "A")
                                 // #endregion
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                // Fetch daily goal from cloud
+                                await fetchDailyGoalFromCloud()
                                 // #region agent log
                                 DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "Sync completed in onAppear", data: ["userId": user.uid], hypothesisId: "A")
                                 // #endregion
@@ -152,6 +165,25 @@ struct SyncHandlerView: View {
                     }
                 }
             }
+    }
+    
+    /// Fetch daily goal from cloud and update AppStorage
+    private func fetchDailyGoalFromCloud() async {
+        print("DEBUG: fetchDailyGoalFromCloud called, current local goal: \(dailyGoal)")
+        if let cloudGoal = await cloudSyncService.fetchDailyGoalFromCloud() {
+            print("DEBUG: Fetched goal from cloud: \(cloudGoal), current local: \(dailyGoal)")
+            // Always update if we got a value from cloud (even if same, to ensure sync)
+            // Only skip if cloudGoal is 0 or invalid
+            if cloudGoal > 0 {
+                print("DEBUG: Updating daily goal from cloud: \(cloudGoal) (was \(dailyGoal))")
+                dailyGoal = cloudGoal
+                print("DEBUG: Daily goal updated to: \(dailyGoal)")
+            } else {
+                print("DEBUG: Cloud goal is invalid (\(cloudGoal)), not updating")
+            }
+        } else {
+            print("DEBUG: No goal fetched from cloud (returned nil)")
+        }
     }
 }
 
