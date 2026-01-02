@@ -10,9 +10,10 @@ import SwiftData
 
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
+    @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     
     var body: some View {
         NavigationView {
@@ -25,18 +26,6 @@ struct HomeView: View {
                                 .font(.headline)
                                 .foregroundColor(Constants.Colors.primaryBlue)
                             Spacer()
-                            // Sign out button (for testing)
-                            Button(action: {
-                                authViewModel.signOut()
-                            }) {
-                                Text("Sign Out")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                    .padding(.horizontal, Constants.Spacing.medium)
-                                    .padding(.vertical, Constants.Spacing.small)
-                                    .background(Color.red.opacity(0.1))
-                                    .cornerRadius(Constants.Sizes.cornerRadius)
-                            }
                         }
                         .padding(.horizontal)
                         .padding(.top, Constants.Spacing.small)
@@ -260,12 +249,21 @@ struct HomeView: View {
                         .cornerRadius(Constants.Sizes.largeCornerRadius)
                         .padding(.horizontal)
                     }
-                }
+                    }
                 .padding(.vertical)
             }
             .navigationTitle("Log Calories")
             .onAppear {
                 viewModel.setModelContext(modelContext)
+            }
+            .onChange(of: navigateToDateTimestamp) { oldValue, newValue in
+                // When date is set from HistoryView, update viewModel
+                if newValue > 0 && newValue != oldValue {
+                    let date = Date(timeIntervalSince1970: newValue)
+                    viewModel.selectedDate = date
+                    // Reset the timestamp to prevent re-triggering
+                    navigateToDateTimestamp = 0
+                }
             }
             .scrollDismissesKeyboard(.interactively)
             .simultaneousGesture(

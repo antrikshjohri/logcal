@@ -60,15 +60,12 @@ class CloudSyncService: ObservableObject {
             print("DEBUG: User changed from \(previousUserId) to \(newUserId), clearing local data first...")
             await clearLocalMeals(modelContext: modelContext)
         }
-        // If currentUserId is nil but we have local data, we're signing in after sign-out
-        // Clear the old user's data before syncing new user's data
-        else if currentUserId == nil {
-            let descriptor = FetchDescriptor<MealEntry>()
-            if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
-                print("DEBUG: Signing in after sign-out, clearing previous user's local data...")
-                await clearLocalMeals(modelContext: modelContext)
-            }
-        }
+        // Note: We don't clear data when currentUserId is nil because:
+        // 1. On app resume: currentUserId might be nil but data is valid (don't clear)
+        // 2. On sign-out: We don't clear (view is removed, would crash)
+        // 3. On sign-in after sign-out: If same user signs in again, we don't want to clear.
+        //    If different user signs in, currentUserId will be set from previous session or
+        //    will be different, triggering the user change check above.
         
         // Update current user ID and session type
         currentUserId = newUserId
@@ -78,8 +75,14 @@ class CloudSyncService: ObservableObject {
         syncError = nil
         
         do {
+            // #region agent log
+            DebugLogger.log(location: "CloudSyncService.swift:80", message: "Starting fetch from Firestore", data: ["userId": newUserId], hypothesisId: "B")
+            // #endregion
             // Fetch from Firestore
             let cloudMeals = try await firestoreService.fetchMealEntries()
+            // #region agent log
+            DebugLogger.log(location: "CloudSyncService.swift:82", message: "Fetched meals from Firestore", data: ["mealCount": cloudMeals.count], hypothesisId: "B")
+            // #endregion
             print("DEBUG: Fetched \(cloudMeals.count) meals from cloud")
             
             // Get local meals
@@ -100,14 +103,34 @@ class CloudSyncService: ObservableObject {
             }
             
             if addedCount > 0 {
+                // #region agent log
+                DebugLogger.log(location: "CloudSyncService.swift:102", message: "Saving meals to modelContext", data: ["addedCount": addedCount], hypothesisId: "B")
+                // #endregion
                 // Save the context
                 try modelContext.save()
+                // #region agent log
+                DebugLogger.log(location: "CloudSyncService.swift:104", message: "Saved meals to modelContext", data: ["addedCount": addedCount], hypothesisId: "B")
+                // #endregion
                 print("DEBUG: Added \(addedCount) meals from cloud to local storage")
                 
                 // Verify the save worked by checking local meals again
+                // Use a fresh fetch to ensure we're reading from the persisted store
                 let verifyDescriptor = FetchDescriptor<MealEntry>()
                 let verifyMeals = try modelContext.fetch(verifyDescriptor)
                 print("DEBUG: After save, found \(verifyMeals.count) local meals")
+                
+                // #region agent log
+                DebugLogger.log(location: "CloudSyncService.swift:122", message: "Verification after save", data: ["expectedCount": addedCount, "actualCount": verifyMeals.count], hypothesisId: "B")
+                // #endregion
+                
+                // If verification shows 0 meals, there's a modelContext issue
+                if verifyMeals.count == 0 && addedCount > 0 {
+                    print("ERROR: modelContext.save() did not persist meals! This indicates a modelContext issue.")
+                    // Try saving again
+                    try modelContext.save()
+                    let retryMeals = try modelContext.fetch(verifyDescriptor)
+                    print("DEBUG: After retry save, found \(retryMeals.count) local meals")
+                }
                 
                 // Small delay to ensure SwiftData propagates changes to @Query
                 try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
@@ -184,25 +207,34 @@ class CloudSyncService: ObservableObject {
     /// Clear all local meals (used when user signs out or switches accounts)
     func clearLocalMeals(modelContext: ModelContext) async {
         print("DEBUG: Clearing all local meals...")
-        do {
-            let descriptor = FetchDescriptor<MealEntry>()
-            let localMeals = try modelContext.fetch(descriptor)
-            print("DEBUG: Found \(localMeals.count) local meals to delete")
-            
-            for meal in localMeals {
-                modelContext.delete(meal)
-            }
-            
-            try modelContext.save()
-            print("DEBUG: Successfully cleared \(localMeals.count) local meals")
-            
-            // Clear session state when clearing local data
+        
+        // Use optional try to handle cases where modelContext might be invalid
+        // This can happen during sign-out when the view hierarchy is changing
+        guard let localMeals = try? modelContext.fetch(FetchDescriptor<MealEntry>()) else {
+            print("DEBUG: Could not fetch meals (modelContext may be invalid during sign-out) - this is expected")
+            // Clear session state even if we couldn't fetch
             currentUserId = nil
             isAnonymousSession = false
-        } catch {
-            print("DEBUG: Error clearing local meals: \(error)")
-            syncError = "Failed to clear local meals: \(error.localizedDescription)"
+            return
         }
+        
+        print("DEBUG: Found \(localMeals.count) local meals to delete")
+        
+        // Delete meals
+        for meal in localMeals {
+            modelContext.delete(meal)
+        }
+        
+        // Try to save - use optional try to handle save failures gracefully
+        if let _ = try? modelContext.save() {
+            print("DEBUG: Successfully cleared \(localMeals.count) local meals")
+        } else {
+            print("DEBUG: Could not save after deleting meals (modelContext may be invalid) - this is expected during sign-out")
+        }
+        
+        // Clear session state when clearing local data
+        currentUserId = nil
+        isAnonymousSession = false
     }
     
     /// Initialize anonymous session (clear authenticated data when switching to anonymous)
@@ -210,7 +242,7 @@ class CloudSyncService: ObservableObject {
         print("DEBUG: Initializing anonymous session...")
         
         // If we were in an authenticated session, clear that data
-        if let previousUserId = currentUserId {
+        if currentUserId != nil {
             print("DEBUG: Clearing authenticated user data before switching to anonymous...")
             await clearLocalMeals(modelContext: modelContext)
         }

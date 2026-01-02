@@ -50,7 +50,7 @@ struct OpenAIService {
     
     private func logMealDirect(foodText: String, mealType: String, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant for Indian food. When given a food description, estimate calories based on typical Indian portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
+        You are a calorie logging assistant. When given a food description, estimate calories based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
         """
         
         let userMessage = """

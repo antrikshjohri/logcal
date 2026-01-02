@@ -10,6 +10,7 @@ import Combine
 import FirebaseCore
 import FirebaseAuth
 import GoogleSignIn
+import AuthenticationServices
 import UIKit
 
 class AuthViewModel: ObservableObject {
@@ -41,7 +42,7 @@ class AuthViewModel: ObservableObject {
     }
     
     /// Get display name from user (from social profile or email)
-    private func updateUserName() {
+    func updateUserName() {
         guard let user = currentUser else {
             userName = nil
             return
@@ -97,10 +98,43 @@ class AuthViewModel: ObservableObject {
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: result.user.accessToken.tokenString)
             let authResult = try await Auth.auth().signIn(with: credential)
             
+            // #region agent log
+            DebugLogger.log(location: "AuthViewModel.swift:99", message: "Google sign-in completed", data: ["userId": authResult.user.uid, "email": authResult.user.email ?? "no email"], hypothesisId: "A")
+            // #endregion
             print("DEBUG: Google sign-in successful: \(authResult.user.email ?? "no email")")
             isLoading = false
         } catch {
             print("DEBUG: Google sign-in error: \(error)")
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+    
+    /// Handle Apple Sign-In authorization result
+    func handleAppleSignIn(authorization: ASAuthorization) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let idTokenData = appleIDCredential.identityToken,
+                  let idTokenString = String(data: idTokenData, encoding: .utf8) else {
+                throw AppError.unknown(NSError(domain: "AuthViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get Apple ID token"]))
+            }
+            
+            // Create Firebase credential for Apple Sign-In
+            // Use the dedicated Apple Sign-In credential method
+            let credential = OAuthProvider.appleCredential(
+                withIDToken: idTokenString,
+                rawNonce: nil,
+                fullName: appleIDCredential.fullName
+            )
+            let authResult = try await Auth.auth().signIn(with: credential)
+            
+            print("DEBUG: Apple sign-in successful: \(authResult.user.email ?? "no email")")
+            isLoading = false
+        } catch {
+            print("DEBUG: Apple sign-in error: \(error)")
             errorMessage = error.localizedDescription
             isLoading = false
         }
