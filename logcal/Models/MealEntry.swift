@@ -36,7 +36,9 @@ final class MealEntry: Identifiable {
     nonisolated var response: MealLogResponse? {
         guard let data = rawResponseJson.data(using: .utf8) else { return nil }
         // Decode in nonisolated context
-        return try? JSONDecoder().decode(MealLogResponse.self, from: data)
+        // Use a nonisolated decoder to avoid actor isolation issues
+        let decoder = JSONDecoder()
+        return try? decoder.decode(MealLogResponse.self, from: data)
     }
 }
 
