@@ -116,6 +116,11 @@ class LogViewModel: ObservableObject {
             return
         }
         
+        // Stop speech recognition immediately when Log Meal button is tapped
+        if speechService.isListening {
+            speechService.stopListening()
+        }
+        
         // Check if OpenAI service is available
         guard let openAIService = openAIService else {
             print("DEBUG: OpenAI service is nil, error: \(openAIServiceError?.errorDescription ?? "unknown")")

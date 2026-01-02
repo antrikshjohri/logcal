@@ -44,11 +44,13 @@ struct HomeView: View {
                                     Text(DateFormatterCache.formatDate(viewModel.selectedDate))
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
-                                    Spacer()
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                     Image(systemName: "calendar")
                                         .foregroundColor(Constants.Colors.primaryBlue)
                                 }
-                                .padding()
+                                .frame(height: 44)
+                                .padding(.horizontal)
+                                .frame(maxWidth: .infinity)
                                 .background(Constants.Colors.primaryBackground)
                                 .cornerRadius(Constants.Sizes.cornerRadius)
                             }
@@ -69,6 +71,11 @@ struct HomeView: View {
                             .onChange(of: viewModel.selectedMealType) { oldValue, newValue in
                                 viewModel.handleMealTypeChange(newValue)
                             }
+                            .frame(height: 44)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal)
+                            .background(Constants.Colors.primaryBackground)
+                            .cornerRadius(Constants.Sizes.cornerRadius)
                         }
                         .frame(maxWidth: .infinity)
                     }
