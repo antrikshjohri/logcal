@@ -39,3 +39,6 @@ functions/node_modules/
 functions/lib/
 functions/.env
 functions/*.log
+
+# Cursor IDE
+.cursor/
