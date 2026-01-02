@@ -14,6 +14,8 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
+    @State private var analysingDotCount = 0
+    @State private var analysingTimer: Timer?
     
     var body: some View {
         NavigationView {
@@ -162,10 +164,13 @@ struct HomeView: View {
                             print("DEBUG: Log Meal button action completed")
                         }
                     }) {
-                        HStack {
+                        HStack(spacing: 0) {
                             if viewModel.isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Text("Logging calories")
+                                    .fontWeight(.semibold)
+                                Text(String(repeating: ".", count: analysingDotCount))
+                                    .fontWeight(.semibold)
+                                    .frame(width: 20, alignment: .leading)
                             } else {
                                 Text("Log Meal")
                                     .fontWeight(.semibold)
@@ -179,6 +184,15 @@ struct HomeView: View {
                     }
                     .disabled(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
                     .padding(.horizontal)
+                    .onChange(of: viewModel.isLoading) { oldValue, newValue in
+                        if newValue {
+                            // Start animation when loading begins
+                            startAnalysingAnimation()
+                        } else {
+                            // Stop animation when loading ends
+                            stopAnalysingAnimation()
+                        }
+                    }
                     
                     // Error banner
                     if let errorMessage = viewModel.errorMessage {
@@ -263,6 +277,9 @@ struct HomeView: View {
             .onAppear {
                 viewModel.setModelContext(modelContext)
             }
+            .onDisappear {
+                stopAnalysingAnimation()
+            }
             .onChange(of: navigateToDateTimestamp) { oldValue, newValue in
                 // When date is set from HistoryView, update viewModel
                 if newValue > 0 && newValue != oldValue {
@@ -280,6 +297,24 @@ struct HomeView: View {
                 }
             )
         }
+    }
+    
+    private func startAnalysingAnimation() {
+        analysingDotCount = 0
+        analysingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            withAnimation {
+                analysingDotCount = (analysingDotCount + 1) % 4
+            }
+        }
+        if let timer = analysingTimer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+    
+    private func stopAnalysingAnimation() {
+        analysingTimer?.invalidate()
+        analysingTimer = nil
+        analysingDotCount = 0
     }
     
 }
