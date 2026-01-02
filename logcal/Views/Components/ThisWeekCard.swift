@@ -24,7 +24,7 @@ struct ThisWeekCard: View {
                     
                     Spacer()
                     
-                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Image(systemName: "chart.line.uptrend.xyaxis")
                         .font(.system(size: 18))
                         .foregroundColor(Theme.secondaryText)
                 }
