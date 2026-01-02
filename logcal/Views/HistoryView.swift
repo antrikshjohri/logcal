@@ -243,17 +243,6 @@ struct HistoryView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color(.systemBackground).opacity(0.9))
-                } else if meals.isEmpty {
-                    // Show empty state only when not syncing
-                    VStack {
-                        Image(systemName: "fork.knife")
-                            .font(.system(size: Constants.Sizes.emptyStateIcon))
-                            .foregroundColor(Constants.Colors.primaryGray)
-                        Text("No meals logged yet")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                            .padding(.top)
-                    }
                 }
             }
             .alert("Clear All Logs", isPresented: $showClearAllAlert) {
