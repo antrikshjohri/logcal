@@ -113,23 +113,6 @@ struct ProfileView: View {
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
                     
-                    // Settings Section
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Settings")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
-                        
-                        NavigationLink(destination: PrivacySecurityView()) {
-                            SettingsRowContent(
-                                icon: "shield",
-                                title: "Privacy & Security"
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                    }
-                    
                     // Support Section
                     VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
                         Text("Support")
@@ -137,33 +120,13 @@ struct ProfileView: View {
                             .foregroundColor(Theme.secondaryText)
                             .padding(.horizontal, Constants.Spacing.extraLarge)
                         
-                        VStack(spacing: 0) {
-                            NavigationLink(destination: HelpFAQView()) {
-                                SettingsRowContent(
-                                    icon: "questionmark.circle",
-                                    title: "Help & FAQ"
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            Divider()
-                                .background(Theme.cardBorder(colorScheme: colorScheme))
-                                .padding(.horizontal, Constants.Spacing.large)
-                            
-                            NavigationLink(destination: AboutView()) {
-                                SettingsRowContent(
-                                    icon: "info.circle",
-                                    title: "About LogCal"
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                        NavigationLink(destination: HelpFAQView()) {
+                            SettingsRowContent(
+                                icon: "questionmark.circle",
+                                title: "Help & FAQ"
+                            )
                         }
-                        .background(Theme.cardBackground(colorScheme: colorScheme))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
-                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
-                        )
-                        .cornerRadius(Constants.Sizes.largeCornerRadius)
+                        .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
                     
