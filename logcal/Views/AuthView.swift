@@ -199,13 +199,26 @@ struct AuthView: View {
                     }
                     
                     // Legal text
-                    Text("By continuing, you agree to our Terms and Privacy Policy")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(Constants.Colors.secondaryGray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                        .padding(.top, Constants.Spacing.regular)
-                        .padding(.bottom, Constants.Spacing.extraLarge)
+                    HStack(spacing: 4) {
+                        Text("By continuing, you agree to our ")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(Constants.Colors.secondaryGray)
+                        
+                        Button(action: {
+                            if let url = URL(string: "https://sites.google.com/view/privacypolicylogcalai/home") {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            Text("Privacy Policy")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(Constants.Colors.secondaryGray)
+                                .underline()
+                        }
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Constants.Spacing.extraLarge)
+                    .padding(.top, Constants.Spacing.regular)
+                    .padding(.bottom, Constants.Spacing.extraLarge)
                 }
             }
         }
