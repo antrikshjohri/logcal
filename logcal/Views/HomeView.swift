@@ -298,6 +298,16 @@ struct HomeView: View {
                     ))
                 }
             }
+            .alert("Update Required", isPresented: $viewModel.showUpdateRequiredAlert) {
+                Button("Update Now") {
+                    if let appStoreURL = viewModel.appConfigService.getAppStoreURL() {
+                        UIApplication.shared.open(appStoreURL)
+                    }
+                }
+                Button("Later", role: .cancel) { }
+            } message: {
+                Text(viewModel.appConfigService.appConfig.updateMessage ?? "A new version of LogCal is available. Please update to continue logging meals.")
+            }
         }
     }
     

@@ -22,6 +22,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // App configuration (public read, admin write only)
+    match /app/config {
+      allow read: if true; // Anyone can read app config
+      allow write: if false; // Only admins can write (set via Firebase Console)
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
