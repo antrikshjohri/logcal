@@ -36,6 +36,8 @@ class LogViewModel: ObservableObject {
     private var modelContext: ModelContext?
     private let cloudSyncService = CloudSyncService()
     let speechService = SpeechRecognitionService()
+    let appConfigService = AppConfigService()
+    @Published var showUpdateRequiredAlert = false
     
     init() {
         // Initialize OpenAI service - handle error gracefully
@@ -119,6 +121,14 @@ class LogViewModel: ObservableObject {
         // Stop speech recognition immediately when Log Meal button is tapped
         if speechService.isListening {
             speechService.stopListening()
+        }
+        
+        // Check app version before proceeding
+        await appConfigService.fetchConfig()
+        if !appConfigService.isAppVersionValid() {
+            print("DEBUG: App version is outdated. Current: \(AppConfigService.currentMarketingVersion), Required: \(appConfigService.appConfig.minimumAppVersion)")
+            showUpdateRequiredAlert = true
+            return
         }
         
         // Check if OpenAI service is available
