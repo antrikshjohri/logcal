@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogCal Support</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #007AFF;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 24px;
+            border-bottom: 2px solid #007AFF;
+            padding-bottom: 10px;
+        }
+        
+        .section p {
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 16px;
+        }
+        
+        .contact-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .contact-info a {
+            color: #007AFF;
+            text-decoration: none;
+        }
+        
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+        
+        .faq-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .faq-item h3 {
+            color: #007AFF;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+        
+        .faq-item p {
+            color: #555;
+            font-size: 15px;
+        }
+        
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007AFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .section h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LogCal Support</h1>
+        <p class="subtitle">We're here to help you get the most out of LogCal</p>
+        
+        <div class="section">
+            <h2>Get Help</h2>
+            <p>Need assistance with LogCal? We're here to help! Check out our frequently asked questions below, or contact us directly.</p>
+            
+            <div class="contact-info">
+                <h3>Contact Us</h3>
+                <p><strong>Email:</strong> <a href="mailto:johriantriksh24@gmail.com">johriantriksh24@gmail.com</a></p>
+                <p>We typically respond within 24-48 hours.</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Frequently Asked Questions</h2>
+            
+            <div class="faq-item">
+                <h3>How accurate is the calorie estimation?</h3>
+                <p>LogCal uses OpenAI's GPT-4 to analyze your meal descriptions and provide calorie estimates. While highly accurate, estimates may vary based on portion sizes and preparation methods. We recommend being as specific as possible in your descriptions.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Can I edit logged meals?</h3>
+                <p>Yes! Navigate to the History screen, find the meal you want to edit, and tap on it to view details. You can then adjust the calorie count or delete the entry.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>How do I change my daily calorie goal?</h3>
+                <p>Go to Profile > Daily Goal, then use the slider to adjust your daily calorie target. Your new goal will be saved automatically and synced across all your devices.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Does LogCal work offline?</h3>
+                <p>LogCal requires an internet connection to analyze meals using AI. However, you can view your previously logged meals offline.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Is my data private and secure?</h3>
+                <p>Absolutely. We use industry-standard encryption to protect your data. Your meal logs and personal information are never shared with third parties. See our Privacy Policy for more details.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>How does the voice input work?</h3>
+                <p>Tap the microphone icon when logging a meal to use voice input. Your device will convert speech to text, which is then analyzed by our AI to estimate calories.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>What if the calorie estimate seems wrong?</h3>
+                <p>You can manually adjust any calorie estimate after logging. We also recommend providing detailed descriptions (e.g., "grilled chicken breast, 6 oz" instead of just "chicken").</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>How do I sync my data across devices?</h3>
+                <p>Simply sign in with the same Google or Apple account on all your devices. Your meal logs and daily goal will automatically sync via secure cloud storage.</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Privacy & Terms</h2>
+            <p>Your privacy is important to us. Learn more about how we protect your data:</p>
+            <a href="https://sites.google.com/view/privacypolicylogcalai/home" class="button">View Privacy Policy</a>
+        </div>
+        
+        <div class="section">
+            <h2>Report an Issue</h2>
+            <p>Found a bug or experiencing an issue? Please email us at <a href="mailto:johriantriksh24@gmail.com">johriantriksh24@gmail.com</a> with:</p>
+            <ul style="margin-left: 20px; color: #555;">
+                <li>Description of the issue</li>
+                <li>Steps to reproduce (if applicable)</li>
+                <li>Device model and iOS version</li>
+                <li>Screenshots (if helpful)</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>Feature Requests</h2>
+            <p>Have an idea for improving LogCal? We'd love to hear from you! Send your suggestions to <a href="mailto:johriantriksh24@gmail.com">johriantriksh24@gmail.com</a>.</p>
+        </div>
+    </div>
+</body>
+</html>
+
