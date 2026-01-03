@@ -16,5 +16,9 @@
 		</dict>
 		<dict/>
 	</array>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>LogMealIntentIntent</string>
+	</array>
 </dict>
 </plist>

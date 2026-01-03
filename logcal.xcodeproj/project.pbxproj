@@ -14,10 +14,42 @@
 		9B2C80DF2EFB4BBC00707824 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80DE2EFB4BBC00707824 /* GoogleSignIn */; };
 		9B2C80E12EFB4BBC00707824 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */; };
 		9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E52EFB4D0000707824 /* FirebaseFirestore */; };
+		9B7BF7932F09130C00ADA129 /* Intents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B7BF7922F09130C00ADA129 /* Intents.framework */; };
+		9B7BF79A2F09130C00ADA129 /* LogCalIntents.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9B7BF7902F09130C00ADA129 /* LogCalIntents.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9B7BF7B02F09185600ADA129 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7BF7AF2F09185600ADA129 /* FirebaseAuth */; };
+		9B7BF7B22F09185600ADA129 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7BF7B12F09185600ADA129 /* FirebaseCore */; };
+		9B7BF7B42F09185600ADA129 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7BF7B32F09185600ADA129 /* FirebaseFirestore */; };
+		9B7BF7B62F09185600ADA129 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7BF7B52F09185600ADA129 /* FirebaseFunctions */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9B7BF7982F09130C00ADA129 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9B2C7FBC2EEF6FE400707824 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9B7BF78F2F09130C00ADA129;
+			remoteInfo = LogCalIntents;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9B7BF79F2F09130C00ADA129 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				9B7BF79A2F09130C00ADA129 /* LogCalIntents.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B7BF7902F09130C00ADA129 /* LogCalIntents.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LogCalIntents.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B7BF7922F09130C00ADA129 /* Intents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Intents.framework; path = System/Library/Frameworks/Intents.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -28,6 +60,26 @@
 			);
 			target = 9B2C7FC32EEF6FE400707824 /* logcal */;
 		};
+		9B7BF79E2F09130C00ADA129 /* Exceptions for "LogCalIntents" folder in "LogCalIntents" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9B7BF78F2F09130C00ADA129 /* LogCalIntents */;
+		};
+		9B7BF7A22F09144A00ADA129 /* Exceptions for "logcal" folder in "LogCalIntents" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LogCalIntent.intentdefinition,
+				Models/MealEntry.swift,
+				Models/MealLogResponse.swift,
+				Services/FirebaseService.swift,
+				Services/FirestoreService.swift,
+				Utils/AppError.swift,
+				Utils/Constants.swift,
+			);
+			target = 9B7BF78F2F09130C00ADA129 /* LogCalIntents */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -35,8 +87,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */,
+				9B7BF7A22F09144A00ADA129 /* Exceptions for "logcal" folder in "LogCalIntents" target */,
 			);
 			path = logcal;
+			sourceTree = "<group>";
+		};
+		9B7BF7942F09130C00ADA129 /* LogCalIntents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9B7BF79E2F09130C00ADA129 /* Exceptions for "LogCalIntents" folder in "LogCalIntents" target */,
+			);
+			path = LogCalIntents;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -56,6 +117,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9B7BF78D2F09130C00ADA129 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9B7BF7932F09130C00ADA129 /* Intents.framework in Frameworks */,
+				9B7BF7B42F09185600ADA129 /* FirebaseFirestore in Frameworks */,
+				9B7BF7B62F09185600ADA129 /* FirebaseFunctions in Frameworks */,
+				9B7BF7B22F09185600ADA129 /* FirebaseCore in Frameworks */,
+				9B7BF7B02F09185600ADA129 /* FirebaseAuth in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -63,6 +136,8 @@
 			isa = PBXGroup;
 			children = (
 				9B2C7FC62EEF6FE400707824 /* logcal */,
+				9B7BF7942F09130C00ADA129 /* LogCalIntents */,
+				9B7BF7912F09130C00ADA129 /* Frameworks */,
 				9B2C7FC52EEF6FE400707824 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -71,8 +146,17 @@
 			isa = PBXGroup;
 			children = (
 				9B2C7FC42EEF6FE400707824 /* logcal.app */,
+				9B7BF7902F09130C00ADA129 /* LogCalIntents.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9B7BF7912F09130C00ADA129 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9B7BF7922F09130C00ADA129 /* Intents.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -85,10 +169,12 @@
 				9B2C7FC02EEF6FE400707824 /* Sources */,
 				9B2C7FC12EEF6FE400707824 /* Frameworks */,
 				9B2C7FC22EEF6FE400707824 /* Resources */,
+				9B7BF79F2F09130C00ADA129 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				9B7BF7992F09130C00ADA129 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9B2C7FC62EEF6FE400707824 /* logcal */,
@@ -107,6 +193,32 @@
 			productReference = 9B2C7FC42EEF6FE400707824 /* logcal.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9B7BF78F2F09130C00ADA129 /* LogCalIntents */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9B7BF79B2F09130C00ADA129 /* Build configuration list for PBXNativeTarget "LogCalIntents" */;
+			buildPhases = (
+				9B7BF78C2F09130C00ADA129 /* Sources */,
+				9B7BF78D2F09130C00ADA129 /* Frameworks */,
+				9B7BF78E2F09130C00ADA129 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9B7BF7942F09130C00ADA129 /* LogCalIntents */,
+			);
+			name = LogCalIntents;
+			packageProductDependencies = (
+				9B7BF7AF2F09185600ADA129 /* FirebaseAuth */,
+				9B7BF7B12F09185600ADA129 /* FirebaseCore */,
+				9B7BF7B32F09185600ADA129 /* FirebaseFirestore */,
+				9B7BF7B52F09185600ADA129 /* FirebaseFunctions */,
+			);
+			productName = LogCalIntents;
+			productReference = 9B7BF7902F09130C00ADA129 /* LogCalIntents.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -118,6 +230,9 @@
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					9B2C7FC32EEF6FE400707824 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					9B7BF78F2F09130C00ADA129 = {
 						CreatedOnToolsVersion = 26.2;
 					};
 				};
@@ -141,12 +256,20 @@
 			projectRoot = "";
 			targets = (
 				9B2C7FC32EEF6FE400707824 /* logcal */,
+				9B7BF78F2F09130C00ADA129 /* LogCalIntents */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		9B2C7FC22EEF6FE400707824 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9B7BF78E2F09130C00ADA129 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -163,7 +286,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9B7BF78C2F09130C00ADA129 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9B7BF7992F09130C00ADA129 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9B7BF78F2F09130C00ADA129 /* LogCalIntents */;
+			targetProxy = 9B7BF7982F09130C00ADA129 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		9B2C7FCD2EEF6FE700707824 /* Debug */ = {
@@ -373,6 +511,76 @@
 			};
 			name = Release;
 		};
+		9B7BF79C2F09130C00ADA129 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LogCalIntents/LogCalIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z5M4U33NJF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LogCalIntents/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LogCalIntents;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal.LogCalIntents;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		9B7BF79D2F09130C00ADA129 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LogCalIntents/LogCalIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z5M4U33NJF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LogCalIntents/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LogCalIntents;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal.LogCalIntents;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -390,6 +598,15 @@
 			buildConfigurations = (
 				9B2C7FD02EEF6FE700707824 /* Debug */,
 				9B2C7FD12EEF6FE700707824 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9B7BF79B2F09130C00ADA129 /* Build configuration list for PBXNativeTarget "LogCalIntents" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9B7BF79C2F09130C00ADA129 /* Debug */,
+				9B7BF79D2F09130C00ADA129 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -450,6 +667,26 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		9B7BF7AF2F09185600ADA129 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		9B7BF7B12F09185600ADA129 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		9B7BF7B32F09185600ADA129 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		9B7BF7B52F09185600ADA129 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

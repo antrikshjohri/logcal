@@ -10,6 +10,7 @@ import SwiftData
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
+import Intents
 
 @main
 struct logcalApp: App {
@@ -26,6 +27,12 @@ struct logcalApp: App {
         // Initialize Firebase
         FirebaseApp.configure()
         print("DEBUG: Firebase configured")
+        
+        // Setup Siri vocabulary
+        SiriVocabularySetup.setup()
+        
+        // Donate intent to make it available in Shortcuts
+        SiriVocabularySetup.donateIntent()
     }
     
     var body: some Scene {
@@ -89,6 +96,14 @@ struct logcalApp: App {
                 }
             }
             .preferredColorScheme(appTheme.colorScheme)
+            .onContinueUserActivity("LogMealIntentIntent") { userActivity in
+                // #region agent log
+                DebugLogger.log(location: "logcalApp.swift:onContinueUserActivity", message: "App opened via Siri intent", data: [:], hypothesisId: "B")
+                // #endregion
+                print("DEBUG: App opened via Siri intent - navigating to Log tab")
+                // Navigate to Log tab (HomeView) when opened from Siri shortcut
+                selectedTab = 1
+            }
             .task {
                 // Check if we should show auth view
                 // Show if no user exists (sign-in is mandatory)
@@ -122,6 +137,8 @@ struct logcalApp: App {
                     isInitialSyncAfterSignIn = true
                     // Navigate to HomeView (Log tab) when user signs in
                     selectedTab = 1
+                    // Donate Siri intent when user signs in
+                    SiriVocabularySetup.donateIntent()
                 } else {
                     // Show auth view when user signs out
                     showAuthView = true

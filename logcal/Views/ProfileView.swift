@@ -120,13 +120,13 @@ struct ProfileView: View {
                             .foregroundColor(Theme.secondaryText)
                             .padding(.horizontal, Constants.Spacing.extraLarge)
                         
-                        NavigationLink(destination: HelpFAQView()) {
-                            SettingsRowContent(
-                                icon: "questionmark.circle",
-                                title: "Help & FAQ"
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                            NavigationLink(destination: HelpFAQView()) {
+                                SettingsRowContent(
+                                    icon: "questionmark.circle",
+                                    title: "Help & FAQ"
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
                     

@@ -192,7 +192,7 @@ struct HomeView: View {
                         } else {
                             // Stop animation when loading ends
                             stopAnalysingAnimation()
-                        }
+                    }
                     }
                     
                     

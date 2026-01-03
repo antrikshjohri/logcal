@@ -210,15 +210,15 @@ struct AuthView: View {
                             }
                         }) {
                             Text("Privacy Policy")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(Constants.Colors.secondaryGray)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(Constants.Colors.secondaryGray)
                                 .underline()
                         }
                     }
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    .padding(.top, Constants.Spacing.regular)
-                    .padding(.bottom, Constants.Spacing.extraLarge)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                        .padding(.top, Constants.Spacing.regular)
+                        .padding(.bottom, Constants.Spacing.extraLarge)
                 }
             }
         }

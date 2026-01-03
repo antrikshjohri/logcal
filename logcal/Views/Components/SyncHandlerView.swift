@@ -183,7 +183,7 @@ struct SyncHandlerView: View {
             }
         } else {
             print("DEBUG: No goal fetched from cloud (returned nil)")
-        }
+            }
     }
 }
 

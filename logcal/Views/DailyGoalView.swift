@@ -98,11 +98,11 @@ struct DailyGoalView: View {
                 PrimaryButton(title: isSaving ? "Saving..." : "Save Goal") {
                     Task {
                         isSaving = true
-                        dailyGoal = currentGoal
+                    dailyGoal = currentGoal
                         // Sync to Firestore
                         await cloudSyncService.syncDailyGoalToCloud(currentGoal)
                         isSaving = false
-                        dismiss()
+                    dismiss()
                     }
                 }
                 .disabled(isSaving)
