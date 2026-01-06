@@ -256,9 +256,6 @@ struct HomeView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
-                                    Text("Confidence: \(Int(item.confidence * 100))%")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
                                 }
                                 .padding(.vertical, 4)
                                 

@@ -286,15 +286,6 @@ struct MealEditView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 
-                                HStack {
-                                    Text("Confidence:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text("\(Int(item.confidence * 100))%")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                }
-                                
                                 if index < response.items.count - 1 {
                                     Divider()
                                         .padding(.top, 8)
