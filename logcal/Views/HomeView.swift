@@ -274,12 +274,6 @@ struct HomeView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .simultaneousGesture(
-                TapGesture().onEnded { _ in
-                    // Dismiss keyboard when tapping anywhere (buttons will still work)
-                    isTextFieldFocused = false
-                }
-            )
             .onChange(of: viewModel.errorMessage) { oldValue, newValue in
                 if let message = newValue, message != oldValue {
                     toastManager.show(ToastMessage(
