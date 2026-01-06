@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct MealLogResponse: Codable {
+struct MealLogResponse: Codable, Equatable {
     let mealType: String
     let totalCalories: Double
     let items: [MealItem]
@@ -23,7 +23,7 @@ struct MealLogResponse: Codable {
     }
 }
 
-struct MealItem: Codable {
+struct MealItem: Codable, Equatable {
     let name: String
     let quantity: String
     let calories: Double

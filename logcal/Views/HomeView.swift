@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import Lottie
 
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
@@ -15,12 +16,37 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
-    @State private var analysingDotCount = 0
-    @State private var analysingTimer: Timer?
+    @State private var showConfetti = false
     
     var body: some View {
         NavigationView {
-            ScrollView {
+            mainContent
+                .navigationTitle("Log Calories")
+                .onChange(of: viewModel.latestResult) { oldValue, newValue in
+                    if oldValue == nil && newValue != nil {
+                        showConfetti = true
+                        // Auto-dismiss confetti after animation completes (3 seconds)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            showConfetti = false
+                        }
+                    }
+                }
+                .modifier(HomeViewModifiers(
+                    viewModel: viewModel,
+                    modelContext: modelContext,
+                    navigateToDateTimestamp: $navigateToDateTimestamp,
+                    toastManager: toastManager,
+                    showConfetti: $showConfetti,
+                    showUpdateRequiredAlert: Binding(
+                        get: { viewModel.showUpdateRequiredAlert },
+                        set: { viewModel.showUpdateRequiredAlert = $0 }
+                    )
+                ))
+        }
+    }
+    
+    private var mainContent: some View {
+        ScrollView {
                 VStack(spacing: 20) {
                     // Welcome message (if signed in)
                     if authViewModel.isSignedIn, let userName = authViewModel.userName {
@@ -165,13 +191,11 @@ struct HomeView: View {
                             print("DEBUG: Log Meal button action completed")
                         }
                     }) {
-                        HStack(spacing: 0) {
+                        ZStack {
                             if viewModel.isLoading {
-                                Text("Logging calories")
-                                    .fontWeight(.semibold)
-                                Text(String(repeating: ".", count: analysingDotCount))
-                                    .fontWeight(.semibold)
-                                    .frame(width: 20, alignment: .leading)
+                                // Show Lottie animation when loading
+                                LottieView(animationName: "LoadingAnimation", loopMode: LottieLoopMode.loop, contentMode: .scaleAspectFit)
+                                    .frame(height: 24)
                             } else {
                                 Text("Log Meal")
                                     .fontWeight(.semibold)
@@ -179,22 +203,16 @@ struct HomeView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Constants.Colors.primaryGray : Constants.Colors.primaryBlue)
+                        .background(
+                            viewModel.isLoading 
+                                ? Color.gray.opacity(0.3) 
+                                : (viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Constants.Colors.primaryGray : Constants.Colors.primaryBlue)
+                        )
                         .foregroundColor(.white)
                         .cornerRadius(Constants.Sizes.cornerRadius + 2)
                     }
                     .disabled(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
                     .padding(.horizontal)
-                    .onChange(of: viewModel.isLoading) { oldValue, newValue in
-                        if newValue {
-                            // Start animation when loading begins
-                            startAnalysingAnimation()
-                        } else {
-                            // Stop animation when loading ends
-                            stopAnalysingAnimation()
-                        }
-                    }
-                    
                     
                     // Result card
                     if let result = viewModel.latestResult {
@@ -257,23 +275,86 @@ struct HomeView: View {
                     }
                 .padding(.vertical)
             }
-            .navigationTitle("Log Calories")
+    }
+    
+    
+}
+
+// MARK: - View Modifiers
+struct HomeViewModifiers: ViewModifier {
+    let viewModel: LogViewModel
+    let modelContext: ModelContext
+    @Binding var navigateToDateTimestamp: Double
+    let toastManager: ToastManager
+    @Binding var showConfetti: Bool
+    @Binding var showUpdateRequiredAlert: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .modifier(HomeViewAppearModifier(viewModel: viewModel, modelContext: modelContext))
+            .modifier(HomeViewChangeModifiers(
+                viewModel: viewModel,
+                navigateToDateTimestamp: $navigateToDateTimestamp,
+                toastManager: toastManager,
+                showConfetti: $showConfetti
+            ))
+            .modifier(HomeViewAlertModifier(
+                viewModel: viewModel,
+                showUpdateRequiredAlert: $showUpdateRequiredAlert
+            ))
+            .modifier(HomeViewOverlayModifier(showConfetti: $showConfetti))
+    }
+}
+
+struct HomeViewAppearModifier: ViewModifier {
+    let viewModel: LogViewModel
+    let modelContext: ModelContext
+    
+    func body(content: Content) -> some View {
+        content
             .onAppear {
                 viewModel.setModelContext(modelContext)
             }
-            .onDisappear {
-                stopAnalysingAnimation()
-            }
+            .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+struct HomeViewChangeModifiers: ViewModifier {
+    let viewModel: LogViewModel
+    @Binding var navigateToDateTimestamp: Double
+    let toastManager: ToastManager
+    @Binding var showConfetti: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .modifier(NavigateToDateModifier(viewModel: viewModel, navigateToDateTimestamp: $navigateToDateTimestamp))
+            .modifier(ErrorMessageModifier(viewModel: viewModel, toastManager: toastManager))
+            .modifier(SpeechErrorModifier(viewModel: viewModel, toastManager: toastManager))
+    }
+}
+
+struct NavigateToDateModifier: ViewModifier {
+    let viewModel: LogViewModel
+    @Binding var navigateToDateTimestamp: Double
+    
+    func body(content: Content) -> some View {
+        content
             .onChange(of: navigateToDateTimestamp) { oldValue, newValue in
-                // When date is set from HistoryView, update viewModel
                 if newValue > 0 && newValue != oldValue {
                     let date = Date(timeIntervalSince1970: newValue)
                     viewModel.selectedDate = date
-                    // Reset the timestamp to prevent re-triggering
                     navigateToDateTimestamp = 0
                 }
             }
-            .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+struct ErrorMessageModifier: ViewModifier {
+    let viewModel: LogViewModel
+    let toastManager: ToastManager
+    
+    func body(content: Content) -> some View {
+        content
             .onChange(of: viewModel.errorMessage) { oldValue, newValue in
                 if let message = newValue, message != oldValue {
                     toastManager.show(ToastMessage(
@@ -283,6 +364,15 @@ struct HomeView: View {
                     ))
                 }
             }
+    }
+}
+
+struct SpeechErrorModifier: ViewModifier {
+    let viewModel: LogViewModel
+    let toastManager: ToastManager
+    
+    func body(content: Content) -> some View {
+        content
             .onChange(of: viewModel.speechService.errorMessage) { oldValue, newValue in
                 if let message = newValue, message != oldValue {
                     toastManager.show(ToastMessage(
@@ -292,7 +382,16 @@ struct HomeView: View {
                     ))
                 }
             }
-            .alert("Update Required", isPresented: $viewModel.showUpdateRequiredAlert) {
+    }
+}
+
+struct HomeViewAlertModifier: ViewModifier {
+    let viewModel: LogViewModel
+    @Binding var showUpdateRequiredAlert: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .alert("Update Required", isPresented: $showUpdateRequiredAlert) {
                 Button("Update Now") {
                     if let appStoreURL = viewModel.appConfigService.getAppStoreURL() {
                         UIApplication.shared.open(appStoreURL)
@@ -302,27 +401,24 @@ struct HomeView: View {
             } message: {
                 Text(viewModel.appConfigService.appConfig.updateMessage ?? "A new version of LogCal is available. Please update to continue logging meals.")
             }
-        }
     }
+}
+
+struct HomeViewOverlayModifier: ViewModifier {
+    @Binding var showConfetti: Bool
     
-    private func startAnalysingAnimation() {
-        analysingDotCount = 0
-        analysingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            withAnimation {
-                analysingDotCount = (analysingDotCount + 1) % 4
+    func body(content: Content) -> some View {
+        ZStack {
+            content
+            
+            if showConfetti {
+                LottieView(animationName: "ConfettiAnimation", loopMode: LottieLoopMode.playOnce, contentMode: .scaleAspectFit)
+                    .frame(width: 400, height: 400)
+                    .allowsHitTesting(false)
+                    .zIndex(1000)
             }
         }
-        if let timer = analysingTimer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
     }
-    
-    private func stopAnalysingAnimation() {
-        analysingTimer?.invalidate()
-        analysingTimer = nil
-        analysingDotCount = 0
-    }
-    
 }
 
 #Preview {

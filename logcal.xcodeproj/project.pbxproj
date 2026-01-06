@@ -14,7 +14,21 @@
 		9B2C80DF2EFB4BBC00707824 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80DE2EFB4BBC00707824 /* GoogleSignIn */; };
 		9B2C80E12EFB4BBC00707824 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */; };
 		9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E52EFB4D0000707824 /* FirebaseFirestore */; };
+		9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFCBA2F0D938B00C7FD92 /* Lottie */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9B9BFCB82F0D900C00C7FD92 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -53,6 +67,7 @@
 				9B2C80A42EFB39F100707824 /* FirebaseCore in Frameworks */,
 				9B2C80A22EFB39F100707824 /* FirebaseAuth in Frameworks */,
 				9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */,
+				9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				9B2C7FC62EEF6FE400707824 /* logcal */,
+				9B9BFCB62F0D8F3B00C7FD92 /* Frameworks */,
 				9B2C7FC52EEF6FE400707824 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,6 +91,13 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		9B9BFCB62F0D8F3B00C7FD92 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -85,6 +108,7 @@
 				9B2C7FC02EEF6FE400707824 /* Sources */,
 				9B2C7FC12EEF6FE400707824 /* Frameworks */,
 				9B2C7FC22EEF6FE400707824 /* Resources */,
+				9B9BFCB82F0D900C00C7FD92 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -102,6 +126,7 @@
 				9B2C80DE2EFB4BBC00707824 /* GoogleSignIn */,
 				9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */,
 				9B2C80E52EFB4D0000707824 /* FirebaseFirestore */,
+				9B9BFCBA2F0D938B00C7FD92 /* Lottie */,
 			);
 			productName = logcal;
 			productReference = 9B2C7FC42EEF6FE400707824 /* logcal.app */;
@@ -134,6 +159,7 @@
 			packageReferences = (
 				9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9B2C80DD2EFB4BBC00707824 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				9B9BFCB92F0D938B00C7FD92 /* XCRemoteSwiftPackageReference "lottie-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B2C7FC52EEF6FE400707824 /* Products */;
@@ -413,6 +439,14 @@
 				minimumVersion = 9.0.0;
 			};
 		};
+		9B9BFCB92F0D938B00C7FD92 /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -450,6 +484,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		9B9BFCBA2F0D938B00C7FD92 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B9BFCB92F0D938B00C7FD92 /* XCRemoteSwiftPackageReference "lottie-spm" */;
+			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
