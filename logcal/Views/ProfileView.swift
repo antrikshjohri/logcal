@@ -130,23 +130,6 @@ struct ProfileView: View {
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
                     
-                    // Sign Out Button
-                    Button(action: {
-                        authViewModel.signOut()
-                    }) {
-                        HStack(spacing: Constants.Spacing.regular) {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.system(size: 18, weight: .medium))
-                            Text("Sign Out")
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .foregroundColor(.red)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Theme.cardBackground(colorScheme: colorScheme))
-                        .cornerRadius(25)
-                    }
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
                     .padding(.bottom, Constants.Spacing.extraLarge)
                 }
             }

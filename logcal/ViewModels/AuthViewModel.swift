@@ -166,6 +166,45 @@ class AuthViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    /// Delete user account and all associated data
+    func deleteAccount() async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw AppError.unknown(NSError(domain: "AuthViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user signed in"]))
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        print("DEBUG: Starting account deletion for user: \(user.uid)")
+        
+        do {
+            // First, delete all user data from Firestore
+            let firestoreService = FirestoreService()
+            try await firestoreService.deleteUserData()
+            print("DEBUG: User data deleted from Firestore")
+            
+            // Then delete the Firebase Auth account
+            try await user.delete()
+            print("DEBUG: Firebase Auth account deleted successfully")
+            
+            // Sign out from Google Sign-In to clear cached account
+            // This prevents Google from showing "You're signing back in" message
+            GIDSignIn.sharedInstance.signOut()
+            print("DEBUG: Google Sign-In cache cleared")
+            
+            // Sign out from Firebase Auth to clear local state
+            try Auth.auth().signOut()
+            print("DEBUG: Account deletion completed")
+            
+            isLoading = false
+        } catch {
+            print("DEBUG: Account deletion error: \(error)")
+            errorMessage = error.localizedDescription
+            isLoading = false
+            throw error
+        }
+    }
 }
 
 

@@ -33,6 +33,9 @@ struct EditProfileView: View {
     @State private var isLoading = false
     @State private var showCountryPicker = false
     @State private var errorMessage: String?
+    @State private var showDeleteAccountConfirmation = false
+    @State private var showDeleteAccountError = false
+    @State private var isDeletingAccount = false
     
     // Country picker search
     @State private var countrySearchText = ""
@@ -198,6 +201,37 @@ struct EditProfileView: View {
                             await saveChanges()
                         }
                     }
+                    
+                    // Divider
+                    Divider()
+                        .padding(.vertical, Constants.Spacing.regular)
+                    
+                    // Sign Out Button
+                    Button(action: {
+                        authViewModel.signOut()
+                        dismiss()
+                    }) {
+                        HStack(spacing: Constants.Spacing.regular) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 18, weight: .medium))
+                            Text("Sign Out")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(25)
+                    }
+                    
+                    // Delete Account Button
+                    Button(action: {
+                        showDeleteAccountConfirmation = true
+                    }) {
+                        Text("Delete Account")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(.secondary)
+                    }
                     .padding(.bottom, Constants.Spacing.extraLarge)
                 }
                 .padding(.horizontal, Constants.Spacing.extraLarge)
@@ -226,6 +260,50 @@ struct EditProfileView: View {
                 Task {
                     if let newValue = newValue {
                         await loadPhoto(from: newValue)
+                    }
+                }
+            }
+            .alert("Delete Account", isPresented: $showDeleteAccountConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        isDeletingAccount = true
+                        do {
+                            try await authViewModel.deleteAccount()
+                            // Account deletion will automatically sign out the user
+                            // The app will navigate to auth view automatically
+                            dismiss()
+                        } catch {
+                            print("DEBUG: Account deletion failed: \(error)")
+                            isDeletingAccount = false
+                            // Show error alert
+                            showDeleteAccountError = true
+                        }
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to delete your account? This action cannot be undone. All your meal data, goals, and account information will be permanently deleted.")
+            }
+            .alert("Error", isPresented: $showDeleteAccountError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(authViewModel.errorMessage ?? "Failed to delete account. Please try again.")
+            }
+            .overlay {
+                if isDeletingAccount {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                            Text("Deleting account...")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
                     }
                 }
             }

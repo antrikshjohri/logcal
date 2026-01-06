@@ -212,5 +212,68 @@ struct FirestoreService {
             throw AppError.unknown(error)
         }
     }
+    
+    /// Delete all user data from Firestore
+    func deleteUserData() async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, cannot delete user data")
+            throw AppError.unknown(NSError(domain: "FirestoreService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]))
+        }
+        
+        print("DEBUG: Starting deletion of all user data for: \(userId)")
+        
+        do {
+            // Delete all meals (handle batch size limit of 500)
+            let mealsRef = db.collection("users").document(userId).collection("meals")
+            var mealsSnapshot = try await mealsRef.limit(to: 500).getDocuments()
+            var totalDeleted = 0
+            
+            // Keep deleting in batches until all meals are deleted
+            while !mealsSnapshot.documents.isEmpty {
+                let batch = db.batch()
+                
+                for document in mealsSnapshot.documents {
+                    batch.deleteDocument(document.reference)
+                }
+                
+                try await batch.commit()
+                totalDeleted += mealsSnapshot.documents.count
+                print("DEBUG: Deleted batch of \(mealsSnapshot.documents.count) meals (total: \(totalDeleted))")
+                
+                // Get next batch if there are more meals
+                if mealsSnapshot.documents.count == 500 {
+                    mealsSnapshot = try await mealsRef.limit(to: 500).getDocuments()
+                } else {
+                    break // No more meals to delete
+                }
+            }
+            
+            print("DEBUG: Deleted \(totalDeleted) meals total")
+            
+            // Also check and delete from old mealLogs collection (backward compatibility)
+            let mealLogsSnapshot = try await db.collection("mealLogs")
+                .whereField("uid", isEqualTo: userId)
+                .limit(to: 500)
+                .getDocuments()
+            
+            if !mealLogsSnapshot.documents.isEmpty {
+                let batch = db.batch()
+                for document in mealLogsSnapshot.documents {
+                    batch.deleteDocument(document.reference)
+                }
+                try await batch.commit()
+                print("DEBUG: Deleted \(mealLogsSnapshot.documents.count) meals from old mealLogs collection")
+            }
+            
+            // Finally, delete user document (this should be done last)
+            try await db.collection("users").document(userId).delete()
+            print("DEBUG: Deleted user document")
+            
+            print("DEBUG: Successfully deleted all user data from Firestore")
+        } catch {
+            print("DEBUG: Error deleting user data from Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
 }
 
