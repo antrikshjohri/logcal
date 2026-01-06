@@ -121,6 +121,15 @@ struct OpenAIService {
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+            
+            // Log the request being sent to OpenAI API
+            if let requestJSON = try? JSONSerialization.data(withJSONObject: requestBody, options: .prettyPrinted),
+               let requestString = String(data: requestJSON, encoding: .utf8) {
+                print("DEBUG: [OpenAI Request] Sending to OpenAI API:")
+                print(requestString)
+            } else {
+                print("DEBUG: [OpenAI Request] Sending to OpenAI API: \(requestBody)")
+            }
         } catch {
             throw AppError.unknown(error)
         }
@@ -130,6 +139,14 @@ struct OpenAIService {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
             throw AppError.networkError(error)
+        }
+        
+        // Log the raw response from OpenAI API
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("DEBUG: [OpenAI Response] Received from OpenAI API:")
+            print(responseString)
+        } else {
+            print("DEBUG: [OpenAI Response] Received from OpenAI API (unable to decode as string)")
         }
         
         guard let httpResponse = response as? HTTPURLResponse else {

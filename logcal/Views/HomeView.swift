@@ -271,6 +271,14 @@ struct HomeView: View {
                         .background(Constants.Colors.secondaryBackground)
                         .cornerRadius(Constants.Sizes.largeCornerRadius)
                         .padding(.horizontal)
+                        .onAppear {
+                            // Auto-dismiss after 10 seconds
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    viewModel.latestResult = nil
+                                }
+                            }
+                        }
                     }
                     }
                 .padding(.vertical)

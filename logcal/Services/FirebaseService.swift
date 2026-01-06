@@ -40,12 +40,27 @@ struct FirebaseService {
         let function = functions.httpsCallable("logMeal")
         
         do {
-            print("DEBUG: Calling Firebase Function with data: \(requestData)")
+            // Log the request being sent to Firebase Function
+            if let requestJSON = try? JSONSerialization.data(withJSONObject: requestData, options: .prettyPrinted),
+               let requestString = String(data: requestJSON, encoding: .utf8) {
+                print("DEBUG: [OpenAI Request] Sending to Firebase Function 'logMeal':")
+                print(requestString)
+            } else {
+                print("DEBUG: [OpenAI Request] Sending to Firebase Function 'logMeal': \(requestData)")
+            }
+            
             let result = try await function.call(requestData)
             
-            // Debug: Print the raw response
-            print("DEBUG: Firebase Function response type: \(type(of: result.data))")
-            print("DEBUG: Firebase Function response: \(result.data)")
+            // Log the response from Firebase Function
+            print("DEBUG: [OpenAI Response] Received from Firebase Function:")
+            print("DEBUG: [OpenAI Response] Response type: \(type(of: result.data))")
+            if let responseJSON = try? JSONSerialization.data(withJSONObject: result.data, options: .prettyPrinted),
+               let responseString = String(data: responseJSON, encoding: .utf8) {
+                print("DEBUG: [OpenAI Response] Response data:")
+                print(responseString)
+            } else {
+                print("DEBUG: [OpenAI Response] Response data: \(result.data)")
+            }
             
             // Firebase Functions onCall returns the data directly (not wrapped)
             // The function returns a MealLogResponse object, which gets serialized
