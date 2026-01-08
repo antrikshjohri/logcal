@@ -32,6 +32,16 @@ struct HomeView: View {
                         }
                     }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SetMealTypeFromNotification"))) { notification in
+                    // Set meal type when notification is tapped
+                    if let userInfo = notification.userInfo,
+                       let mealTypeString = userInfo["mealType"] as? String,
+                       let mealType = MealType(rawValue: mealTypeString) {
+                        print("DEBUG: [HomeView] Setting meal type from notification: \(mealTypeString)")
+                        viewModel.selectedMealType = mealType
+                        viewModel.isMealTypeManuallySet = true
+                    }
+                }
                 .modifier(HomeViewModifiers(
                     viewModel: viewModel,
                     modelContext: modelContext,

@@ -123,9 +123,19 @@ struct logcalApp: App {
                     .environmentObject(authViewModel)
                     .toastNotification(toastManager: toastManager)
                     .environmentObject(toastManager)
-                    .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogTab"))) { _ in
+                    .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogTab"))) { notification in
                         // Handle notification tap - navigate to Log tab
                         selectedTab = 1
+                        
+                        // Post meal type if available
+                        if let userInfo = notification.userInfo,
+                           let mealTypeString = userInfo["mealType"] as? String {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("SetMealTypeFromNotification"),
+                                object: nil,
+                                userInfo: ["mealType": mealTypeString]
+                            )
+                        }
                     }
                 }
             }

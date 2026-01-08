@@ -35,8 +35,15 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         // Handle notification tap
         if let action = userInfo["action"] as? String, action == "openLog" {
             print("DEBUG: [NotificationDelegate] Opening Log tab from notification")
-            // Post notification to trigger navigation
-            NotificationCenter.default.post(name: NSNotification.Name("OpenLogTab"), object: nil)
+            let mealType = userInfo["mealType"] as? String
+            print("DEBUG: [NotificationDelegate] Meal type from notification: \(mealType ?? "nil")")
+            
+            // Post notification to trigger navigation with meal type
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenLogTab"),
+                object: nil,
+                userInfo: ["mealType": mealType as Any]
+            )
             AnalyticsService.trackNotificationTapped(notificationType: "meal_reminder")
         }
         
