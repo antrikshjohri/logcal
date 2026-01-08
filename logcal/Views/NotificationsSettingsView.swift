@@ -12,12 +12,16 @@ struct NotificationsSettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var toastManager: ToastManager
     private let notificationService = NotificationService.shared
     private let firestoreService = FirestoreService()
     
     @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
     @State private var isLoading = false
     @State private var showPermissionAlert = false
+    @State private var isSavingTimes = false
+    @State private var hasMadeChanges = false
+    @State private var changeDetectionTask: Task<Void, Never>?
     
     // Time pickers (using Date for DatePicker, but we only care about time)
     @State private var breakfastTime: Date = {
@@ -38,6 +42,70 @@ struct NotificationsSettingsView: View {
         components.minute = 0
         return Calendar.current.date(from: components) ?? Date()
     }()
+    
+    // Track original times to detect changes
+    @State private var originalBreakfastTime: Date = {
+        var components = DateComponents()
+        components.hour = 8
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+    @State private var originalLunchTime: Date = {
+        var components = DateComponents()
+        components.hour = 13
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+    @State private var originalDinnerTime: Date = {
+        var components = DateComponents()
+        components.hour = 20
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+    
+    // Check if times have changed (only check when not actively changing)
+    private var hasUnsavedChanges: Bool {
+        guard hasMadeChanges else { return false }
+        
+        let calendar = Calendar.current
+        let breakfastChanged = calendar.component(.hour, from: breakfastTime) != calendar.component(.hour, from: originalBreakfastTime) ||
+                               calendar.component(.minute, from: breakfastTime) != calendar.component(.minute, from: originalBreakfastTime)
+        let lunchChanged = calendar.component(.hour, from: lunchTime) != calendar.component(.hour, from: originalLunchTime) ||
+                           calendar.component(.minute, from: lunchTime) != calendar.component(.minute, from: originalLunchTime)
+        let dinnerChanged = calendar.component(.hour, from: dinnerTime) != calendar.component(.hour, from: originalDinnerTime) ||
+                            calendar.component(.minute, from: dinnerTime) != calendar.component(.minute, from: originalDinnerTime)
+        return breakfastChanged || lunchChanged || dinnerChanged
+    }
+    
+    // Detect when time picker interaction is complete (debounced)
+    private func detectTimeChange() {
+        // Cancel previous task
+        changeDetectionTask?.cancel()
+        
+        // Wait 1 second after last change before showing button (debounce)
+        // This ensures the button only appears after user has finished interacting with the picker
+        changeDetectionTask = Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
+            // After debounce period, check if times are actually different
+            if !Task.isCancelled {
+                await MainActor.run {
+                    let calendar = Calendar.current
+                    let breakfastChanged = calendar.component(.hour, from: breakfastTime) != calendar.component(.hour, from: originalBreakfastTime) ||
+                                           calendar.component(.minute, from: breakfastTime) != calendar.component(.minute, from: originalBreakfastTime)
+                    let lunchChanged = calendar.component(.hour, from: lunchTime) != calendar.component(.hour, from: originalLunchTime) ||
+                                       calendar.component(.minute, from: lunchTime) != calendar.component(.minute, from: originalLunchTime)
+                    let dinnerChanged = calendar.component(.hour, from: dinnerTime) != calendar.component(.hour, from: originalDinnerTime) ||
+                                        calendar.component(.minute, from: dinnerTime) != calendar.component(.minute, from: originalDinnerTime)
+                    
+                    // Only set flag if times are actually different
+                    if breakfastChanged || lunchChanged || dinnerChanged {
+                        hasMadeChanges = true
+                    }
+                }
+            }
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -115,7 +183,7 @@ struct NotificationsSettingsView: View {
                                     DatePicker("", selection: $breakfastTime, displayedComponents: .hourAndMinute)
                                         .labelsHidden()
                                         .onChange(of: breakfastTime) { oldValue, newValue in
-                                            saveCustomTimes()
+                                            detectTimeChange()
                                         }
                                 }
                                 .padding(Constants.Spacing.large)
@@ -142,7 +210,7 @@ struct NotificationsSettingsView: View {
                                     DatePicker("", selection: $lunchTime, displayedComponents: .hourAndMinute)
                                         .labelsHidden()
                                         .onChange(of: lunchTime) { oldValue, newValue in
-                                            saveCustomTimes()
+                                            detectTimeChange()
                                         }
                                 }
                                 .padding(Constants.Spacing.large)
@@ -169,7 +237,7 @@ struct NotificationsSettingsView: View {
                                     DatePicker("", selection: $dinnerTime, displayedComponents: .hourAndMinute)
                                         .labelsHidden()
                                         .onChange(of: dinnerTime) { oldValue, newValue in
-                                            saveCustomTimes()
+                                            detectTimeChange()
                                         }
                                 }
                                 .padding(Constants.Spacing.large)
@@ -182,6 +250,33 @@ struct NotificationsSettingsView: View {
                             }
                             .padding(.horizontal, Constants.Spacing.extraLarge)
                             .padding(.top, Constants.Spacing.small)
+                            
+                            // Save Changes Button (shown when times are modified)
+                            if hasUnsavedChanges {
+                                Button(action: {
+                                    guard !isSavingTimes else { return } // Prevent double-tap
+                                    saveCustomTimes()
+                                }) {
+                                    HStack {
+                                        if isSavingTimes {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Text("Save Changes")
+                                                .font(.system(size: 17, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                                    .background(Theme.accentBlue)
+                                    .cornerRadius(Constants.Sizes.largeCornerRadius)
+                                }
+                                .disabled(isSavingTimes)
+                                .padding(.horizontal, Constants.Spacing.extraLarge)
+                                .padding(.top, Constants.Spacing.regular)
+                            }
                         }
                     }
                     
@@ -293,6 +388,14 @@ struct NotificationsSettingsView: View {
     }
     
     private func saveCustomTimes() {
+        // Prevent multiple simultaneous calls
+        guard !isSavingTimes else {
+            print("DEBUG: [NotificationsSettings] saveCustomTimes already in progress, ignoring duplicate call")
+            return
+        }
+        
+        isSavingTimes = true
+        
         Task {
             let calendar = Calendar.current
             let breakfastComponents = calendar.dateComponents([.hour, .minute], from: breakfastTime)
@@ -312,8 +415,32 @@ struct NotificationsSettingsView: View {
                     dinnerTime: dinner
                 )
                 print("DEBUG: [NotificationsSettings] Saved custom times to Firestore")
+                
+                // Update original times to match current times
+                await MainActor.run {
+                    originalBreakfastTime = breakfastTime
+                    originalLunchTime = lunchTime
+                    originalDinnerTime = dinnerTime
+                    hasMadeChanges = false // Reset change flag
+                }
+                
+                // Show success toast (only once, after state update)
+                await MainActor.run {
+                    toastManager.show(ToastMessage(
+                        title: "Times Saved",
+                        message: "Notification times have been updated",
+                        type: .success
+                    ))
+                }
             } catch {
                 print("DEBUG: [NotificationsSettings] Error saving custom times to Firestore: \(error)")
+                await MainActor.run {
+                    toastManager.show(ToastMessage(
+                        title: "Error",
+                        message: "Failed to save notification times. Please try again.",
+                        type: .error
+                    ))
+                }
             }
             
             // Reschedule notifications if enabled
@@ -324,6 +451,10 @@ struct NotificationsSettingsView: View {
                     lunchTime: lunch,
                     dinnerTime: dinner
                 )
+            }
+            
+            await MainActor.run {
+                isSavingTimes = false
             }
         }
     }
@@ -341,18 +472,21 @@ struct NotificationsSettingsView: View {
                             components.hour = breakfast.hour
                             components.minute = breakfast.minute
                             breakfastTime = Calendar.current.date(from: components) ?? breakfastTime
+                            originalBreakfastTime = breakfastTime
                         }
                         if let lunch = prefs.lunchTime {
                             var components = DateComponents()
                             components.hour = lunch.hour
                             components.minute = lunch.minute
                             lunchTime = Calendar.current.date(from: components) ?? lunchTime
+                            originalLunchTime = lunchTime
                         }
                         if let dinner = prefs.dinnerTime {
                             var components = DateComponents()
                             components.hour = dinner.hour
                             components.minute = dinner.minute
                             dinnerTime = Calendar.current.date(from: components) ?? dinnerTime
+                            originalDinnerTime = dinnerTime
                         }
                         
                         print("DEBUG: [NotificationsSettings] Loaded preferences from Firestore: enabled=\(prefs.mealRemindersEnabled)")
