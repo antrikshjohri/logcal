@@ -152,6 +152,7 @@ struct HomeView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius))
                                     
                                     Button(action: {
+                                        AnalyticsService.trackImageRemoved()
                                         viewModel.removeImage()
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
@@ -176,13 +177,59 @@ struct HomeView: View {
                                         .stroke(Constants.Colors.borderGray, lineWidth: Constants.Sizes.borderWidth)
                                 )
                             
-                            // Placeholder text
-                            if viewModel.foodText.isEmpty && viewModel.selectedImage == nil {
-                                Text("Speak naturally about your meal...")
-                                    .foregroundColor(Constants.Colors.primaryGray)
+                            // Placeholder text or listening indicator (only show when text is truly empty)
+                            let isTextEmpty = viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            if isTextEmpty && viewModel.selectedImage == nil {
+                                if viewModel.isListening {
+                                    HStack(spacing: 8) {
+                                        // Animated dots
+                                        HStack(spacing: 4) {
+                                            Circle()
+                                                .fill(Constants.Colors.primaryBlue)
+                                                .frame(width: 6, height: 6)
+                                                .opacity(0.4)
+                                                .animation(
+                                                    Animation.easeInOut(duration: 0.6)
+                                                        .repeatForever(autoreverses: true)
+                                                        .delay(0.0),
+                                                    value: viewModel.isListening
+                                                )
+                                            Circle()
+                                                .fill(Constants.Colors.primaryBlue)
+                                                .frame(width: 6, height: 6)
+                                                .opacity(0.6)
+                                                .animation(
+                                                    Animation.easeInOut(duration: 0.6)
+                                                        .repeatForever(autoreverses: true)
+                                                        .delay(0.2),
+                                                    value: viewModel.isListening
+                                                )
+                                            Circle()
+                                                .fill(Constants.Colors.primaryBlue)
+                                                .frame(width: 6, height: 6)
+                                                .opacity(0.8)
+                                                .animation(
+                                                    Animation.easeInOut(duration: 0.6)
+                                                        .repeatForever(autoreverses: true)
+                                                        .delay(0.4),
+                                                    value: viewModel.isListening
+                                                )
+                                        }
+                                        Text("Start speaking...")
+                                            .foregroundColor(Constants.Colors.primaryGray)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                    }
                                     .padding(.horizontal, Constants.Spacing.regular)
                                     .padding(.vertical, Constants.Spacing.large)
                                     .allowsHitTesting(false)
+                                } else {
+                                    Text("Speak naturally about your meal...")
+                                        .foregroundColor(Constants.Colors.primaryGray)
+                                        .padding(.horizontal, Constants.Spacing.regular)
+                                        .padding(.vertical, Constants.Spacing.large)
+                                        .allowsHitTesting(false)
+                                }
                             }
                             
                             // Mic and Image buttons
@@ -194,6 +241,7 @@ struct HomeView: View {
                                     // Camera button (only show if camera is available)
                                     if UIImagePickerController.isSourceTypeAvailable(.camera) {
                                         Button(action: {
+                                            AnalyticsService.trackCameraPickerOpened()
                                             viewModel.showCameraPicker = true
                                         }) {
                                             Image(systemName: "camera.fill")
@@ -204,10 +252,12 @@ struct HomeView: View {
                                                 .clipShape(Circle())
                                         }
                                         .padding(.trailing, Constants.Spacing.small)
+                                        .padding(.bottom, Constants.Spacing.medium)
                                     }
                                     
                                     // Image picker button
                                     Button(action: {
+                                        AnalyticsService.trackImagePickerOpened()
                                         viewModel.showImagePicker = true
                                     }) {
                                         Image(systemName: viewModel.selectedImage != nil ? "photo.fill" : "photo")
@@ -218,6 +268,7 @@ struct HomeView: View {
                                             .clipShape(Circle())
                                     }
                                     .padding(.trailing, Constants.Spacing.small)
+                                    .padding(.bottom, Constants.Spacing.medium)
                                     
                                     // Mic button
                                     Button(action: {

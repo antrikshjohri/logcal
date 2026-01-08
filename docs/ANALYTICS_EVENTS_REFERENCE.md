@@ -1,6 +1,8 @@
 # Analytics Events Reference
 
-This document lists all analytics events tracked in the LogCal app. There are **19 events** total, organized into 5 categories.
+This document lists all analytics events tracked in the LogCal app. There are **23 events** total, organized into 5 categories.
+
+**Note:** When adding new features or touchpoints, always add relevant analytics tracking. Update this document accordingly.
 
 ---
 
@@ -9,7 +11,7 @@ This document lists all analytics events tracked in the LogCal app. There are **
 - **Authentication** (4 events) - User sign up, login, logout, and account deletion
 - **Meal Logging** (4 events) - Meal creation, editing, deletion, and failures
 - **Navigation** (2 events) - Tab changes and view openings
-- **Feature Usage** (5 events) - Speech recognition, date picker, meal type changes, daily goal updates
+- **Feature Usage** (9 events) - Speech recognition, date picker, meal type changes, daily goal updates, image/camera features
 - **User Engagement** (4 events) - Meal summaries, detail views, help/FAQ, theme changes
 
 ---
@@ -52,6 +54,7 @@ This document lists all analytics events tracked in the LogCal app. There are **
   - `meal_type` (String): "breakfast", "lunch", "dinner", or "snack"
   - `total_calories` (Double): Total calories in the meal
   - `item_count` (Int): Number of food items in the meal
+  - `has_image` (Bool): Whether an image was used for this meal (true/false)
 - **Tracked in:** `LogViewModel.swift`
 - **Implementation:** Tracked after successful API response and local save
 
@@ -98,7 +101,7 @@ This document lists all analytics events tracked in the LogCal app. There are **
 
 ---
 
-## 4. Feature Usage Events (5 events)
+## 4. Feature Usage Events (9 events)
 
 ### `speech_recognition_started`
 - **When:** Fired when user taps microphone button to start voice input
@@ -131,6 +134,30 @@ This document lists all analytics events tracked in the LogCal app. There are **
   - `new_goal` (Double): New daily calorie goal (100-5000)
 - **Tracked in:** `DailyGoalView.swift`
 - **Implementation:** Triggered in "Save Goal" button action
+
+### `image_picker_opened`
+- **When:** Fired when user taps gallery button to open image picker
+- **Parameters:** None
+- **Tracked in:** `HomeView.swift`
+- **Implementation:** Triggered in gallery button action
+
+### `camera_picker_opened`
+- **When:** Fired when user taps camera button to open camera
+- **Parameters:** None
+- **Tracked in:** `HomeView.swift`
+- **Implementation:** Triggered in camera button action
+
+### `image_selected`
+- **When:** Fired when user selects an image from gallery or camera
+- **Parameters:** None
+- **Tracked in:** `LogViewModel.swift`
+- **Implementation:** Triggered in `selectImage()` method when image is set
+
+### `image_removed`
+- **When:** Fired when user removes an attached image
+- **Parameters:** None
+- **Tracked in:** `HomeView.swift`
+- **Implementation:** Triggered when user taps X button on image preview
 
 ---
 
@@ -191,7 +218,7 @@ All events are tracked through the `AnalyticsService` struct. Here are all avail
 - `AnalyticsService.trackAccountDeleted()`
 
 ### Meal Logging Methods
-- `AnalyticsService.trackMealLogged(mealType: String, totalCalories: Double, itemCount: Int)`
+- `AnalyticsService.trackMealLogged(mealType: String, totalCalories: Double, itemCount: Int, hasImage: Bool)`
 - `AnalyticsService.trackMealLogFailed(errorType: String)`
 - `AnalyticsService.trackMealEdited()`
 - `AnalyticsService.trackMealDeleted()`
@@ -206,6 +233,10 @@ All events are tracked through the `AnalyticsService` struct. Here are all avail
 - `AnalyticsService.trackDatePickerOpened()`
 - `AnalyticsService.trackMealTypeChanged(mealType: String)`
 - `AnalyticsService.trackDailyGoalChanged(newGoal: Double)`
+- `AnalyticsService.trackImagePickerOpened()`
+- `AnalyticsService.trackCameraPickerOpened()`
+- `AnalyticsService.trackImageSelected()`
+- `AnalyticsService.trackImageRemoved()`
 
 ### User Engagement Methods
 - `AnalyticsService.trackMealSummaryViewed()`
@@ -218,15 +249,15 @@ All events are tracked through the `AnalyticsService` struct. Here are all avail
 ## Where Events Are Tracked
 
 ### Service File
-- **`logcal/Services/AnalyticsService.swift`** - Contains all event definitions (19 methods)
+- **`logcal/Services/AnalyticsService.swift`** - Contains all event definitions (23 methods)
 
 ### View Models
 - **`logcal/ViewModels/AuthViewModel.swift`** - Tracks 4 authentication events
-- **`logcal/ViewModels/LogViewModel.swift`** - Tracks 5 events (meal logging, speech, meal type)
+- **`logcal/ViewModels/LogViewModel.swift`** - Tracks 6 events (meal logging, speech, meal type, image selection)
 
 ### Views
 - **`logcal/logcalApp.swift`** - Tracks 2 events (tab changes, view opens)
-- **`logcal/Views/HomeView.swift`** - Tracks 2 events (date picker, meal summary)
+- **`logcal/Views/HomeView.swift`** - Tracks 5 events (date picker, meal summary, image picker, camera picker, image removed)
 - **`logcal/Views/MealDetailView.swift`** - Tracks 1 event (meal detail view)
 - **`logcal/Views/MealEditView.swift`** - Tracks 2 events (meal edit, delete)
 - **`logcal/Views/DailyGoalView.swift`** - Tracks 1 event (daily goal change)
@@ -243,7 +274,8 @@ All events are tracked through the `AnalyticsService` struct. Here are all avail
 AnalyticsService.trackMealLogged(
     mealType: response.mealType,
     totalCalories: response.totalCalories,
-    itemCount: response.items.count
+    itemCount: response.items.count,
+    hasImage: hadImage
 )
 ```
 
@@ -262,6 +294,12 @@ if isNewUser {
 ```swift
 // In LogViewModel.swift when mic button is tapped
 AnalyticsService.trackSpeechRecognitionStarted()
+
+// In HomeView.swift when gallery button is tapped
+AnalyticsService.trackImagePickerOpened()
+
+// In LogViewModel.swift when image is selected
+AnalyticsService.trackImageSelected()
 ```
 
 ---

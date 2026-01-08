@@ -66,7 +66,11 @@ class LogViewModel: ObservableObject {
             .combineLatest(speechService.$isListening)
             .sink { [weak self] text, isListening in
                 if isListening {
-                    self?.foodText = text
+                    // Only update if we have recognized text, or if current text is empty
+                    // This prevents clearing existing text when listening starts
+                    if !text.isEmpty || self?.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true {
+                        self?.foodText = text
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -254,6 +258,9 @@ class LogViewModel: ObservableObject {
     func selectImage(_ image: UIImage?) {
         selectedImage = image
         print("DEBUG: [LogViewModel] Image selected: \(image != nil ? "yes" : "no")")
+        if image != nil {
+            AnalyticsService.trackImageSelected()
+        }
     }
     
     func removeImage() {

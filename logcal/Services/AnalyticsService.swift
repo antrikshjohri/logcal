@@ -113,6 +113,26 @@ struct AnalyticsService {
         ])
     }
     
+    /// Track image picker opened (gallery)
+    static func trackImagePickerOpened() {
+        logEvent("image_picker_opened", parameters: nil)
+    }
+    
+    /// Track camera picker opened
+    static func trackCameraPickerOpened() {
+        logEvent("camera_picker_opened", parameters: nil)
+    }
+    
+    /// Track image selected
+    static func trackImageSelected() {
+        logEvent("image_selected", parameters: nil)
+    }
+    
+    /// Track image removed
+    static func trackImageRemoved() {
+        logEvent("image_removed", parameters: nil)
+    }
+    
     // MARK: - User Engagement Events
     
     /// Track meal summary viewed
