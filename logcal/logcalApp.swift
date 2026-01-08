@@ -10,6 +10,7 @@ import SwiftData
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseAnalytics
 
 @main
 struct logcalApp: App {
@@ -26,6 +27,10 @@ struct logcalApp: App {
         // Initialize Firebase
         FirebaseApp.configure()
         print("DEBUG: Firebase configured")
+        
+        // Initialize Firebase Analytics
+        // Analytics is automatically initialized with FirebaseApp.configure()
+        print("DEBUG: Firebase Analytics initialized")
     }
     
     var body: some Scene {
@@ -43,24 +48,50 @@ struct logcalApp: App {
                                     Label("Home", systemImage: "house.fill")
                                 }
                                 .tag(0)
+                                .onAppear {
+                                    if selectedTab == 0 {
+                                        AnalyticsService.trackViewOpened(viewName: "Dashboard")
+                                    }
+                                }
                             
                             HomeView()
                                 .tabItem {
                                     Label("Log", systemImage: "plus.circle")
                                 }
                                 .tag(1)
+                                .onAppear {
+                                    if selectedTab == 1 {
+                                        AnalyticsService.trackViewOpened(viewName: "Log")
+                                    }
+                                }
                             
                             HistoryView(selectedTab: $selectedTab)
                                 .tabItem {
                                     Label("History", systemImage: "list.bullet")
                                 }
                                 .tag(2)
+                                .onAppear {
+                                    if selectedTab == 2 {
+                                        AnalyticsService.trackViewOpened(viewName: "History")
+                                    }
+                                }
                             
                             ProfileView()
                                 .tabItem {
                                     Label("Profile", systemImage: "person.fill")
                                 }
                                 .tag(3)
+                                .onAppear {
+                                    if selectedTab == 3 {
+                                        AnalyticsService.trackViewOpened(viewName: "Profile")
+                                    }
+                                }
+                        }
+                        .onChange(of: selectedTab) { oldValue, newValue in
+                            let tabNames = ["Dashboard", "Log", "History", "Profile"]
+                            if newValue < tabNames.count {
+                                AnalyticsService.trackTabChanged(tabName: tabNames[newValue])
+                            }
                         }
                         
                         // SyncHandlerView as an overlay to ensure it has access to the same modelContext

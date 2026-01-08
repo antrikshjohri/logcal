@@ -101,6 +101,10 @@ struct DailyGoalView: View {
                         dailyGoal = currentGoal
                         // Sync to Firestore
                         await cloudSyncService.syncDailyGoalToCloud(currentGoal)
+                        
+                        // Track analytics
+                        AnalyticsService.trackDailyGoalChanged(newGoal: currentGoal)
+                        
                         isSaving = false
                         dismiss()
                     }

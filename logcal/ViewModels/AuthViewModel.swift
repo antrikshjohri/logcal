@@ -102,6 +102,15 @@ class AuthViewModel: ObservableObject {
             DebugLogger.log(location: "AuthViewModel.swift:99", message: "Google sign-in completed", data: ["userId": authResult.user.uid, "email": authResult.user.email ?? "no email"], hypothesisId: "A")
             // #endregion
             print("DEBUG: Google sign-in successful: \(authResult.user.email ?? "no email")")
+            
+            // Track analytics - check if this is a new user (signup) or existing user (login)
+            let isNewUser = authResult.additionalUserInfo?.isNewUser ?? false
+            if isNewUser {
+                AnalyticsService.trackSignUp(method: "google")
+            } else {
+                AnalyticsService.trackLogin(method: "google")
+            }
+            
             isLoading = false
         } catch {
             print("DEBUG: Google sign-in error: \(error)")
@@ -132,6 +141,15 @@ class AuthViewModel: ObservableObject {
             let authResult = try await Auth.auth().signIn(with: credential)
             
             print("DEBUG: Apple sign-in successful: \(authResult.user.email ?? "no email")")
+            
+            // Track analytics - check if this is a new user (signup) or existing user (login)
+            let isNewUser = authResult.additionalUserInfo?.isNewUser ?? false
+            if isNewUser {
+                AnalyticsService.trackSignUp(method: "apple")
+            } else {
+                AnalyticsService.trackLogin(method: "apple")
+            }
+            
             isLoading = false
         } catch {
             print("DEBUG: Apple sign-in error: \(error)")
@@ -161,6 +179,9 @@ class AuthViewModel: ObservableObject {
         do {
             try Auth.auth().signOut()
             print("DEBUG: Sign out successful")
+            
+            // Track analytics
+            AnalyticsService.trackLogout()
         } catch {
             print("DEBUG: Sign out error: \(error)")
             errorMessage = error.localizedDescription
@@ -196,6 +217,9 @@ class AuthViewModel: ObservableObject {
             // Sign out from Firebase Auth to clear local state
             try Auth.auth().signOut()
             print("DEBUG: Account deletion completed")
+            
+            // Track analytics
+            AnalyticsService.trackAccountDeleted()
             
             isLoading = false
         } catch {

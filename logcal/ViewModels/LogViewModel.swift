@@ -104,6 +104,8 @@ class LogViewModel: ObservableObject {
         // Only mark as manual if change didn't come from inference
         if !isUpdatingFromInference {
             setMealType(newValue, isManual: true)
+            // Track analytics - meal type changed manually
+            AnalyticsService.trackMealTypeChanged(mealType: newValue.rawValue)
         }
     }
     
@@ -180,10 +182,21 @@ class LogViewModel: ObservableObject {
             isMealTypeManuallySet = false // Reset manual selection
             selectedDate = Date() // Reset to today
             
+            // Track analytics - successful meal log
+            AnalyticsService.trackMealLogged(
+                mealType: response.mealType,
+                totalCalories: response.totalCalories,
+                itemCount: response.items.count
+            )
+            
         } catch {
             print("DEBUG: Error caught in logMeal(): \(error)")
             print("DEBUG: Error type: \(type(of: error))")
             print("DEBUG: Error localizedDescription: \(error.localizedDescription)")
+            
+            // Track analytics - failed meal log
+            let errorType = (error as? AppError)?.errorDescription ?? "unknown"
+            AnalyticsService.trackMealLogFailed(errorType: errorType)
             
             if let appError = error as? AppError {
                 print("DEBUG: It's an AppError: \(appError.errorDescription ?? "no description")")
@@ -201,7 +214,11 @@ class LogViewModel: ObservableObject {
     func toggleSpeechRecognition() {
         if speechService.isListening {
             speechService.stopListening()
+            // Track analytics
+            AnalyticsService.trackSpeechRecognitionStopped()
         } else {
+            // Track analytics
+            AnalyticsService.trackSpeechRecognitionStarted()
             Task {
                 await speechService.startListening()
             }

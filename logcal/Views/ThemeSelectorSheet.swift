@@ -49,6 +49,7 @@ struct ThemeSelectorSheet: View {
                 ) {
                     print("DEBUG: System theme selected")
                     appThemeString = AppTheme.system.rawValue
+                    AnalyticsService.trackThemeChanged(themeName: "system")
                 }
                 
                 Divider()
@@ -62,6 +63,7 @@ struct ThemeSelectorSheet: View {
                 ) {
                     print("DEBUG: Light theme selected")
                     appThemeString = AppTheme.light.rawValue
+                    AnalyticsService.trackThemeChanged(themeName: "light")
                 }
                 
                 Divider()
@@ -75,6 +77,7 @@ struct ThemeSelectorSheet: View {
                 ) {
                     print("DEBUG: Dark theme selected")
                     appThemeString = AppTheme.dark.rawValue
+                    AnalyticsService.trackThemeChanged(themeName: "dark")
                 }
             }
             .background(Theme.cardBackground(colorScheme: effectiveColorScheme))

@@ -67,6 +67,7 @@ struct HomeView: View {
                                 .font(.headline)
                             
                             Button(action: {
+                                AnalyticsService.trackDatePickerOpened()
                                 viewModel.showDatePicker = true
                             }) {
                                 HStack {
@@ -269,6 +270,9 @@ struct HomeView: View {
                         .cornerRadius(Constants.Sizes.largeCornerRadius)
                         .padding(.horizontal)
                         .onAppear {
+                            // Track analytics
+                            AnalyticsService.trackMealSummaryViewed()
+                            
                             // Auto-dismiss after 10 seconds
                             DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
                                 withAnimation(.easeOut(duration: 0.3)) {

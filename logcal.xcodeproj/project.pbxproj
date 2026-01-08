@@ -15,6 +15,7 @@
 		9B2C80E12EFB4BBC00707824 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */; };
 		9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E52EFB4D0000707824 /* FirebaseFirestore */; };
 		9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFCBA2F0D938B00C7FD92 /* Lottie */; };
+		9B9BFDCB2F0E5D2200C7FD92 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFDCA2F0E5D2200C7FD92 /* FirebaseAnalytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -68,6 +69,7 @@
 				9B2C80A22EFB39F100707824 /* FirebaseAuth in Frameworks */,
 				9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */,
 				9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */,
+				9B9BFDCB2F0E5D2200C7FD92 /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +129,7 @@
 				9B2C80E02EFB4BBC00707824 /* GoogleSignInSwift */,
 				9B2C80E52EFB4D0000707824 /* FirebaseFirestore */,
 				9B9BFCBA2F0D938B00C7FD92 /* Lottie */,
+				9B9BFDCA2F0E5D2200C7FD92 /* FirebaseAnalytics */,
 			);
 			productName = logcal;
 			productReference = 9B2C7FC42EEF6FE400707824 /* logcal.app */;
@@ -489,6 +492,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B9BFCB92F0D938B00C7FD92 /* XCRemoteSwiftPackageReference "lottie-spm" */;
 			productName = Lottie;
+		};
+		9B9BFDCA2F0E5D2200C7FD92 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B2C80A02EFB39F100707824 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

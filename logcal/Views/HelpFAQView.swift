@@ -84,6 +84,9 @@ struct HelpFAQView: View {
         .background(Theme.backgroundColor(colorScheme: colorScheme))
         .navigationTitle("Help & FAQ")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            AnalyticsService.trackHelpFAQOpened()
+        }
     }
 }
 

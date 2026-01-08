@@ -114,6 +114,9 @@ struct MealDetailView: View {
         .sheet(isPresented: $showEditSheet) {
             MealEditView(meal: meal)
         }
+        .onAppear {
+            AnalyticsService.trackMealDetailViewed()
+        }
     }
 }
 

@@ -493,6 +493,9 @@ struct MealEditView: View {
                 await cloudSyncService.syncMealToCloud(meal)
             }
             
+            // Track analytics
+            AnalyticsService.trackMealEdited()
+            
             dismiss()
         } catch {
             print("DEBUG: Error saving meal: \(error)")
@@ -500,6 +503,9 @@ struct MealEditView: View {
     }
     
     private func deleteMeal() {
+        // Track analytics
+        AnalyticsService.trackMealDeleted()
+        
         // Delete from cloud
         Task {
             await cloudSyncService.deleteMealFromCloud(meal)
