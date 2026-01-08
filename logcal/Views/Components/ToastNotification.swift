@@ -17,7 +17,7 @@ class ToastManager: ObservableObject {
         }
         
         // Auto-dismiss after 4 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
             if self.currentToast?.id == message.id {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     self.currentToast = nil
