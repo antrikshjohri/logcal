@@ -1,6 +1,6 @@
 # Analytics Events Reference
 
-This document lists all analytics events tracked in the LogCal app. There are **23 events** total, organized into 5 categories.
+This document lists all analytics events tracked in the LogCal app. There are **30 events** total, organized into 6 categories.
 
 **Note:** When adding new features or touchpoints, always add relevant analytics tracking. Update this document accordingly.
 
@@ -13,6 +13,7 @@ This document lists all analytics events tracked in the LogCal app. There are **
 - **Navigation** (2 events) - Tab changes and view openings
 - **Feature Usage** (9 events) - Speech recognition, date picker, meal type changes, daily goal updates, image/camera features
 - **User Engagement** (4 events) - Meal summaries, detail views, help/FAQ, theme changes
+- **Notifications** (7 events) - Notification preferences, permissions, scheduling, and interactions
 
 ---
 
@@ -190,6 +191,66 @@ This document lists all analytics events tracked in the LogCal app. There are **
 
 ---
 
+## 6. Notification Events (7 events)
+
+### `notification_preference_changed`
+- **When:** Fired when user toggles meal reminders on or off
+- **Parameters:**
+  - `meal_reminders_enabled` (Bool): true if enabled, false if disabled
+- **Tracked in:** `NotificationsSettingsView.swift`
+- **Implementation:** Triggered in `handleToggleChange()` when toggle state changes
+
+### `notification_tapped`
+- **When:** Fired when user taps on a meal reminder notification
+- **Parameters:**
+  - `notification_type` (String): "meal_reminder"
+- **Tracked in:** `NotificationDelegate.swift`
+- **Implementation:** Triggered in `userNotificationCenter(_:didReceive:withCompletionHandler:)` when notification is tapped
+
+### `notification_permission_requested`
+- **When:** Fired when app requests notification permission from user
+- **Parameters:** None
+- **Tracked in:** `NotificationService.swift`
+- **Implementation:** Triggered in `requestAuthorization()` method
+
+### `notification_permission_granted`
+- **When:** Fired when user grants notification permission
+- **Parameters:** None
+- **Tracked in:** `NotificationService.swift`
+- **Implementation:** Triggered in `requestAuthorization()` after permission is granted
+
+### `notification_permission_denied`
+- **When:** Fired when user denies notification permission
+- **Parameters:** None
+- **Tracked in:** `NotificationService.swift`
+- **Implementation:** Triggered in `requestAuthorization()` if permission is denied or if there's an error
+
+### `notification_times_saved`
+- **When:** Fired when user saves custom notification times
+- **Parameters:**
+  - `breakfast_hour` (Int): Hour for breakfast reminder (0-23)
+  - `breakfast_minute` (Int): Minute for breakfast reminder (0-59)
+  - `lunch_hour` (Int): Hour for lunch reminder (0-23)
+  - `lunch_minute` (Int): Minute for lunch reminder (0-59)
+  - `dinner_hour` (Int): Hour for dinner reminder (0-23)
+  - `dinner_minute` (Int): Minute for dinner reminder (0-59)
+- **Tracked in:** `NotificationsSettingsView.swift`
+- **Implementation:** Triggered in `saveCustomTimes()` after successful save to Firestore
+
+### `notifications_scheduled`
+- **When:** Fired when meal reminder notifications are scheduled
+- **Parameters:**
+  - `breakfast_hour` (Int): Hour for breakfast reminder (0-23)
+  - `breakfast_minute` (Int): Minute for breakfast reminder (0-59)
+  - `lunch_hour` (Int): Hour for lunch reminder (0-23)
+  - `lunch_minute` (Int): Minute for lunch reminder (0-59)
+  - `dinner_hour` (Int): Hour for dinner reminder (0-23)
+  - `dinner_minute` (Int): Minute for dinner reminder (0-59)
+- **Tracked in:** `NotificationService.swift`
+- **Implementation:** Triggered in `scheduleMealReminders()` after all notifications are scheduled
+
+---
+
 ## Parameter Types Reference
 
 ### String Parameters
@@ -244,12 +305,21 @@ All events are tracked through the `AnalyticsService` struct. Here are all avail
 - `AnalyticsService.trackHelpFAQOpened()`
 - `AnalyticsService.trackThemeChanged(themeName: String)`
 
+### Notification Methods
+- `AnalyticsService.trackNotificationPreferenceChanged(mealRemindersEnabled: Bool)`
+- `AnalyticsService.trackNotificationTapped(notificationType: String)`
+- `AnalyticsService.trackNotificationPermissionRequested()`
+- `AnalyticsService.trackNotificationPermissionGranted()`
+- `AnalyticsService.trackNotificationPermissionDenied()`
+- `AnalyticsService.trackNotificationTimesSaved(breakfastHour: Int, breakfastMinute: Int, lunchHour: Int, lunchMinute: Int, dinnerHour: Int, dinnerMinute: Int)`
+- `AnalyticsService.trackNotificationsScheduled(breakfastHour: Int, breakfastMinute: Int, lunchHour: Int, lunchMinute: Int, dinnerHour: Int, dinnerMinute: Int)`
+
 ---
 
 ## Where Events Are Tracked
 
 ### Service File
-- **`logcal/Services/AnalyticsService.swift`** - Contains all event definitions (23 methods)
+- **`logcal/Services/AnalyticsService.swift`** - Contains all event definitions (30 methods)
 
 ### View Models
 - **`logcal/ViewModels/AuthViewModel.swift`** - Tracks 4 authentication events
@@ -263,6 +333,11 @@ All events are tracked through the `AnalyticsService` struct. Here are all avail
 - **`logcal/Views/DailyGoalView.swift`** - Tracks 1 event (daily goal change)
 - **`logcal/Views/HelpFAQView.swift`** - Tracks 1 event (help/FAQ open)
 - **`logcal/Views/ThemeSelectorSheet.swift`** - Tracks 1 event (theme change)
+- **`logcal/Views/NotificationsSettingsView.swift`** - Tracks 2 events (preference changed, times saved)
+
+### Services
+- **`logcal/Services/NotificationService.swift`** - Tracks 2 events (permission requested/granted/denied, notifications scheduled)
+- **`logcal/Utils/NotificationDelegate.swift`** - Tracks 1 event (notification tapped)
 
 ---
 

@@ -431,6 +431,16 @@ struct NotificationsSettingsView: View {
                         message: "Notification times have been updated",
                         type: .success
                     ))
+                    
+                    // Track analytics
+                    AnalyticsService.trackNotificationTimesSaved(
+                        breakfastHour: breakfast.hour,
+                        breakfastMinute: breakfast.minute,
+                        lunchHour: lunch.hour,
+                        lunchMinute: lunch.minute,
+                        dinnerHour: dinner.hour,
+                        dinnerMinute: dinner.minute
+                    )
                 }
             } catch {
                 print("DEBUG: [NotificationsSettings] Error saving custom times to Firestore: \(error)")

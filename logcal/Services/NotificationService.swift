@@ -116,6 +116,16 @@ class NotificationService {
         
         print("DEBUG: [NotificationService] All meal reminders scheduled")
         
+        // Track analytics
+        AnalyticsService.trackNotificationsScheduled(
+            breakfastHour: breakfast.hour,
+            breakfastMinute: breakfast.minute,
+            lunchHour: lunch.hour,
+            lunchMinute: lunch.minute,
+            dinnerHour: dinner.hour,
+            dinnerMinute: dinner.minute
+        )
+        
         // Debug: List all pending notifications
         await listPendingNotifications()
     }

@@ -188,6 +188,30 @@ struct AnalyticsService {
         logEvent("notification_permission_denied", parameters: nil)
     }
     
+    /// Track notification times saved
+    static func trackNotificationTimesSaved(breakfastHour: Int, breakfastMinute: Int, lunchHour: Int, lunchMinute: Int, dinnerHour: Int, dinnerMinute: Int) {
+        logEvent("notification_times_saved", parameters: [
+            "breakfast_hour": breakfastHour,
+            "breakfast_minute": breakfastMinute,
+            "lunch_hour": lunchHour,
+            "lunch_minute": lunchMinute,
+            "dinner_hour": dinnerHour,
+            "dinner_minute": dinnerMinute
+        ])
+    }
+    
+    /// Track notifications scheduled
+    static func trackNotificationsScheduled(breakfastHour: Int, breakfastMinute: Int, lunchHour: Int, lunchMinute: Int, dinnerHour: Int, dinnerMinute: Int) {
+        logEvent("notifications_scheduled", parameters: [
+            "breakfast_hour": breakfastHour,
+            "breakfast_minute": breakfastMinute,
+            "lunch_hour": lunchHour,
+            "lunch_minute": lunchMinute,
+            "dinner_hour": dinnerHour,
+            "dinner_minute": dinnerMinute
+        ])
+    }
+    
     // MARK: - Private Helper
     
     /// Internal method to log events with Firebase Analytics
