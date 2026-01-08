@@ -14,6 +14,7 @@ struct SyncHandlerView: View {
     @ObservedObject var cloudSyncService: CloudSyncService
     @ObservedObject var authViewModel: AuthViewModel
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
+    @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
     @State private var hasSyncedOnLaunch = false
     
     var body: some View {
@@ -35,6 +36,13 @@ struct SyncHandlerView: View {
                             print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping meal sync but fetching daily goal")
                             // Still fetch daily goal even if we have local meals
                             await fetchDailyGoalFromCloud()
+                            // Schedule notifications if enabled
+                            if mealRemindersEnabled {
+                                print("DEBUG: [SyncHandlerView] mealRemindersEnabled=true, scheduling notifications...")
+                                await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                            } else {
+                                print("DEBUG: [SyncHandlerView] mealRemindersEnabled=false, skipping notification scheduling")
+                            }
                             hasSyncedOnLaunch = true
                         } else {
                             print("DEBUG: User is signed in on launch with no local data, syncing from cloud...")
@@ -97,6 +105,10 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Schedule notifications if enabled
+                                if mealRemindersEnabled {
+                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                }
                             } else if wasAnonymous {
                                 print("DEBUG: Switching from anonymous to authenticated, migrating anonymous data...")
                                 // First migrate anonymous local data to cloud
@@ -105,6 +117,10 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Schedule notifications if enabled
+                                if mealRemindersEnabled {
+                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                }
                             } else {
                                 print("DEBUG: User signed in, migrating and syncing data...")
                                 // First migrate local data to cloud (only if there are local meals)
@@ -113,6 +129,10 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Schedule notifications if enabled
+                                if mealRemindersEnabled {
+                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                }
                             }
                             
                             // #region agent log
@@ -145,6 +165,10 @@ struct SyncHandlerView: View {
                             let descriptor = FetchDescriptor<MealEntry>()
                             if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
                                 print("DEBUG: SyncHandlerView appeared with authenticated user and existing local data (\(localMeals.count) meals), skipping sync")
+                                // Schedule notifications if enabled
+                                if mealRemindersEnabled {
+                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                }
                                 hasSyncedOnLaunch = true
                             } else if !hasSyncedOnLaunch {
                                 // Only sync if we haven't synced yet and have no local data
@@ -156,6 +180,10 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Schedule notifications if enabled
+                                if mealRemindersEnabled {
+                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                }
                                 // #region agent log
                                 DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "Sync completed in onAppear", data: ["userId": user.uid], hypothesisId: "A")
                                 // #endregion

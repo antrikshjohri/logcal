@@ -157,6 +157,37 @@ struct AnalyticsService {
         ])
     }
     
+    // MARK: - Notification Events
+    
+    /// Track notification preference changed
+    static func trackNotificationPreferenceChanged(mealRemindersEnabled: Bool) {
+        logEvent("notification_preference_changed", parameters: [
+            "meal_reminders_enabled": mealRemindersEnabled
+        ])
+    }
+    
+    /// Track notification tapped
+    static func trackNotificationTapped(notificationType: String) {
+        logEvent("notification_tapped", parameters: [
+            "notification_type": notificationType
+        ])
+    }
+    
+    /// Track notification permission requested
+    static func trackNotificationPermissionRequested() {
+        logEvent("notification_permission_requested", parameters: nil)
+    }
+    
+    /// Track notification permission granted
+    static func trackNotificationPermissionGranted() {
+        logEvent("notification_permission_granted", parameters: nil)
+    }
+    
+    /// Track notification permission denied
+    static func trackNotificationPermissionDenied() {
+        logEvent("notification_permission_denied", parameters: nil)
+    }
+    
     // MARK: - Private Helper
     
     /// Internal method to log events with Firebase Analytics

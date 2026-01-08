@@ -170,6 +170,62 @@ struct FirestoreService {
         }
     }
     
+    /// Save notification preferences to Firestore
+    func saveNotificationPreferences(mealRemindersEnabled: Bool) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, skipping Firestore save for notification preferences")
+            return
+        }
+        
+        let userData: [String: Any] = [
+            "notificationPreferences": [
+                "mealRemindersEnabled": mealRemindersEnabled
+            ],
+            "updatedAt": Timestamp(date: Date())
+        ]
+        
+        do {
+            try await db.collection("users").document(userId).setData(userData, merge: true)
+            print("DEBUG: Successfully saved notification preferences to Firestore: mealRemindersEnabled=\(mealRemindersEnabled)")
+        } catch {
+            print("DEBUG: Error saving notification preferences to Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
+    /// Fetch notification preferences from Firestore
+    func fetchNotificationPreferences() async throws -> Bool? {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, cannot fetch notification preferences from Firestore")
+            return nil
+        }
+        
+        print("DEBUG: Fetching notification preferences from Firestore for user: \(userId)")
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            
+            if document.exists {
+                let data = document.data()
+                
+                // Check for notification preferences
+                if let notificationPrefs = data?["notificationPreferences"] as? [String: Any],
+                   let mealRemindersEnabled = notificationPrefs["mealRemindersEnabled"] as? Bool {
+                    print("DEBUG: Fetched notification preferences from Firestore: mealRemindersEnabled=\(mealRemindersEnabled)")
+                    return mealRemindersEnabled
+                }
+                
+                print("DEBUG: Notification preferences not found in Firestore document")
+                return nil
+            } else {
+                print("DEBUG: User document does not exist in Firestore")
+                return nil
+            }
+        } catch {
+            print("DEBUG: Error fetching notification preferences from Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
     /// Fetch daily goal from Firestore
     func fetchDailyGoal() async throws -> Double? {
         guard let userId = Auth.auth().currentUser?.uid else {

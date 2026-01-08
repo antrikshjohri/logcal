@@ -11,6 +11,7 @@ import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseAnalytics
+import UserNotifications
 
 @main
 struct logcalApp: App {
@@ -21,6 +22,7 @@ struct logcalApp: App {
     @State private var isInitialSyncAfterSignIn = false
     @State private var selectedTab: Int = 0
     @AppStorage("appTheme") private var appThemeString: String = AppTheme.system.rawValue
+    @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
     
     init() {
         print("DEBUG: App initializing...")
@@ -31,6 +33,10 @@ struct logcalApp: App {
         // Initialize Firebase Analytics
         // Analytics is automatically initialized with FirebaseApp.configure()
         print("DEBUG: Firebase Analytics initialized")
+        
+        // Set up notification delegate
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        print("DEBUG: Notification delegate configured")
     }
     
     var body: some Scene {
@@ -117,6 +123,10 @@ struct logcalApp: App {
                     .environmentObject(authViewModel)
                     .toastNotification(toastManager: toastManager)
                     .environmentObject(toastManager)
+                    .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogTab"))) { _ in
+                        // Handle notification tap - navigate to Log tab
+                        selectedTab = 1
+                    }
                 }
             }
             .preferredColorScheme(appTheme.colorScheme)

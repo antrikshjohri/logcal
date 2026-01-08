@@ -113,6 +113,24 @@ struct ProfileView: View {
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
                     
+                    // Notifications Section
+                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                        Text("Notifications")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Theme.secondaryText)
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        NavigationLink(destination: NotificationsSettingsView()) {
+                            SettingsRowContent(
+                                icon: "bell.fill",
+                                iconColor: Theme.accentBlue,
+                                title: "Meal Reminders"
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                    }
+                    
                     // Support Section
                     VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
                         Text("Support")

@@ -201,6 +201,11 @@ class LogViewModel: ObservableObject {
                 Task {
                     await cloudSyncService.syncMealToCloud(entry)
                 }
+                
+                // Reschedule notifications after meal is logged (smart logic will skip if needed)
+                Task {
+                    await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
+                }
             }
             
             latestResult = response
