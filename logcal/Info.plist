@@ -16,5 +16,7 @@
 		</dict>
 		<dict/>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LogCal needs access to your photo library to attach food images for calorie logging.</string>
 </dict>
 </plist>

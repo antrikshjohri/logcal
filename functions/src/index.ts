@@ -17,6 +17,7 @@ const MAX_REQUESTS_PER_MINUTE = 10; // Per user
 interface LogMealRequest {
   foodText: string;
   mealType: string;
+  imageBase64?: string; // Optional base64-encoded image
 }
 
 interface MealLogResponse {
@@ -99,8 +100,9 @@ async function trackUsage(uid: string): Promise<{ allowed: boolean; reason?: str
 /**
  * Call OpenAI API to log a meal
  */
-async function callOpenAI(foodText: string, mealType: string): Promise<MealLogResponse> {
+async function callOpenAI(foodText: string, mealType: string, imageBase64?: string): Promise<MealLogResponse> {
   console.log("DEBUG: callOpenAI function called");
+  console.log("DEBUG: hasImage =", imageBase64 ? "yes" : "no");
   
   // Get API key from Firebase Secrets (set via functions:secrets:set)
   const apiKey = process.env.OPENAI_API_KEY;
@@ -117,9 +119,37 @@ async function callOpenAI(foodText: string, mealType: string): Promise<MealLogRe
   
   console.log("DEBUG: API key is configured (length: " + apiKey.length + ", starts with: " + apiKey.substring(0, 7) + "...)");
 
-  const systemPrompt = `You are a calorie logging assistant for Indian food. When given a food description, estimate calories based on typical Indian portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
+  const systemPrompt = `You are a calorie logging assistant for Indian food. When given a food description or image, estimate calories based on typical Indian portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
 
-  const userMessage = `Food description: ${foodText}\nMeal type: ${mealType}`;
+  // Build user message content array for Vision API
+  const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+  
+  // Add text if provided
+  if (foodText && foodText.trim().length > 0) {
+    userContent.push({
+      type: "text",
+      text: `Food description: ${foodText}\nMeal type: ${mealType}`
+    });
+  } else {
+    // If no text, still include meal type
+    userContent.push({
+      type: "text",
+      text: `Meal type: ${mealType}`
+    });
+  }
+  
+  // Add image if provided
+  if (imageBase64) {
+    // Ensure it has the data URI prefix
+    const imageUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    userContent.push({
+      type: "image_url",
+      image_url: {
+        url: imageUrl
+      }
+    });
+    console.log("DEBUG: Image added to request, base64 length:", imageBase64.length);
+  }
 
   const jsonSchema = {
     name: "meal_log",
@@ -159,7 +189,7 @@ async function callOpenAI(foodText: string, mealType: string): Promise<MealLogRe
     temperature: OPENAI_TEMPERATURE,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
+      { role: "user", content: userContent },
     ],
     response_format: {
       type: "json_schema",
@@ -235,15 +265,18 @@ export const logMeal = functions.runWith({
 
     const uid = context.auth.uid;
     console.log("DEBUG: Authenticated user UID:", uid);
-    const { foodText, mealType } = data;
-    console.log("DEBUG: Request data - foodText:", foodText, "mealType:", mealType);
+    const { foodText, mealType, imageBase64 } = data;
+    console.log("DEBUG: Request data - foodText:", foodText, "mealType:", mealType, "hasImage:", !!imageBase64);
 
-    // Validate input
-    if (!foodText || typeof foodText !== "string" || foodText.trim().length === 0) {
-      console.error("Invalid argument: foodText is missing or empty for UID:", uid);
+    // Validate input - either foodText or imageBase64 must be provided
+    const hasText = foodText && typeof foodText === "string" && foodText.trim().length > 0;
+    const hasImage = imageBase64 && typeof imageBase64 === "string" && imageBase64.length > 0;
+    
+    if (!hasText && !hasImage) {
+      console.error("Invalid argument: Both foodText and imageBase64 are missing or empty for UID:", uid);
       throw new functions.https.HttpsError(
         "invalid-argument",
-        "foodText is required and must be a non-empty string"
+        "Either foodText or imageBase64 must be provided"
       );
     }
 
@@ -270,7 +303,11 @@ export const logMeal = functions.runWith({
     try {
       // Call OpenAI API
       console.log("DEBUG: Calling OpenAI API...");
-      const response = await callOpenAI(foodText.trim(), mealType);
+      const response = await callOpenAI(
+        hasText ? foodText.trim() : "",
+        mealType,
+        hasImage ? imageBase64 : undefined
+      );
       console.log("DEBUG: OpenAI API call successful, total calories:", response.total_calories);
 
       // Log successful request to Firestore (optional - for analytics)
@@ -278,9 +315,10 @@ export const logMeal = functions.runWith({
       try {
         await admin.firestore().collection("mealLogs").add({
           uid,
-          foodText: foodText.trim(),
+          foodText: hasText ? foodText.trim() : "",
           mealType,
           totalCalories: response.total_calories,
+          hasImage: hasImage,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
         console.log("DEBUG: Successfully logged meal to Firestore");

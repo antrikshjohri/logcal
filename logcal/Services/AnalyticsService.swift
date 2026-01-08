@@ -40,11 +40,12 @@ struct AnalyticsService {
     // MARK: - Meal Logging Events
     
     /// Track successful meal log
-    static func trackMealLogged(mealType: String, totalCalories: Double, itemCount: Int) {
+    static func trackMealLogged(mealType: String, totalCalories: Double, itemCount: Int, hasImage: Bool = false) {
         logEvent("meal_logged", parameters: [
             "meal_type": mealType,
             "total_calories": totalCalories,
-            "item_count": itemCount
+            "item_count": itemCount,
+            "has_image": hasImage
         ])
     }
     

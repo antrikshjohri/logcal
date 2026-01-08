@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 import Combine
+import UIKit
 
 @MainActor
 class LogViewModel: ObservableObject {
@@ -30,6 +31,8 @@ class LogViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var latestResult: MealLogResponse?
     @Published var isListening: Bool = false
+    @Published var selectedImage: UIImage?
+    @Published var showImagePicker: Bool = false
     
     private var openAIService: OpenAIService?
     private var openAIServiceError: AppError?
@@ -115,10 +118,16 @@ class LogViewModel: ObservableObject {
         print("DEBUG: selectedMealType: \(selectedMealType.rawValue)")
         print("DEBUG: Constants.API.useFirebase: \(Constants.API.useFirebase)")
         
-        guard !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            print("DEBUG: Food text is empty, returning")
+        // Allow logging if either text or image is present
+        let hasText = !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasImage = selectedImage != nil
+        
+        guard hasText || hasImage else {
+            print("DEBUG: Both food text and image are empty, returning")
             return
         }
+        
+        print("DEBUG: hasText: \(hasText), hasImage: \(hasImage)")
         
         // Stop speech recognition immediately when Log Meal button is tapped
         if speechService.isListening {
@@ -148,7 +157,7 @@ class LogViewModel: ObservableObject {
         do {
             let mealTypeString = selectedMealType.rawValue
             print("DEBUG: Calling openAIService.logMeal()...")
-            let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString)
+            let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString, image: selectedImage)
             print("DEBUG: Received response from openAIService: \(response.totalCalories) calories")
             
             // Save to SwiftData
@@ -178,16 +187,20 @@ class LogViewModel: ObservableObject {
             }
             
             latestResult = response
-            foodText = "" // Clear input after successful log
-            isMealTypeManuallySet = false // Reset manual selection
-            selectedDate = Date() // Reset to today
             
-            // Track analytics - successful meal log
+            // Track analytics - successful meal log (check image before clearing)
+            let hadImage = selectedImage != nil
             AnalyticsService.trackMealLogged(
                 mealType: response.mealType,
                 totalCalories: response.totalCalories,
-                itemCount: response.items.count
+                itemCount: response.items.count,
+                hasImage: hadImage
             )
+            
+            foodText = "" // Clear input after successful log
+            selectedImage = nil // Clear image after successful log
+            isMealTypeManuallySet = false // Reset manual selection
+            selectedDate = Date() // Reset to today
             
         } catch {
             print("DEBUG: Error caught in logMeal(): \(error)")
@@ -223,6 +236,16 @@ class LogViewModel: ObservableObject {
                 await speechService.startListening()
             }
         }
+    }
+    
+    func selectImage(_ image: UIImage?) {
+        selectedImage = image
+        print("DEBUG: [LogViewModel] Image selected: \(image != nil ? "yes" : "no")")
+    }
+    
+    func removeImage() {
+        selectedImage = nil
+        print("DEBUG: [LogViewModel] Image removed")
     }
 }
 

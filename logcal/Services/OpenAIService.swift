@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 struct OpenAIService {
     private let apiKey: String?
@@ -20,9 +21,10 @@ struct OpenAIService {
         }
     }
     
-    func logMeal(foodText: String, mealType: String) async throws -> MealLogResponse {
+    func logMeal(foodText: String, mealType: String, image: UIImage?) async throws -> MealLogResponse {
         print("DEBUG: OpenAIService.logMeal() called")
         print("DEBUG: useFirebase = \(Constants.API.useFirebase)")
+        print("DEBUG: hasImage = \(image != nil)")
         
         // Use Firebase Functions if enabled
         if Constants.API.useFirebase {
@@ -37,7 +39,15 @@ struct OpenAIService {
                 print("DEBUG: User already authenticated")
             }
             print("DEBUG: Calling firebaseService.logMeal()...")
-            return try await firebaseService.logMeal(foodText: foodText, mealType: mealType)
+            
+            // Convert image to Data for Firebase Function
+            var imageData: Data? = nil
+            if let image = image {
+                imageData = image.jpegData(compressionQuality: 0.8)
+                print("DEBUG: Image converted to Data: \(imageData?.count ?? 0) bytes")
+            }
+            
+            return try await firebaseService.logMeal(foodText: foodText, mealType: mealType, imageData: imageData)
         }
         
         // Fallback to direct OpenAI API (for development)
@@ -45,18 +55,49 @@ struct OpenAIService {
             throw AppError.apiKeyNotFound
         }
         
-        return try await logMealDirect(foodText: foodText, mealType: mealType, apiKey: apiKey)
+        return try await logMealDirect(foodText: foodText, mealType: mealType, image: image, apiKey: apiKey)
     }
     
-    private func logMealDirect(foodText: String, mealType: String, apiKey: String) async throws -> MealLogResponse {
+    private func logMealDirect(foodText: String, mealType: String, image: UIImage?, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant. When given a food description, estimate calories based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
+        You are a calorie logging assistant. When given a food description or image, estimate calories based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
         """
         
-        let userMessage = """
-        Food description: \(foodText)
-        Meal type: \(mealType)
-        """
+        // Build user message content
+        var userContent: [[String: Any]] = []
+        
+        // Add text if provided
+        if !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let textMessage = """
+            Food description: \(foodText)
+            Meal type: \(mealType)
+            """
+            userContent.append([
+                "type": "text",
+                "text": textMessage
+            ])
+        } else {
+            // If no text, still include meal type
+            userContent.append([
+                "type": "text",
+                "text": "Meal type: \(mealType)"
+            ])
+        }
+        
+        // Add image if provided
+        if let image = image {
+            guard let base64Image = ImageUtils.convertToBase64(image) else {
+                throw AppError.unknown(NSError(domain: "ImageUtils", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to base64"]))
+            }
+            
+            userContent.append([
+                "type": "image_url",
+                "image_url": [
+                    "url": base64Image
+                ]
+            ])
+            print("DEBUG: [OpenAI] Image added to request, base64 length: \(base64Image.count)")
+        }
         
         let jsonSchema: [String: Any] = [
             "name": "meal_log",
@@ -101,7 +142,7 @@ struct OpenAIService {
                 ],
                 [
                     "role": "user",
-                    "content": userMessage
+                    "content": userContent
                 ]
             ],
             "response_format": [

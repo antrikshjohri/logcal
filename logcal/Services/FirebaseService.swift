@@ -13,7 +13,7 @@ struct FirebaseService {
     private let functions = Functions.functions()
     
     /// Log a meal using Firebase Functions (requires authentication)
-    func logMeal(foodText: String, mealType: String) async throws -> MealLogResponse {
+    func logMeal(foodText: String, mealType: String, imageData: Data?) async throws -> MealLogResponse {
         // Ensure user is authenticated (Firebase Functions onCall handles auth automatically)
         if !isAuthenticated {
             print("DEBUG: User not authenticated, attempting anonymous sign-in...")
@@ -30,6 +30,13 @@ struct FirebaseService {
             "foodText": foodText,
             "mealType": mealType
         ]
+        
+        // Add image if provided (convert to base64)
+        if let imageData = imageData {
+            let base64String = imageData.base64EncodedString()
+            requestData["imageBase64"] = base64String
+            print("DEBUG: [FirebaseService] Image added to request, base64 length: \(base64String.count)")
+        }
         
         // Add country if available
         if !countryName.isEmpty {

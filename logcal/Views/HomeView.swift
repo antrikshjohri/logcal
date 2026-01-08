@@ -140,6 +140,31 @@ struct HomeView: View {
                         Text("What did you eat?")
                             .font(.headline)
                         
+                        // Image preview (if image is selected)
+                        if let image = viewModel.selectedImage {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 80, height: 80)
+                                        .clipShape(RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius))
+                                    
+                                    Button(action: {
+                                        viewModel.removeImage()
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.white)
+                                            .background(Color.black.opacity(0.6))
+                                            .clipShape(Circle())
+                                    }
+                                    .offset(x: 4, y: -4)
+                                }
+                            }
+                            .padding(.bottom, Constants.Spacing.small)
+                        }
+                        
                         ZStack(alignment: .topLeading) {
                             TextEditor(text: $viewModel.foodText)
                                 .frame(minHeight: Constants.Sizes.textEditorMinHeight)
@@ -151,7 +176,7 @@ struct HomeView: View {
                                 )
                             
                             // Placeholder text
-                            if viewModel.foodText.isEmpty {
+                            if viewModel.foodText.isEmpty && viewModel.selectedImage == nil {
                                 Text("Speak naturally about your meal...")
                                     .foregroundColor(Constants.Colors.primaryGray)
                                     .padding(.horizontal, Constants.Spacing.regular)
@@ -159,11 +184,26 @@ struct HomeView: View {
                                     .allowsHitTesting(false)
                             }
                             
-                            // Mic button
+                            // Mic and Image buttons
                             VStack {
                                 Spacer()
                                 HStack {
                                     Spacer()
+                                    
+                                    // Image picker button
+                                    Button(action: {
+                                        viewModel.showImagePicker = true
+                                    }) {
+                                        Image(systemName: viewModel.selectedImage != nil ? "photo.fill" : "photo")
+                                            .font(.system(size: Constants.Sizes.micIcon))
+                                            .foregroundColor(Constants.Colors.primaryBlue)
+                                            .padding(Constants.Spacing.medium)
+                                            .background(Constants.Colors.micInactiveBackground)
+                                            .clipShape(Circle())
+                                    }
+                                    .padding(.trailing, Constants.Spacing.small)
+                                    
+                                    // Mic button
                                     Button(action: {
                                         viewModel.toggleSpeechRecognition()
                                     }) {
@@ -181,6 +221,12 @@ struct HomeView: View {
                         }
                     }
                     .padding(.horizontal)
+                    .sheet(isPresented: $viewModel.showImagePicker) {
+                        ImagePickerView(selectedImage: Binding(
+                            get: { viewModel.selectedImage },
+                            set: { viewModel.selectImage($0) }
+                        ))
+                    }
                     
                     // Log button
                     Button(action: {
@@ -207,12 +253,12 @@ struct HomeView: View {
                         .background(
                             viewModel.isLoading 
                                 ? Color.gray.opacity(0.3) 
-                                : (viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Constants.Colors.primaryGray : Constants.Colors.primaryBlue)
+                                : ((viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.selectedImage == nil) ? Constants.Colors.primaryGray : Constants.Colors.primaryBlue)
                         )
                         .foregroundColor(.white)
                         .cornerRadius(Constants.Sizes.cornerRadius + 2)
                     }
-                    .disabled(viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
+                    .disabled((viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.selectedImage == nil) || viewModel.isLoading)
                     .padding(.horizontal)
                     
                     // Result card
