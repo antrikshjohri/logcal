@@ -18,5 +18,7 @@
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>LogCal needs access to your photo library to attach food images for calorie logging.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>LogCal needs access to your camera to capture food images for calorie logging.</string>
 </dict>
 </plist>

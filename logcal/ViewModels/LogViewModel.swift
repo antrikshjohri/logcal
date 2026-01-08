@@ -33,6 +33,7 @@ class LogViewModel: ObservableObject {
     @Published var isListening: Bool = false
     @Published var selectedImage: UIImage?
     @Published var showImagePicker: Bool = false
+    @Published var showCameraPicker: Bool = false
     
     private var openAIService: OpenAIService?
     private var openAIServiceError: AppError?

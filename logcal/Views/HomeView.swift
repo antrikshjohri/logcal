@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import Lottie
+import UIKit
 
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
@@ -190,6 +191,21 @@ struct HomeView: View {
                                 HStack {
                                     Spacer()
                                     
+                                    // Camera button (only show if camera is available)
+                                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                        Button(action: {
+                                            viewModel.showCameraPicker = true
+                                        }) {
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: Constants.Sizes.micIcon))
+                                                .foregroundColor(Constants.Colors.primaryBlue)
+                                                .padding(Constants.Spacing.medium)
+                                                .background(Constants.Colors.micInactiveBackground)
+                                                .clipShape(Circle())
+                                        }
+                                        .padding(.trailing, Constants.Spacing.small)
+                                    }
+                                    
                                     // Image picker button
                                     Button(action: {
                                         viewModel.showImagePicker = true
@@ -223,6 +239,12 @@ struct HomeView: View {
                     .padding(.horizontal)
                     .sheet(isPresented: $viewModel.showImagePicker) {
                         ImagePickerView(selectedImage: Binding(
+                            get: { viewModel.selectedImage },
+                            set: { viewModel.selectImage($0) }
+                        ))
+                    }
+                    .sheet(isPresented: $viewModel.showCameraPicker) {
+                        CameraPickerView(selectedImage: Binding(
                             get: { viewModel.selectedImage },
                             set: { viewModel.selectImage($0) }
                         ))
