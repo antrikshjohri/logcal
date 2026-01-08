@@ -56,7 +56,12 @@ class NotificationService {
     }
     
     /// Schedule all meal reminder notifications
-    func scheduleMealReminders(modelContext: ModelContext) async {
+    func scheduleMealReminders(
+        modelContext: ModelContext,
+        breakfastTime: (hour: Int, minute: Int)? = nil,
+        lunchTime: (hour: Int, minute: Int)? = nil,
+        dinnerTime: (hour: Int, minute: Int)? = nil
+    ) async {
         print("DEBUG: [NotificationService] ===== Scheduling meal reminders =====")
         
         // Check authorization first
@@ -75,11 +80,18 @@ class NotificationService {
         // Cancel existing notifications first
         cancelAllMealReminders()
         
+        // Use custom times or defaults
+        let breakfast = breakfastTime ?? NotificationTimes.breakfast
+        let lunch = lunchTime ?? NotificationTimes.lunch
+        let dinner = dinnerTime ?? NotificationTimes.dinner
+        
+        print("DEBUG: [NotificationService] Using times - Breakfast: \(breakfast.hour):\(breakfast.minute), Lunch: \(lunch.hour):\(lunch.minute), Dinner: \(dinner.hour):\(dinner.minute)")
+        
         // Schedule breakfast reminder
         await scheduleMealReminder(
             mealType: .breakfast,
-            hour: NotificationTimes.breakfast.hour,
-            minute: NotificationTimes.breakfast.minute,
+            hour: breakfast.hour,
+            minute: breakfast.minute,
             identifier: NotificationIdentifier.breakfast,
             modelContext: modelContext
         )
@@ -87,8 +99,8 @@ class NotificationService {
         // Schedule lunch reminder
         await scheduleMealReminder(
             mealType: .lunch,
-            hour: NotificationTimes.lunch.hour,
-            minute: NotificationTimes.lunch.minute,
+            hour: lunch.hour,
+            minute: lunch.minute,
             identifier: NotificationIdentifier.lunch,
             modelContext: modelContext
         )
@@ -96,8 +108,8 @@ class NotificationService {
         // Schedule dinner reminder
         await scheduleMealReminder(
             mealType: .dinner,
-            hour: NotificationTimes.dinner.hour,
-            minute: NotificationTimes.dinner.minute,
+            hour: dinner.hour,
+            minute: dinner.minute,
             identifier: NotificationIdentifier.dinner,
             modelContext: modelContext
         )
@@ -191,10 +203,10 @@ class NotificationService {
             return false
         }
         
-        // Check 2: Has user logged anything in the last 2 hours?
-        let hasRecentActivity = await hasRecentMealActivity(withinHours: 2, modelContext: modelContext)
+        // Check 2: Has user logged anything in the last 30 minutes?
+        let hasRecentActivity = await hasRecentMealActivity(withinMinutes: 30, modelContext: modelContext)
         if hasRecentActivity {
-            print("DEBUG: [NotificationService] User logged a meal in last 2 hours")
+            print("DEBUG: [NotificationService] User logged a meal in last 30 minutes")
             return false
         }
         
@@ -225,9 +237,9 @@ class NotificationService {
         }
     }
     
-    /// Check if user has logged any meal within specified hours
-    private func hasRecentMealActivity(withinHours: Int, modelContext: ModelContext) async -> Bool {
-        let cutoffTime = Date().addingTimeInterval(-Double(withinHours * 60 * 60))
+    /// Check if user has logged any meal within specified minutes
+    private func hasRecentMealActivity(withinMinutes: Int, modelContext: ModelContext) async -> Bool {
+        let cutoffTime = Date().addingTimeInterval(-Double(withinMinutes * 60))
         
         let predicate = #Predicate<MealEntry> { entry in
             entry.timestamp >= cutoffTime
@@ -269,9 +281,41 @@ class NotificationService {
         print("DEBUG: [NotificationService] Cancelled all meal reminders")
     }
     
+    /// Schedule notifications with custom times from Firestore (or defaults)
+    func scheduleMealRemindersWithFirestorePreferences(modelContext: ModelContext) async {
+        let firestoreService = FirestoreService()
+        
+        // Fetch preferences from Firestore
+        if let prefs = try? await firestoreService.fetchNotificationPreferences() {
+            await scheduleMealReminders(
+                modelContext: modelContext,
+                breakfastTime: prefs.breakfastTime,
+                lunchTime: prefs.lunchTime,
+                dinnerTime: prefs.dinnerTime
+            )
+        } else {
+            // Use defaults if Firestore fetch fails
+            await scheduleMealReminders(modelContext: modelContext)
+        }
+    }
+    
     /// Reschedule notifications (call after meal is logged)
-    func rescheduleNotificationsIfNeeded(modelContext: ModelContext) async {
-        // Re-check and reschedule if needed
-        await scheduleMealReminders(modelContext: modelContext)
+    func rescheduleNotificationsIfNeeded(
+        modelContext: ModelContext,
+        breakfastTime: (hour: Int, minute: Int)? = nil,
+        lunchTime: (hour: Int, minute: Int)? = nil,
+        dinnerTime: (hour: Int, minute: Int)? = nil
+    ) async {
+        // If times provided, use them; otherwise fetch from Firestore
+        if breakfastTime != nil || lunchTime != nil || dinnerTime != nil {
+            await scheduleMealReminders(
+                modelContext: modelContext,
+                breakfastTime: breakfastTime,
+                lunchTime: lunchTime,
+                dinnerTime: dinnerTime
+            )
+        } else {
+            await scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+        }
     }
 }

@@ -19,6 +19,26 @@ struct NotificationsSettingsView: View {
     @State private var isLoading = false
     @State private var showPermissionAlert = false
     
+    // Time pickers (using Date for DatePicker, but we only care about time)
+    @State private var breakfastTime: Date = {
+        var components = DateComponents()
+        components.hour = 8
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+    @State private var lunchTime: Date = {
+        var components = DateComponents()
+        components.hour = 13
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+    @State private var dinnerTime: Date = {
+        var components = DateComponents()
+        components.hour = 20
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -75,6 +95,94 @@ struct NotificationsSettingsView: View {
                         )
                         .cornerRadius(Constants.Sizes.largeCornerRadius)
                         .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        // Time pickers (shown when reminders are enabled)
+                        if mealRemindersEnabled {
+                            VStack(spacing: Constants.Spacing.regular) {
+                                // Breakfast time
+                                HStack {
+                                    Image(systemName: "sunrise.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Theme.accentBlue)
+                                        .frame(width: 24, height: 24)
+                                    
+                                    Text("Breakfast")
+                                        .font(.system(size: 17, weight: .regular))
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    DatePicker("", selection: $breakfastTime, displayedComponents: .hourAndMinute)
+                                        .labelsHidden()
+                                        .onChange(of: breakfastTime) { oldValue, newValue in
+                                            saveCustomTimes()
+                                        }
+                                }
+                                .padding(Constants.Spacing.large)
+                                .background(Theme.cardBackground(colorScheme: colorScheme))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
+                                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
+                                )
+                                .cornerRadius(Constants.Sizes.largeCornerRadius)
+                                
+                                // Lunch time
+                                HStack {
+                                    Image(systemName: "sun.max.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Theme.accentBlue)
+                                        .frame(width: 24, height: 24)
+                                    
+                                    Text("Lunch")
+                                        .font(.system(size: 17, weight: .regular))
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    DatePicker("", selection: $lunchTime, displayedComponents: .hourAndMinute)
+                                        .labelsHidden()
+                                        .onChange(of: lunchTime) { oldValue, newValue in
+                                            saveCustomTimes()
+                                        }
+                                }
+                                .padding(Constants.Spacing.large)
+                                .background(Theme.cardBackground(colorScheme: colorScheme))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
+                                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
+                                )
+                                .cornerRadius(Constants.Sizes.largeCornerRadius)
+                                
+                                // Dinner time
+                                HStack {
+                                    Image(systemName: "moon.stars.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Theme.accentBlue)
+                                        .frame(width: 24, height: 24)
+                                    
+                                    Text("Dinner")
+                                        .font(.system(size: 17, weight: .regular))
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    DatePicker("", selection: $dinnerTime, displayedComponents: .hourAndMinute)
+                                        .labelsHidden()
+                                        .onChange(of: dinnerTime) { oldValue, newValue in
+                                            saveCustomTimes()
+                                        }
+                                }
+                                .padding(Constants.Spacing.large)
+                                .background(Theme.cardBackground(colorScheme: colorScheme))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
+                                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
+                                )
+                                .cornerRadius(Constants.Sizes.largeCornerRadius)
+                            }
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                            .padding(.top, Constants.Spacing.small)
+                        }
                     }
                     
                     // Info Section
@@ -83,7 +191,7 @@ struct NotificationsSettingsView: View {
                             Image(systemName: "info.circle")
                                 .font(.system(size: 14))
                                 .foregroundColor(Theme.secondaryText)
-                            Text("Notifications are sent at 8 AM (breakfast), 1 PM (lunch), and 8 PM (dinner). You won't receive a reminder if you've already logged that meal or logged anything in the last 2 hours.")
+                            Text("You won't receive a reminder if you've already logged that meal or logged anything in the last 30 minutes.")
                                 .font(.system(size: 13))
                                 .foregroundColor(Theme.secondaryText)
                         }
@@ -125,9 +233,24 @@ struct NotificationsSettingsView: View {
         isLoading = true
         
         Task {
+            // Get current times
+            let calendar = Calendar.current
+            let breakfastComponents = calendar.dateComponents([.hour, .minute], from: breakfastTime)
+            let lunchComponents = calendar.dateComponents([.hour, .minute], from: lunchTime)
+            let dinnerComponents = calendar.dateComponents([.hour, .minute], from: dinnerTime)
+            
+            let breakfast = (hour: breakfastComponents.hour ?? 8, minute: breakfastComponents.minute ?? 0)
+            let lunch = (hour: lunchComponents.hour ?? 13, minute: lunchComponents.minute ?? 0)
+            let dinner = (hour: dinnerComponents.hour ?? 20, minute: dinnerComponents.minute ?? 0)
+            
             // Save to Firestore
             do {
-                try await firestoreService.saveNotificationPreferences(mealRemindersEnabled: enabled)
+                try await firestoreService.saveNotificationPreferences(
+                    mealRemindersEnabled: enabled,
+                    breakfastTime: breakfast,
+                    lunchTime: lunch,
+                    dinnerTime: dinner
+                )
                 print("DEBUG: [NotificationsSettings] Saved preference to Firestore")
             } catch {
                 print("DEBUG: [NotificationsSettings] Error saving to Firestore: \(error)")
@@ -149,8 +272,13 @@ struct NotificationsSettingsView: View {
                     }
                 }
                 
-                // Schedule notifications
-                await notificationService.scheduleMealReminders(modelContext: modelContext)
+                // Schedule notifications with custom times
+                await notificationService.scheduleMealReminders(
+                    modelContext: modelContext,
+                    breakfastTime: breakfast,
+                    lunchTime: lunch,
+                    dinnerTime: dinner
+                )
                 AnalyticsService.trackNotificationPreferenceChanged(mealRemindersEnabled: true)
             } else {
                 // Cancel notifications
@@ -164,16 +292,73 @@ struct NotificationsSettingsView: View {
         }
     }
     
+    private func saveCustomTimes() {
+        Task {
+            let calendar = Calendar.current
+            let breakfastComponents = calendar.dateComponents([.hour, .minute], from: breakfastTime)
+            let lunchComponents = calendar.dateComponents([.hour, .minute], from: lunchTime)
+            let dinnerComponents = calendar.dateComponents([.hour, .minute], from: dinnerTime)
+            
+            let breakfast = (hour: breakfastComponents.hour ?? 8, minute: breakfastComponents.minute ?? 0)
+            let lunch = (hour: lunchComponents.hour ?? 13, minute: lunchComponents.minute ?? 0)
+            let dinner = (hour: dinnerComponents.hour ?? 20, minute: dinnerComponents.minute ?? 0)
+            
+            // Save to Firestore
+            do {
+                try await firestoreService.saveNotificationPreferences(
+                    mealRemindersEnabled: mealRemindersEnabled,
+                    breakfastTime: breakfast,
+                    lunchTime: lunch,
+                    dinnerTime: dinner
+                )
+                print("DEBUG: [NotificationsSettings] Saved custom times to Firestore")
+            } catch {
+                print("DEBUG: [NotificationsSettings] Error saving custom times to Firestore: \(error)")
+            }
+            
+            // Reschedule notifications if enabled
+            if mealRemindersEnabled {
+                await notificationService.scheduleMealReminders(
+                    modelContext: modelContext,
+                    breakfastTime: breakfast,
+                    lunchTime: lunch,
+                    dinnerTime: dinner
+                )
+            }
+        }
+    }
+    
     private func loadNotificationPreferences() {
         Task {
             do {
-                if let preference = try await firestoreService.fetchNotificationPreferences() {
+                if let prefs = try await firestoreService.fetchNotificationPreferences() {
                     await MainActor.run {
-                        mealRemindersEnabled = preference
-                        print("DEBUG: [NotificationsSettings] Loaded preference from Firestore: \(preference)")
+                        mealRemindersEnabled = prefs.mealRemindersEnabled
+                        
+                        // Load custom times if available
+                        if let breakfast = prefs.breakfastTime {
+                            var components = DateComponents()
+                            components.hour = breakfast.hour
+                            components.minute = breakfast.minute
+                            breakfastTime = Calendar.current.date(from: components) ?? breakfastTime
+                        }
+                        if let lunch = prefs.lunchTime {
+                            var components = DateComponents()
+                            components.hour = lunch.hour
+                            components.minute = lunch.minute
+                            lunchTime = Calendar.current.date(from: components) ?? lunchTime
+                        }
+                        if let dinner = prefs.dinnerTime {
+                            var components = DateComponents()
+                            components.hour = dinner.hour
+                            components.minute = dinner.minute
+                            dinnerTime = Calendar.current.date(from: components) ?? dinnerTime
+                        }
+                        
+                        print("DEBUG: [NotificationsSettings] Loaded preferences from Firestore: enabled=\(prefs.mealRemindersEnabled)")
                     }
                 } else {
-                    print("DEBUG: [NotificationsSettings] No preference found in Firestore, using default: \(mealRemindersEnabled)")
+                    print("DEBUG: [NotificationsSettings] No preference found in Firestore, using defaults")
                 }
             } catch {
                 print("DEBUG: [NotificationsSettings] Error loading preference from Firestore: \(error)")

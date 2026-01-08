@@ -171,16 +171,43 @@ struct FirestoreService {
     }
     
     /// Save notification preferences to Firestore
-    func saveNotificationPreferences(mealRemindersEnabled: Bool) async throws {
+    func saveNotificationPreferences(
+        mealRemindersEnabled: Bool,
+        breakfastTime: (hour: Int, minute: Int)? = nil,
+        lunchTime: (hour: Int, minute: Int)? = nil,
+        dinnerTime: (hour: Int, minute: Int)? = nil
+    ) async throws {
         guard let userId = Auth.auth().currentUser?.uid else {
             print("DEBUG: No authenticated user, skipping Firestore save for notification preferences")
             return
         }
         
+        var notificationPrefs: [String: Any] = [
+            "mealRemindersEnabled": mealRemindersEnabled
+        ]
+        
+        // Add custom times if provided
+        if let breakfast = breakfastTime {
+            notificationPrefs["breakfastTime"] = [
+                "hour": breakfast.hour,
+                "minute": breakfast.minute
+            ]
+        }
+        if let lunch = lunchTime {
+            notificationPrefs["lunchTime"] = [
+                "hour": lunch.hour,
+                "minute": lunch.minute
+            ]
+        }
+        if let dinner = dinnerTime {
+            notificationPrefs["dinnerTime"] = [
+                "hour": dinner.hour,
+                "minute": dinner.minute
+            ]
+        }
+        
         let userData: [String: Any] = [
-            "notificationPreferences": [
-                "mealRemindersEnabled": mealRemindersEnabled
-            ],
+            "notificationPreferences": notificationPrefs,
             "updatedAt": Timestamp(date: Date())
         ]
         
@@ -193,8 +220,16 @@ struct FirestoreService {
         }
     }
     
+    /// Notification preferences structure
+    struct NotificationPreferences {
+        let mealRemindersEnabled: Bool
+        let breakfastTime: (hour: Int, minute: Int)?
+        let lunchTime: (hour: Int, minute: Int)?
+        let dinnerTime: (hour: Int, minute: Int)?
+    }
+    
     /// Fetch notification preferences from Firestore
-    func fetchNotificationPreferences() async throws -> Bool? {
+    func fetchNotificationPreferences() async throws -> NotificationPreferences? {
         guard let userId = Auth.auth().currentUser?.uid else {
             print("DEBUG: No authenticated user, cannot fetch notification preferences from Firestore")
             return nil
@@ -210,8 +245,39 @@ struct FirestoreService {
                 // Check for notification preferences
                 if let notificationPrefs = data?["notificationPreferences"] as? [String: Any],
                    let mealRemindersEnabled = notificationPrefs["mealRemindersEnabled"] as? Bool {
+                    
+                    // Parse custom times
+                    var breakfastTime: (hour: Int, minute: Int)? = nil
+                    var lunchTime: (hour: Int, minute: Int)? = nil
+                    var dinnerTime: (hour: Int, minute: Int)? = nil
+                    
+                    if let breakfastDict = notificationPrefs["breakfastTime"] as? [String: Any],
+                       let hour = breakfastDict["hour"] as? Int,
+                       let minute = breakfastDict["minute"] as? Int {
+                        breakfastTime = (hour: hour, minute: minute)
+                    }
+                    
+                    if let lunchDict = notificationPrefs["lunchTime"] as? [String: Any],
+                       let hour = lunchDict["hour"] as? Int,
+                       let minute = lunchDict["minute"] as? Int {
+                        lunchTime = (hour: hour, minute: minute)
+                    }
+                    
+                    if let dinnerDict = notificationPrefs["dinnerTime"] as? [String: Any],
+                       let hour = dinnerDict["hour"] as? Int,
+                       let minute = dinnerDict["minute"] as? Int {
+                        dinnerTime = (hour: hour, minute: minute)
+                    }
+                    
+                    let prefs = NotificationPreferences(
+                        mealRemindersEnabled: mealRemindersEnabled,
+                        breakfastTime: breakfastTime,
+                        lunchTime: lunchTime,
+                        dinnerTime: dinnerTime
+                    )
+                    
                     print("DEBUG: Fetched notification preferences from Firestore: mealRemindersEnabled=\(mealRemindersEnabled)")
-                    return mealRemindersEnabled
+                    return prefs
                 }
                 
                 print("DEBUG: Notification preferences not found in Firestore document")

@@ -39,7 +39,7 @@ struct SyncHandlerView: View {
                             // Schedule notifications if enabled
                             if mealRemindersEnabled {
                                 print("DEBUG: [SyncHandlerView] mealRemindersEnabled=true, scheduling notifications...")
-                                await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                             } else {
                                 print("DEBUG: [SyncHandlerView] mealRemindersEnabled=false, skipping notification scheduling")
                             }
@@ -49,6 +49,10 @@ struct SyncHandlerView: View {
                             await cloudSyncService.syncFromCloud(modelContext: modelContext)
                             // Fetch daily goal from cloud
                             await fetchDailyGoalFromCloud()
+                            // Schedule notifications if enabled
+                            if mealRemindersEnabled {
+                                await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                            }
                             hasSyncedOnLaunch = true
                         }
                     }
@@ -107,7 +111,7 @@ struct SyncHandlerView: View {
                                 await fetchDailyGoalFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                                 }
                             } else if wasAnonymous {
                                 print("DEBUG: Switching from anonymous to authenticated, migrating anonymous data...")
@@ -119,7 +123,7 @@ struct SyncHandlerView: View {
                                 await fetchDailyGoalFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                                 }
                             } else {
                                 print("DEBUG: User signed in, migrating and syncing data...")
@@ -131,7 +135,7 @@ struct SyncHandlerView: View {
                                 await fetchDailyGoalFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                                 }
                             }
                             
@@ -167,7 +171,7 @@ struct SyncHandlerView: View {
                                 print("DEBUG: SyncHandlerView appeared with authenticated user and existing local data (\(localMeals.count) meals), skipping sync")
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                                 }
                                 hasSyncedOnLaunch = true
                             } else if !hasSyncedOnLaunch {
@@ -182,7 +186,7 @@ struct SyncHandlerView: View {
                                 await fetchDailyGoalFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealReminders(modelContext: modelContext)
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                                 }
                                 // #region agent log
                                 DebugLogger.log(location: "SyncHandlerView.swift:onAppear", message: "Sync completed in onAppear", data: ["userId": user.uid], hypothesisId: "A")
