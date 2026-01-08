@@ -327,6 +327,7 @@ Navigate to: **Firebase Console** → **Analytics** → **Events**
 
 ## Important Notes
 
+- **Always add analytics for new features:** When implementing new touchpoints or features, add relevant analytics tracking and update this document
 - All events include debug logging in development mode (look for `DEBUG: [Analytics]` in console)
 - Events are automatically sent to Firebase Analytics
 - No PII (Personally Identifiable Information) is tracked
