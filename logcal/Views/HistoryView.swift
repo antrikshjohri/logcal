@@ -365,9 +365,18 @@ struct MealRowView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(meal.foodText)
-                    .font(.headline)
-                    .lineLimit(2)
+                HStack(spacing: 6) {
+                    Text(meal.foodText)
+                        .font(.headline)
+                        .lineLimit(2)
+                    
+                    // Show image indicator if image was used
+                    if meal.hasImageValue {
+                        Image(systemName: "photo.fill")
+                            .font(.caption)
+                            .foregroundColor(Constants.Colors.primaryBlue)
+                    }
+                }
                 
                 HStack {
                     Text(meal.mealType.capitalized)

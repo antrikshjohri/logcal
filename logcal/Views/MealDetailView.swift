@@ -16,9 +16,18 @@ struct MealDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 // Header
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(meal.foodText)
-                        .font(.title2)
-                        .fontWeight(.bold)
+                    HStack(spacing: 8) {
+                        Text(meal.foodText)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        // Show image indicator if image was used
+                        if meal.hasImageValue {
+                            Image(systemName: "photo.fill")
+                                .font(.title3)
+                                .foregroundColor(Constants.Colors.primaryBlue)
+                        }
+                    }
                     
                     HStack {
                         Text(meal.mealType.capitalized)

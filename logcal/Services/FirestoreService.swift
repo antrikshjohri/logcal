@@ -26,7 +26,8 @@ struct FirestoreService {
             "foodText": entry.foodText,
             "mealType": entry.mealType,
             "totalCalories": entry.totalCalories,
-            "rawResponseJson": entry.rawResponseJson
+            "rawResponseJson": entry.rawResponseJson,
+            "hasImage": entry.hasImageValue
         ]
         
         do {
@@ -64,6 +65,7 @@ struct FirestoreService {
                 }
                 
                 let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
+                let hasImage = data["hasImage"] as? Bool // Optional - nil if not present
                 
                 let entry = MealEntry(
                     id: id,
@@ -72,7 +74,8 @@ struct FirestoreService {
                     foodText: foodText,
                     mealType: mealType,
                     totalCalories: totalCalories,
-                    rawResponseJson: rawResponseJson
+                    rawResponseJson: rawResponseJson,
+                    hasImage: hasImage
                 )
                 
                 entries.append(entry)
@@ -122,7 +125,8 @@ struct FirestoreService {
                 "foodText": entry.foodText,
                 "mealType": entry.mealType,
                 "totalCalories": entry.totalCalories,
-                "rawResponseJson": entry.rawResponseJson
+                "rawResponseJson": entry.rawResponseJson,
+                "hasImage": entry.hasImageValue
             ]
             
             let mealRef = db.collection("users").document(userId).collection("meals").document(entry.id.uuidString)

@@ -167,15 +167,27 @@ class LogViewModel: ObservableObject {
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 
+                // Determine if image was used and set appropriate foodText
+                let hadImage = selectedImage != nil
+                let displayText: String
+                if foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hadImage {
+                    // Image only - use placeholder text
+                    displayText = "Image uploaded"
+                } else {
+                    // Text only or text + image
+                    displayText = foodText
+                }
+                
                 // Create entry with selected date and current creation time
                 let entry = MealEntry(
                     id: UUID(),
                     timestamp: selectedDate,
                     createdAt: Date(),  // Actual creation time
-                    foodText: foodText,
+                    foodText: displayText,
                     mealType: response.mealType,
                     totalCalories: response.totalCalories,
-                    rawResponseJson: jsonString
+                    rawResponseJson: jsonString,
+                    hasImage: hadImage
                 )
                 
                 context.insert(entry)
