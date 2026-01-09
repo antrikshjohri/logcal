@@ -219,6 +219,16 @@ class LogViewModel: ObservableObject {
                 hasImage: hadImage
             )
             
+            // Increment meal log count for rating service
+            RatingService.shared.incrementMealLogCount()
+            
+            // Check and show rating dialog if appropriate (with delay to let success animation play)
+            if RatingService.shared.shouldShowRatingDialog() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    RatingService.shared.requestRating()
+                }
+            }
+            
             foodText = "" // Clear input after successful log
             selectedImage = nil // Clear image after successful log
             isMealTypeManuallySet = false // Reset manual selection
