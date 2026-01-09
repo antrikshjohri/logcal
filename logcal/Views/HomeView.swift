@@ -403,7 +403,7 @@ struct HomeView: View {
                             AnalyticsService.trackMealSummaryViewed()
                             
                             // Auto-dismiss after 10 seconds
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
                                 withAnimation(.easeOut(duration: 0.3)) {
                                     viewModel.latestResult = nil
                                 }
