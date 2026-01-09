@@ -15,6 +15,7 @@ struct EditProfileView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var countryList = CountryList()
+    private let firestoreService = FirestoreService()
     
     // User data
     @State private var fullName: String = ""
@@ -160,19 +161,32 @@ struct EditProfileView: View {
                             .foregroundColor(.primary)
                         
                         Button(action: {
+                            // #region agent log
+                            DebugLogger.log(location: "EditProfileView.swift:163", message: "Country button action triggered", data: ["userCountryCode": userCountryCode], hypothesisId: "A")
+                            // #endregion
+                            print("DEBUG: [CountryButton] Button action triggered")
                             showCountryPicker = true
                         }) {
-                            HStack {
-                                Text(userCountryCode.isEmpty ? "e.g., United States, India, UK" : (countryList.countryName(for: userCountryCode) ?? ""))
-                                    .font(.system(size: 17))
-                                    .foregroundColor(userCountryCode.isEmpty ? Theme.secondaryText : .primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            ZStack(alignment: .leading) {
+                                // Invisible background to ensure full tap area
+                                Rectangle()
+                                    .fill(Color.clear)
+                                    .contentShape(Rectangle())
                                 
-                                Image(systemName: "globe")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(Theme.secondaryText)
+                                HStack {
+                                    Text(userCountryCode.isEmpty ? "Select your country" : (countryList.countryName(for: userCountryCode) ?? ""))
+                                        .font(.system(size: 17))
+                                        .foregroundColor(userCountryCode.isEmpty ? Theme.secondaryText : .primary)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "globe")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Theme.secondaryText)
+                                }
+                                .padding(Constants.Spacing.regular)
                             }
-                            .padding(Constants.Spacing.regular)
+                            .frame(maxWidth: .infinity)
                             .background(Theme.cardBackground(colorScheme: colorScheme))
                             .overlay(
                                 RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
@@ -181,6 +195,7 @@ struct EditProfileView: View {
                             .cornerRadius(Constants.Sizes.cornerRadius)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .frame(maxWidth: .infinity)
                         
                         Text("Providing your country helps us better identify regional meals and portion sizes")
                             .font(.system(size: 13, weight: .regular))
@@ -326,8 +341,28 @@ struct EditProfileView: View {
         // Load email
         userEmail = user.email ?? ""
         
-        // Load original country code
-        originalCountryCode = userCountryCode
+        // Load country from Firestore
+        Task {
+            do {
+                if let countryCode = try await firestoreService.fetchUserCountry() {
+                    await MainActor.run {
+                        userCountryCode = countryCode
+                        originalCountryCode = countryCode
+                    }
+                } else {
+                    // If no country in Firestore, use local AppStorage value
+                    await MainActor.run {
+                        originalCountryCode = userCountryCode
+                    }
+                }
+            } catch {
+                print("DEBUG: Error loading country from Firestore: \(error)")
+                // Fallback to local AppStorage value
+                await MainActor.run {
+                    originalCountryCode = userCountryCode
+                }
+            }
+        }
         
         // Load profile photo and store original URL
         originalPhotoURL = user.photoURL
@@ -396,6 +431,11 @@ struct EditProfileView: View {
                     // Trigger refresh in other views by updating AppStorage
                     UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "profileUpdated")
                 }
+            }
+            
+            // Update country in Firestore if it changed
+            if userCountryCode != originalCountryCode {
+                try await firestoreService.saveUserCountry(userCountryCode)
             }
             
             print("DEBUG: Profile updated successfully")
@@ -551,25 +591,39 @@ struct CountryPickerView: View {
                 // Country list
                 List(filteredCountries) { country in
                     Button(action: {
+                        // #region agent log
+                        DebugLogger.log(location: "EditProfileView.swift:593", message: "Country row button tapped", data: ["countryId": country.id, "countryName": country.name], hypothesisId: "A")
+                        // #endregion
                         selectedCountryCode = country.id
                         isPresented = false
                     }) {
-                        HStack {
-                            Text(country.name)
-                                .font(.system(size: 17, weight: .regular))
-                                .foregroundColor(.primary)
+                        ZStack(alignment: .leading) {
+                            // Clear background to ensure full tap area
+                            Rectangle()
+                                .fill(Color.clear)
+                                .contentShape(Rectangle())
                             
-                            Spacer()
-                            
-                            if country.id == selectedCountryCode {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(Theme.accentBlue)
+                            HStack {
+                                Text(country.name)
+                                    .font(.system(size: 17, weight: .regular))
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                if country.id == selectedCountryCode {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Theme.accentBlue)
+                                }
                             }
+                            .padding(.vertical, Constants.Spacing.small)
                         }
-                        .padding(.vertical, Constants.Spacing.small)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .frame(maxWidth: .infinity)
+                    .listRowInsets(EdgeInsets())
                 }
                 .listStyle(PlainListStyle())
             }

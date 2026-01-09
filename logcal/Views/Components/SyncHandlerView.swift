@@ -15,6 +15,7 @@ struct SyncHandlerView: View {
     @ObservedObject var authViewModel: AuthViewModel
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
+    @AppStorage("userCountry") private var userCountry: String = ""
     @State private var hasSyncedOnLaunch = false
     
     var body: some View {
@@ -36,6 +37,8 @@ struct SyncHandlerView: View {
                             print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping meal sync but fetching daily goal")
                             // Still fetch daily goal even if we have local meals
                             await fetchDailyGoalFromCloud()
+                            // Fetch and sync user country
+                            await fetchUserCountryFromCloud()
                             // Schedule notifications if enabled
                             if mealRemindersEnabled {
                                 print("DEBUG: [SyncHandlerView] mealRemindersEnabled=true, scheduling notifications...")
@@ -49,6 +52,8 @@ struct SyncHandlerView: View {
                             await cloudSyncService.syncFromCloud(modelContext: modelContext)
                             // Fetch daily goal from cloud
                             await fetchDailyGoalFromCloud()
+                            // Fetch and sync user country
+                            await fetchUserCountryFromCloud()
                             // Schedule notifications if enabled
                             if mealRemindersEnabled {
                                 await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
@@ -109,6 +114,8 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Fetch and sync user country
+                                await fetchUserCountryFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
                                     await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
@@ -121,6 +128,8 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Fetch and sync user country
+                                await fetchUserCountryFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
                                     await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
@@ -133,6 +142,8 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Fetch and sync user country
+                                await fetchUserCountryFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
                                     await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
@@ -184,6 +195,8 @@ struct SyncHandlerView: View {
                                 await cloudSyncService.syncFromCloud(modelContext: modelContext)
                                 // Fetch daily goal from cloud
                                 await fetchDailyGoalFromCloud()
+                                // Fetch and sync user country
+                                await fetchUserCountryFromCloud()
                                 // Schedule notifications if enabled
                                 if mealRemindersEnabled {
                                     await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
@@ -215,6 +228,26 @@ struct SyncHandlerView: View {
             }
         } else {
             print("DEBUG: No goal fetched from cloud (returned nil)")
+        }
+    }
+    
+    /// Fetch user country from cloud and update AppStorage
+    private func fetchUserCountryFromCloud() async {
+        print("DEBUG: fetchUserCountryFromCloud called, current local country: \(userCountry)")
+        let firestoreService = FirestoreService()
+        do {
+            if let cloudCountry = try await firestoreService.fetchUserCountry() {
+                print("DEBUG: Fetched country from cloud: \(cloudCountry), current local: \(userCountry)")
+                if cloudCountry != userCountry {
+                    print("DEBUG: Updating country from cloud: \(cloudCountry) (was \(userCountry))")
+                    userCountry = cloudCountry
+                    print("DEBUG: Country updated to: \(userCountry)")
+                }
+            } else {
+                print("DEBUG: No country fetched from cloud (returned nil)")
+            }
+        } catch {
+            print("DEBUG: Error fetching country from cloud: \(error)")
         }
     }
 }

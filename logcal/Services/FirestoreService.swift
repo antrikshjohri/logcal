@@ -292,6 +292,56 @@ struct FirestoreService {
         }
     }
     
+    /// Save user country to Firestore
+    func saveUserCountry(_ countryCode: String) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, skipping Firestore save for country")
+            return
+        }
+        
+        let userData: [String: Any] = [
+            "country": countryCode,
+            "updatedAt": Timestamp(date: Date())
+        ]
+        
+        do {
+            try await db.collection("users").document(userId).setData(userData, merge: true)
+            print("DEBUG: Successfully saved user country to Firestore: \(countryCode)")
+        } catch {
+            print("DEBUG: Error saving user country to Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
+    /// Fetch user country from Firestore
+    func fetchUserCountry() async throws -> String? {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, cannot fetch user country from Firestore")
+            return nil
+        }
+        
+        print("DEBUG: Fetching user country from Firestore for user: \(userId)")
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            
+            if document.exists {
+                let data = document.data()
+                if let countryCode = data?["country"] as? String {
+                    print("DEBUG: Fetched user country from Firestore: \(countryCode)")
+                    return countryCode
+                }
+                print("DEBUG: Country not found in Firestore document")
+                return nil
+            } else {
+                print("DEBUG: User document does not exist in Firestore")
+                return nil
+            }
+        } catch {
+            print("DEBUG: Error fetching user country from Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
     /// Fetch daily goal from Firestore
     func fetchDailyGoal() async throws -> Double? {
         guard let userId = Auth.auth().currentUser?.uid else {

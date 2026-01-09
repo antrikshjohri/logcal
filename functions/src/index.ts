@@ -18,6 +18,7 @@ interface LogMealRequest {
   foodText: string;
   mealType: string;
   imageBase64?: string; // Optional base64-encoded image
+  country?: string; // Optional country name (e.g., "India", "United States")
 }
 
 interface MealLogResponse {
@@ -100,9 +101,10 @@ async function trackUsage(uid: string): Promise<{ allowed: boolean; reason?: str
 /**
  * Call OpenAI API to log a meal
  */
-async function callOpenAI(foodText: string, mealType: string, imageBase64?: string): Promise<MealLogResponse> {
+async function callOpenAI(foodText: string, mealType: string, imageBase64?: string, country?: string): Promise<MealLogResponse> {
   console.log("DEBUG: callOpenAI function called");
   console.log("DEBUG: hasImage =", imageBase64 ? "yes" : "no");
+  console.log("DEBUG: country =", country || "not provided");
   
   // Get API key from Firebase Secrets (set via functions:secrets:set)
   const apiKey = process.env.OPENAI_API_KEY;
@@ -119,7 +121,15 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
   
   console.log("DEBUG: API key is configured (length: " + apiKey.length + ", starts with: " + apiKey.substring(0, 7) + "...)");
 
-  const systemPrompt = `You are a calorie logging assistant for Indian food. When given a food description or image, estimate calories based on typical Indian portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
+  // Build system prompt based on country
+  let systemPrompt: string;
+  if (country && country.trim().length > 0) {
+    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
+  } else {
+    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
+  }
+  
+  console.log("DEBUG: System prompt:", systemPrompt);
 
   // Build user message content array for Vision API
   const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
@@ -265,8 +275,8 @@ export const logMeal = functions.runWith({
 
     const uid = context.auth.uid;
     console.log("DEBUG: Authenticated user UID:", uid);
-    const { foodText, mealType, imageBase64 } = data;
-    console.log("DEBUG: Request data - foodText:", foodText, "mealType:", mealType, "hasImage:", !!imageBase64);
+    const { foodText, mealType, imageBase64, country } = data;
+    console.log("DEBUG: Request data - foodText:", foodText, "mealType:", mealType, "hasImage:", !!imageBase64, "country:", country || "not provided");
 
     // Validate input - either foodText or imageBase64 must be provided
     const hasText = foodText && typeof foodText === "string" && foodText.trim().length > 0;
@@ -306,7 +316,8 @@ export const logMeal = functions.runWith({
       const response = await callOpenAI(
         hasText ? foodText.trim() : "",
         mealType,
-        hasImage ? imageBase64 : undefined
+        hasImage ? imageBase64 : undefined,
+        country
       );
       console.log("DEBUG: OpenAI API call successful, total calories:", response.total_calories);
 
