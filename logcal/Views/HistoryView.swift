@@ -85,9 +85,12 @@ struct HistoryView: View {
     
     var body: some View {
         NavigationView {
-            List(selection: $selectedMeals) {
+            ScrollView {
+                VStack(spacing: Constants.Spacing.large) {
                 ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
-                    DisclosureGroup(isExpanded: Binding(
+                        DayCardView(
+                            dayGroup: dayGroup,
+                            isExpanded: Binding(
                         get: { expandedDates.contains(dayGroup.date) },
                         set: { isExpanded in
                             if isExpanded {
@@ -96,90 +99,19 @@ struct HistoryView: View {
                                 expandedDates.remove(dayGroup.date)
                             }
                         }
-                    )) {
-                        if dayGroup.meals.isEmpty && isToday(dayGroup.date) {
-                            // Empty state for Today
-                            VStack(spacing: 0) {
-                                VStack(spacing: 12) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Constants.Colors.primaryBlue.opacity(0.1))
-                                            .frame(width: 80, height: 80)
-                                        
-                                        Image(systemName: "calendar")
-                                            .font(.system(size: 40))
-                                            .foregroundColor(Constants.Colors.primaryBlue)
-                                    }
-                                    
-                                    VStack(spacing: 4) {
-                                        Text("No meals logged today")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        
-                                        Text("Start tracking your calories")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    Button(action: {
-                                        // Navigate to Log tab with today's date
-                                        navigateToDateTimestamp = Date().timeIntervalSince1970
-                                        selectedTab = 1 // Log tab
-                                    }) {
-                                        Text("Log your first meal")
-                                            .font(.system(size: 17, weight: .semibold))
-                                            .foregroundColor(.white)
-                                            .frame(maxWidth: .infinity)
-                                            .frame(height: 50)
-                                            .background(Constants.Colors.primaryBlue)
-                                            .cornerRadius(25)
-                                    }
-                                    .padding(.horizontal, 40)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 20)
-                                
-                                // Explicit separator to ensure full width
-                                Divider()
-                                    .padding(.leading, 0)
-                            }
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                        } else {
-                            ForEach(dayGroup.meals) { meal in
-                                if editMode == .active {
-                                    MealRowView(meal: meal)
-                                        .tag(meal.id)
-                                } else {
-                                    NavigationLink(destination: MealEditView(meal: meal)) {
-                                        MealRowView(meal: meal)
-                                    }
-                                }
-                            }
-                            .onDelete { offsets in
-                                deleteMeals(at: offsets, in: dayGroup.meals)
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Text(DateFormatterCache.formatDateHeader(dayGroup.date))
-                                .font(.headline)
-                            Spacer()
-                            if !dayGroup.meals.isEmpty {
-                                Text("\(Int(dayGroup.totalCalories)) cal")
-                                    .font(.headline)
-                                    .foregroundColor(Constants.Colors.primaryBlue)
-                            } else if isToday(dayGroup.date) {
-                                Text("0 cal")
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                            ),
+                            editMode: $editMode,
+                            selectedMeals: $selectedMeals,
+                            isToday: isToday(dayGroup.date),
+                            navigateToDateTimestamp: $navigateToDateTimestamp,
+                            selectedTab: $selectedTab
+                        )
                     }
-                    .listRowSeparator(index == 0 ? .hidden : .visible)
                 }
+                .padding(.horizontal, 28)
+                .padding(.vertical, Constants.Spacing.large)
             }
-            .listStyle(.insetGrouped)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("History")
             .refreshable {
                 // Manual refresh - sync from cloud
@@ -370,6 +302,7 @@ struct HistoryView: View {
         // Wait a moment for @Query to update with new data
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
     }
+    
 }
 
 struct MealRowView: View {
@@ -379,9 +312,10 @@ struct MealRowView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(meal.foodText)
-                        .font(.headline)
-                        .lineLimit(2)
+                Text(meal.foodText)
+                    .font(.headline)
+                        .foregroundColor(.primary)
+                    .lineLimit(2)
                     
                     // Show image indicator if image was used
                     if meal.hasImageValue {
@@ -412,7 +346,153 @@ struct MealRowView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(Constants.Colors.primaryBlue)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 10)
+    }
+}
+
+// Day Card View - Individual card for each day
+struct DayCardView: View {
+    @Environment(\.colorScheme) var colorScheme
+    let dayGroup: (date: Date, meals: [MealEntry], totalCalories: Double)
+    @Binding var isExpanded: Bool
+    @Binding var editMode: EditMode
+    @Binding var selectedMeals: Set<UUID>
+    let isToday: Bool
+    @Binding var navigateToDateTimestamp: Double
+    @Binding var selectedTab: Int
+    
+    private func cardBackground(colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark 
+            ? Color(white: 0.15)
+            : Color.white
+    }
+    
+    private func cardBorder(colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.1)
+            : Color.gray.opacity(0.2)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            Button(action: {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack {
+                    Text(DateFormatterCache.formatDateHeader(dayGroup.date))
+                        .font(.headline)
+                    Spacer()
+                    if !dayGroup.meals.isEmpty {
+                        Text("\(Int(dayGroup.totalCalories)) cal")
+                            .font(.headline)
+                            .foregroundColor(Constants.Colors.primaryBlue)
+                    } else if isToday {
+                        Text("0 cal")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(Constants.Spacing.large)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Content
+            if isExpanded {
+                if dayGroup.meals.isEmpty && isToday {
+                    // Empty state
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Constants.Colors.primaryBlue.opacity(0.1))
+                                .frame(width: 80, height: 80)
+                            
+                            Image(systemName: "calendar")
+                                .font(.system(size: 40))
+                                .foregroundColor(Constants.Colors.primaryBlue)
+                        }
+                        
+                        VStack(spacing: 4) {
+                            Text("No meals logged today")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Text("Start tracking your calories")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Button(action: {
+                            navigateToDateTimestamp = Date().timeIntervalSince1970
+                            selectedTab = 1
+                        }) {
+                            Text("Log your first meal")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Constants.Colors.primaryBlue)
+                                .cornerRadius(25)
+                        }
+                        .padding(.horizontal, 40)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .padding(.bottom, Constants.Spacing.large)
+                } else {
+                    // Meals list
+                    VStack(spacing: 0) {
+                        ForEach(Array(dayGroup.meals.enumerated()), id: \.element.id) { mealIndex, meal in
+                            VStack(spacing: 0) {
+                                if editMode == .active {
+                                    Button(action: {
+                                        if selectedMeals.contains(meal.id) {
+                                            selectedMeals.remove(meal.id)
+                                        } else {
+                                            selectedMeals.insert(meal.id)
+                                        }
+                                    }) {
+                                        HStack {
+                                            Image(systemName: selectedMeals.contains(meal.id) ? "checkmark.circle.fill" : "circle")
+                                                .foregroundColor(selectedMeals.contains(meal.id) ? Constants.Colors.primaryBlue : .secondary)
+                                            MealRowView(meal: meal)
+                                        }
+                                        .padding(.horizontal, Constants.Spacing.large)
+                                        .padding(.vertical, Constants.Spacing.small)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                } else {
+                                    NavigationLink(destination: MealEditView(meal: meal)) {
+                                        MealRowView(meal: meal)
+                                            .padding(.horizontal, Constants.Spacing.large)
+                                            .padding(.vertical, Constants.Spacing.small)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                                
+                                if mealIndex < dayGroup.meals.count - 1 {
+                                    Divider()
+                                        .padding(.leading, Constants.Spacing.large)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.bottom, Constants.Spacing.large)
+                }
+            }
+        }
+        .background(cardBackground(colorScheme: colorScheme))
+        .overlay(
+            RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
+                .stroke(cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
+        )
+        .cornerRadius(Constants.Sizes.largeCornerRadius)
     }
 }
 
