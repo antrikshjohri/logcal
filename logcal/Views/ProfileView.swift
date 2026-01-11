@@ -105,6 +105,7 @@ struct ProfileView: View {
                         
                         SettingsRow(
                             icon: "paintpalette",
+                            iconColor: Theme.accentBlue,
                             title: "Theme",
                             trailingValue: themeDisplayName
                         ) {
@@ -141,6 +142,7 @@ struct ProfileView: View {
                         NavigationLink(destination: HelpFAQView()) {
                             SettingsRowContent(
                                 icon: "questionmark.circle",
+                                iconColor: Theme.accentBlue,
                                 title: "Help & FAQ"
                             )
                         }

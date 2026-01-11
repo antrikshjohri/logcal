@@ -19,12 +19,23 @@ struct WeeklyBarChartView: View {
     
     // Determine bar color based on calories and goal
     private func barColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
-        if dayData.calories > dailyGoal {
-            return Color.red
-        } else if dayData.isToday {
-            return Theme.accentBlue
+        if dayData.calories <= dailyGoal {
+            // Green if calories are less than or equal to goal (or zero)
+            return Color.green
         } else {
-            return Theme.secondaryText.opacity(0.3)
+            // Red if calories are more than goal
+            return Color.red
+        }
+    }
+    
+    // Determine border color for today's bar (darker version of bar color)
+    private func todayBorderColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
+        if dayData.calories <= dailyGoal {
+            // Darker green for under/at goal
+            return Color(red: 0, green: 0.6, blue: 0)
+        } else {
+            // Darker red for over goal
+            return Color(red: 0.7, green: 0, blue: 0)
         }
     }
     
@@ -65,6 +76,15 @@ struct WeeklyBarChartView: View {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(barColor(for: dayData))
                                 .frame(height: max(geometry.size.height * (dayData.calories / chartMax), 4))
+                                .overlay(
+                                    // Add border for today (darker version of bar color)
+                                    Group {
+                                        if dayData.isToday {
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .stroke(todayBorderColor(for: dayData), lineWidth: 2.5)
+                                        }
+                                    }
+                                )
                         }
                     }
                     .frame(height: 80) // Fixed height for bar area

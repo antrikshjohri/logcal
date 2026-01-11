@@ -22,7 +22,12 @@ struct SecondaryButton: View {
                 .background(Theme.cardBackground(colorScheme: colorScheme))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
-                        .stroke(Theme.accentBlue.opacity(0.3), lineWidth: 1)
+                        .stroke(
+                            colorScheme == .dark 
+                                ? Theme.accentBlue.opacity(0.4)
+                                : Theme.accentBlue.opacity(0.3),
+                            lineWidth: 1
+                        )
                 )
                 .cornerRadius(22) // Pill shape
         }
