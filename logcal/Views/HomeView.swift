@@ -178,9 +178,15 @@ struct HomeView: View {
                         }
                         
                         ZStack(alignment: .topLeading) {
+                            // TextEditor with extra bottom padding to reserve space for icons
                             TextEditor(text: $viewModel.foodText)
                                 .frame(minHeight: Constants.Sizes.textEditorMinHeight)
-                                .padding(Constants.Spacing.medium)
+                                .padding(EdgeInsets(
+                                    top: Constants.Spacing.medium,
+                                    leading: Constants.Spacing.medium,
+                                    bottom: 55, // Reserve space for icon row
+                                    trailing: Constants.Spacing.medium
+                                ))
                                 .focused($isTextFieldFocused)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
@@ -242,7 +248,7 @@ struct HomeView: View {
                                 }
                             }
                             
-                            // Mic and Image buttons
+                            // Icon buttons row (overlaid at bottom, inside text editor boundary)
                             VStack {
                                 Spacer()
                                 HStack {
