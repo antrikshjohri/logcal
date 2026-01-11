@@ -18,6 +18,8 @@ class CloudSyncService: ObservableObject {
     @Published var lastSyncTime: Date = Date() // Trigger view updates when sync completes
     private var currentUserId: String? // Track current authenticated user ID
     private var isAnonymousSession: Bool = false // Track if we're in anonymous mode
+    private let userDefaults = UserDefaults.standard
+    private let lastUserIdKey = "lastSyncedUserId" // Persist user ID to detect account switches
     
     /// Sync meal entries to Firestore (save new ones)
     func syncMealToCloud(_ entry: MealEntry) async {
@@ -55,21 +57,34 @@ class CloudSyncService: ObservableObject {
             isAnonymousSession = false
         }
         
+        // Get last synced user ID from UserDefaults (persists across sign outs)
+        let lastSyncedUserId = userDefaults.string(forKey: lastUserIdKey)
+        
         // Check if user has changed (different authenticated account signed in)
         if let previousUserId = currentUserId, previousUserId != newUserId {
             print("DEBUG: User changed from \(previousUserId) to \(newUserId), clearing local data first...")
             await clearLocalMeals(modelContext: modelContext)
         }
-        // Note: We don't clear data when currentUserId is nil because:
-        // 1. On app resume: currentUserId might be nil but data is valid (don't clear)
-        // 2. On sign-out: We don't clear (view is removed, would crash)
-        // 3. On sign-in after sign-out: If same user signs in again, we don't want to clear.
-        //    If different user signs in, currentUserId will be set from previous session or
-        //    will be different, triggering the user change check above.
+        // If currentUserId is nil but we have a different lastSyncedUserId, user switched accounts
+        else if currentUserId == nil, let lastUserId = lastSyncedUserId, lastUserId != newUserId {
+            print("DEBUG: Different user signing in (last: \(lastUserId), new: \(newUserId)), clearing local data first...")
+            await clearLocalMeals(modelContext: modelContext)
+        }
+        // If currentUserId is nil and no lastSyncedUserId, but we have local data, clear it (fresh sign in with old data)
+        else if currentUserId == nil, lastSyncedUserId == nil {
+            let descriptor = FetchDescriptor<MealEntry>()
+            if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
+                print("DEBUG: New user signing in with existing local data, clearing local data first...")
+                await clearLocalMeals(modelContext: modelContext)
+            }
+        }
         
         // Update current user ID and session type
         currentUserId = newUserId
         isAnonymousSession = false
+        
+        // Persist user ID to UserDefaults to detect account switches after sign out
+        userDefaults.set(newUserId, forKey: lastUserIdKey)
         
         isSyncing = true
         syncError = nil
@@ -244,6 +259,9 @@ class CloudSyncService: ObservableObject {
         // Clear session state when clearing local data
         currentUserId = nil
         isAnonymousSession = false
+        
+        // Clear persisted user ID when clearing data
+        userDefaults.removeObject(forKey: lastUserIdKey)
     }
     
     /// Initialize anonymous session (clear authenticated data when switching to anonymous)

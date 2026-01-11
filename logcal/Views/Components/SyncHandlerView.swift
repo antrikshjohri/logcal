@@ -31,22 +31,41 @@ struct SyncHandlerView: View {
                         await cloudSyncService.initializeAnonymousSession(modelContext: modelContext)
                         hasSyncedOnLaunch = true
                     } else {
+                        // Check if user changed (compare with last synced user ID)
+                        let lastSyncedUserId = UserDefaults.standard.string(forKey: "lastSyncedUserId")
+                        let currentUserId = user.uid
+                        let userChanged = lastSyncedUserId != nil && lastSyncedUserId != currentUserId
+                        
                         // Check if we already have local data before syncing
                         let descriptor = FetchDescriptor<MealEntry>()
                         if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
-                            print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping meal sync but fetching daily goal")
-                            // Still fetch daily goal even if we have local meals
-                            await fetchDailyGoalFromCloud()
-                            // Fetch and sync user country
-                            await fetchUserCountryFromCloud()
-                            // Schedule notifications if enabled
-                            if mealRemindersEnabled {
-                                print("DEBUG: [SyncHandlerView] mealRemindersEnabled=true, scheduling notifications...")
-                                await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                            if userChanged {
+                                // User changed - clear old data and sync new user's data
+                                print("DEBUG: User is signed in on launch with user change detected (last: \(lastSyncedUserId ?? "nil"), current: \(currentUserId)), clearing old data and syncing...")
+                                await cloudSyncService.clearLocalMeals(modelContext: modelContext)
+                                await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                await fetchDailyGoalFromCloud()
+                                await fetchUserCountryFromCloud()
+                                if mealRemindersEnabled {
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                }
+                                hasSyncedOnLaunch = true
                             } else {
-                                print("DEBUG: [SyncHandlerView] mealRemindersEnabled=false, skipping notification scheduling")
+                                // Same user - skip sync but fetch preferences
+                                print("DEBUG: User is signed in on launch with existing local data (\(localMeals.count) meals), skipping meal sync but fetching daily goal")
+                                // Still fetch daily goal even if we have local meals
+                                await fetchDailyGoalFromCloud()
+                                // Fetch and sync user country
+                                await fetchUserCountryFromCloud()
+                                // Schedule notifications if enabled
+                                if mealRemindersEnabled {
+                                    print("DEBUG: [SyncHandlerView] mealRemindersEnabled=true, scheduling notifications...")
+                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                } else {
+                                    print("DEBUG: [SyncHandlerView] mealRemindersEnabled=false, skipping notification scheduling")
+                                }
+                                hasSyncedOnLaunch = true
                             }
-                            hasSyncedOnLaunch = true
                         } else {
                             print("DEBUG: User is signed in on launch with no local data, syncing from cloud...")
                             await cloudSyncService.syncFromCloud(modelContext: modelContext)
@@ -136,6 +155,15 @@ struct SyncHandlerView: View {
                                 }
                             } else {
                                 print("DEBUG: User signed in, migrating and syncing data...")
+                                // If wasNil (signing in after sign out), check if we need to clear old user's data
+                                if wasNil {
+                                    // Check if there's local data that might belong to a previous user
+                                    let descriptor = FetchDescriptor<MealEntry>()
+                                    if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
+                                        print("DEBUG: User signed in after sign out with existing local data, clearing old user's data first...")
+                                        await cloudSyncService.clearLocalMeals(modelContext: modelContext)
+                                    }
+                                }
                                 // First migrate local data to cloud (only if there are local meals)
                                 await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
                                 // Then fetch any cloud data
@@ -176,15 +204,34 @@ struct SyncHandlerView: View {
                                 hasSyncedOnLaunch = true
                             }
                         } else {
+                            // Check if user changed (compare with last synced user ID)
+                            let lastSyncedUserId = UserDefaults.standard.string(forKey: "lastSyncedUserId")
+                            let currentUserId = user.uid
+                            let userChanged = lastSyncedUserId != nil && lastSyncedUserId != currentUserId
+                            
                             // Check if we already have local data before syncing
                             let descriptor = FetchDescriptor<MealEntry>()
                             if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
-                                print("DEBUG: SyncHandlerView appeared with authenticated user and existing local data (\(localMeals.count) meals), skipping sync")
-                                // Schedule notifications if enabled
-                                if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                if userChanged {
+                                    // User changed - clear old data and sync new user's data
+                                    print("DEBUG: SyncHandlerView appeared with user change detected (last: \(lastSyncedUserId ?? "nil"), current: \(currentUserId)), clearing old data and syncing...")
+                                    await cloudSyncService.clearLocalMeals(modelContext: modelContext)
+                                    await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                    await fetchDailyGoalFromCloud()
+                                    await fetchUserCountryFromCloud()
+                                    if mealRemindersEnabled {
+                                        await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                    }
+                                    hasSyncedOnLaunch = true
+                                } else {
+                                    // Same user - skip sync
+                                    print("DEBUG: SyncHandlerView appeared with authenticated user and existing local data (\(localMeals.count) meals), skipping sync")
+                                    // Schedule notifications if enabled
+                                    if mealRemindersEnabled {
+                                        await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                    }
+                                    hasSyncedOnLaunch = true
                                 }
-                                hasSyncedOnLaunch = true
                             } else if !hasSyncedOnLaunch {
                                 // Only sync if we haven't synced yet and have no local data
                                 // This ensures data loads when TabView appears after sign-in

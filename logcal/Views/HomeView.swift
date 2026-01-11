@@ -18,23 +18,11 @@ struct HomeView: View {
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var showConfetti = false
-    @State private var showRatingTestInfo = false // TEMPORARY - Remove before production
     
     var body: some View {
         NavigationView {
             mainContent
                 .navigationTitle("Log Calories")
-                .toolbar {
-                    // TEMPORARY TESTING BUTTON - Remove before production
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: {
-                            showRatingTestInfo = true
-                        }) {
-                            Image(systemName: "star.circle")
-                                .foregroundColor(.orange)
-                        }
-                    }
-                }
                 .onChange(of: viewModel.latestResult) { oldValue, newValue in
                     if oldValue == nil && newValue != nil {
                         showConfetti = true
@@ -65,31 +53,6 @@ struct HomeView: View {
                         set: { viewModel.showUpdateRequiredAlert = $0 }
                     )
                 ))
-                // TEMPORARY TESTING ALERT - Remove before production
-                .alert("Rating Test", isPresented: $showRatingTestInfo) {
-                    Button("Reset Rating State") {
-                        RatingService.shared.resetForTesting()
-                        toastManager.show(ToastMessage(
-                            title: "Rating Reset",
-                            message: "Rating state has been reset. Current meal count: \(RatingService.shared.getMealLogCount())",
-                            type: .success
-                        ))
-                    }
-                    Button("Show Rating Now") {
-                        RatingService.shared.requestRating()
-                    }
-                    Button("Check Status") {
-                        let count = RatingService.shared.getMealLogCount()
-                        toastManager.show(ToastMessage(
-                            title: "Rating Status",
-                            message: "Meal log count: \(count). Rating will show on: 2nd, 5th, or 10th meal.",
-                            type: .success
-                        ))
-                    }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Current meal log count: \(RatingService.shared.getMealLogCount())\n\nRating will appear on: 2nd, 5th, or 10th meal log.")
-                }
         }
     }
     

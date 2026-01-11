@@ -276,6 +276,19 @@ struct HistoryView: View {
                     }
                 }
             }
+            .onChange(of: cloudSyncService.lastSyncTime) { oldValue, newValue in
+                print("DEBUG: [HistoryView] Sync completed, meal count: \(meals.count)")
+            }
+            .onChange(of: Auth.auth().currentUser?.uid) { oldValue, newValue in
+                print("DEBUG: [HistoryView] User changed from \(oldValue ?? "nil") to \(newValue ?? "nil"), meal count: \(meals.count)")
+                // When user changes, refresh from cloud to get new user's data
+                if newValue != nil && newValue != oldValue {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds delay
+                        await refreshFromCloud()
+                    }
+                }
+            }
             .onChange(of: groupedMeals.count) { oldValue, newValue in
                 // Only initialize if we haven't initialized yet and there are new meals
                 if !hasInitialized && newValue > 0 {

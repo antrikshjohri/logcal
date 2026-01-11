@@ -69,9 +69,9 @@ struct OpenAIService {
         // Add text if provided
         if !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let textMessage = """
-            Food description: \(foodText)
-            Meal type: \(mealType)
-            """
+        Food description: \(foodText)
+        Meal type: \(mealType)
+        """
             userContent.append([
                 "type": "text",
                 "text": textMessage

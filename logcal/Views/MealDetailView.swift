@@ -17,9 +17,9 @@ struct MealDetailView: View {
                 // Header
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text(meal.foodText)
-                            .font(.title2)
-                            .fontWeight(.bold)
+                    Text(meal.foodText)
+                        .font(.title2)
+                        .fontWeight(.bold)
                         
                         // Show image indicator if image was used
                         if meal.hasImageValue {
