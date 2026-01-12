@@ -61,6 +61,13 @@ struct FirebaseService {
             // Log the response from Firebase Function
             print("DEBUG: [OpenAI Response] Received from Firebase Function:")
             print("DEBUG: [OpenAI Response] Response type: \(type(of: result.data))")
+            // #region agent log
+            if let dataDict = result.data as? [String: Any] {
+                if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "FirebaseService.swift:59", "message": "Raw Firebase Function response", "data": ["hasProtein": dataDict["protein"] != nil, "hasCarbs": dataDict["carbs"] != nil, "hasFat": dataDict["fat"] != nil, "proteinValue": dataDict["protein"] as Any, "carbsValue": dataDict["carbs"] as Any, "fatValue": dataDict["fat"] as Any, "totalCalories": dataDict["total_calories"] as Any], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"]), let logString = String(data: debugLogData, encoding: .utf8) {
+                    try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
+                }
+            }
+            // #endregion
             if let responseJSON = try? JSONSerialization.data(withJSONObject: result.data, options: .prettyPrinted),
                let responseString = String(data: responseJSON, encoding: .utf8) {
                 print("DEBUG: [OpenAI Response] Response data:")
@@ -107,6 +114,11 @@ struct FirebaseService {
             
             let decoded = try decoder.decode(MealLogResponse.self, from: jsonData)
             print("DEBUG: Successfully decoded MealLogResponse: \(decoded.totalCalories) calories")
+            // #region agent log
+            if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "FirebaseService.swift:108", "message": "Decoded MealLogResponse macros", "data": ["protein": decoded.protein as Any, "carbs": decoded.carbs as Any, "fat": decoded.fat as Any, "totalCalories": decoded.totalCalories], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"]), let logString = String(data: debugLogData, encoding: .utf8) {
+                try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
+            }
+            // #endregion
             return decoded
         } catch let error as NSError {
             // Debug: Print full error details

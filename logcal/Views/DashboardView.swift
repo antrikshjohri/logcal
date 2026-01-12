@@ -13,6 +13,9 @@ struct DashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
+    @AppStorage("proteinGoal") private var proteinGoal: Double = 150
+    @AppStorage("carbsGoal") private var carbsGoal: Double = 200
+    @AppStorage("fatGoal") private var fatGoal: Double = 65
     
     init() {
         // #region agent log
@@ -37,6 +40,39 @@ struct DashboardView: View {
     // Progress percentage
     private var progressPercentage: Double {
         min(todayCalories / dailyGoal, 1.0)
+    }
+    
+    // Today's macros
+    private var todayProtein: Double {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let todayMeals = meals.filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+        let proteinValues = todayMeals.compactMap { $0.protein }
+        let result = proteinValues.reduce(0, +)
+        // #region agent log
+        if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "DashboardView.swift:46", "message": "todayProtein calculation", "data": ["todayMealsCount": todayMeals.count, "proteinValuesCount": proteinValues.count, "proteinValues": proteinValues, "result": result], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"]), let logString = String(data: debugLogData, encoding: .utf8) {
+            try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
+        }
+        // #endregion
+        return result
+    }
+    
+    private var todayCarbs: Double {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return meals
+            .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+            .compactMap { $0.carbs }
+            .reduce(0, +)
+    }
+    
+    private var todayFat: Double {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return meals
+            .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+            .compactMap { $0.fat }
+            .reduce(0, +)
     }
     
     // Weekly data (last 7 days)
@@ -127,6 +163,17 @@ struct DashboardView: View {
                         goal: dailyGoal,
                         remaining: remainingCalories,
                         progress: progressPercentage
+                    )
+                    .padding(.horizontal, Constants.Spacing.extraLarge)
+                    
+                    // Today's Macros Card
+                    TodaysMacrosCard(
+                        protein: todayProtein,
+                        carbs: todayCarbs,
+                        fat: todayFat,
+                        proteinGoal: proteinGoal,
+                        carbsGoal: carbsGoal,
+                        fatGoal: fatGoal
                     )
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     

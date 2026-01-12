@@ -50,13 +50,43 @@ struct MealDetailView: View {
                 
                 Divider()
                 
-                // Total calories
-                VStack(alignment: .leading, spacing: 8) {
+                // Total calories and macros
+                VStack(alignment: .leading, spacing: 12) {
                     Text("Total Calories")
                         .font(.headline)
                     Text("\(Int(meal.totalCalories))")
                         .font(.system(size: 48, weight: .bold))
                         .foregroundColor(.blue)
+                    
+                    // Macros row
+                    if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
+                        HStack(spacing: 20) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(Int(protein))g")
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("Protein")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(Int(carbs))g")
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("Carbs")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(Int(fat))g")
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("Fat")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
                 }
                 .padding()
                 
@@ -85,6 +115,22 @@ struct MealDetailView: View {
                                 Text("Quantity: \(item.quantity)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                
+                                // Macros per item
+                                if let protein = item.protein, let carbs = item.carbs, let fat = item.fat {
+                                    HStack(spacing: 16) {
+                                        Text("P: \(Int(protein))g")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text("C: \(Int(carbs))g")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text("F: \(Int(fat))g")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.top, 4)
+                                }
                                 
                                 if let assumptions = item.assumptions, !assumptions.isEmpty {
                                     Text("Assumptions: \(assumptions)")

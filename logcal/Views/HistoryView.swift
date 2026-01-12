@@ -336,6 +336,24 @@ struct MealRowView: View {
                     Text(meal.timestamp, style: .time)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    
+                    // Macros (compact view)
+                    if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
+                        HStack(spacing: 4) {
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(Int(protein))P")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(Int(carbs))C")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(Int(fat))F")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             }
             

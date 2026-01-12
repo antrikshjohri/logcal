@@ -47,5 +47,24 @@ final class MealEntry: Identifiable {
         let decoder = JSONDecoder()
         return try? decoder.decode(MealLogResponse.self, from: data)
     }
+    
+    // Macros computed properties (extracted from rawResponseJson)
+    nonisolated var protein: Double? {
+        let result = response?.protein
+        // #region agent log
+        if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "MealEntry.swift:52", "message": "MealEntry.protein computed property", "data": ["protein": result as Any, "responseExists": response != nil, "responseProtein": response?.protein as Any, "rawResponseJsonLength": rawResponseJson.count], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"]), let logString = String(data: debugLogData, encoding: .utf8) {
+            try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
+        }
+        // #endregion
+        return result
+    }
+    
+    nonisolated var carbs: Double? {
+        response?.carbs
+    }
+    
+    nonisolated var fat: Double? {
+        response?.fat
+    }
 }
 

@@ -170,6 +170,11 @@ class LogViewModel: ObservableObject {
                 let jsonEncoder = JSONEncoder()
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                // #region agent log
+                if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "LogViewModel.swift:171", "message": "Encoded MealLogResponse to JSON", "data": ["protein": response.protein as Any, "carbs": response.carbs as Any, "fat": response.fat as Any, "jsonStringLength": jsonString.count, "hasProtein": response.protein != nil], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"]), let logString = String(data: debugLogData, encoding: .utf8) {
+                    try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
+                }
+                // #endregion
                 
                 // Determine if image was used and set appropriate foodText
                 let hadImage = selectedImage != nil

@@ -60,7 +60,7 @@ struct OpenAIService {
     
     private func logMealDirect(foodText: String, mealType: String, image: UIImage?, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant. When given a food description or image, estimate calories based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.
+        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores.
         """
         
         // Build user message content
@@ -110,6 +110,9 @@ struct OpenAIService {
                         "enum": ["breakfast", "lunch", "dinner", "snack"]
                     ],
                     "total_calories": ["type": "number"],
+                    "protein": ["type": "number"],
+                    "carbs": ["type": "number"],
+                    "fat": ["type": "number"],
                     "items": [
                         "type": "array",
                         "items": [
@@ -119,6 +122,9 @@ struct OpenAIService {
                                 "name": ["type": "string"],
                                 "quantity": ["type": "string"],
                                 "calories": ["type": "number"],
+                                "protein": ["type": "number"],
+                                "carbs": ["type": "number"],
+                                "fat": ["type": "number"],
                                 "assumptions": ["type": "string"],
                                 "confidence": ["type": "number"]
                             ],

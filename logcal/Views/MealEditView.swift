@@ -44,6 +44,14 @@ struct MealEditView: View {
             _caloriesManuallyOverridden = State(initialValue: abs(totalFromItems - meal.totalCalories) > 0.01)
         }
         _originalResponseJson = State(initialValue: meal.rawResponseJson)
+        
+        // #region agent log
+        print("DEBUG: [MealEditView] init - protein: \(meal.protein as Any), carbs: \(meal.carbs as Any), fat: \(meal.fat as Any)")
+        print("DEBUG: [MealEditView] init - response exists: \(meal.response != nil)")
+        if let response = meal.response {
+            print("DEBUG: [MealEditView] init - response.protein: \(response.protein as Any), response.carbs: \(response.carbs as Any), response.fat: \(response.fat as Any)")
+        }
+        // #endregion
     }
     
     var body: some View {
@@ -197,6 +205,37 @@ struct MealEditView: View {
                                 .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
                         )
                         
+                        // Macros row
+                        if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
+                            HStack(spacing: 20) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(Int(protein))g")
+                                        .font(.system(size: 18, weight: .semibold))
+                                    Text("Protein")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(Int(carbs))g")
+                                        .font(.system(size: 18, weight: .semibold))
+                                    Text("Carbs")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(Int(fat))g")
+                                        .font(.system(size: 18, weight: .semibold))
+                                    Text("Fat")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+                        }
+                        
                         // Save and Cancel buttons below input field
                         if isEditingCalories {
                             HStack(spacing: Constants.Spacing.regular) {
@@ -279,6 +318,22 @@ struct MealEditView: View {
                                 Text("Quantity: \(item.quantity)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                
+                                // Macros per item
+                                if let protein = item.protein, let carbs = item.carbs, let fat = item.fat {
+                                    HStack(spacing: 16) {
+                                        Text("P: \(Int(protein))g")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text("C: \(Int(carbs))g")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text("F: \(Int(fat))g")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.top, 4)
+                                }
                                 
                                 if let assumptions = item.assumptions, !assumptions.isEmpty {
                                     Text("Assumptions: \(assumptions)")
@@ -418,6 +473,9 @@ struct MealEditView: View {
             name: originalItem.name,
             quantity: originalItem.quantity,
             calories: newCalories,
+            protein: originalItem.protein,
+            carbs: originalItem.carbs,
+            fat: originalItem.fat,
             assumptions: originalItem.assumptions,
             confidence: originalItem.confidence
         )
@@ -426,6 +484,9 @@ struct MealEditView: View {
         let updatedResponse = MealLogResponse(
             mealType: response.mealType,
             totalCalories: newCalories,
+            protein: response.protein,
+            carbs: response.carbs,
+            fat: response.fat,
             items: [updatedItem],
             needsClarification: response.needsClarification,
             clarifyingQuestion: response.clarifyingQuestion

@@ -24,10 +24,16 @@ interface LogMealRequest {
 interface MealLogResponse {
   meal_type: string;
   total_calories: number;
+  protein?: number;  // grams
+  carbs?: number;    // grams
+  fat?: number;      // grams
   items: Array<{
     name: string;
     quantity: string;
     calories: number;
+    protein?: number;  // grams
+    carbs?: number;    // grams
+    fat?: number;      // grams
     assumptions?: string;
     confidence: number;
   }>;
@@ -124,9 +130,9 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
   // Build system prompt based on country
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores.`;
   } else {
-    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, assumptions, and confidence scores.`;
+    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores.`;
   }
   
   console.log("DEBUG: System prompt:", systemPrompt);
@@ -172,6 +178,9 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
           enum: ["breakfast", "lunch", "dinner", "snack"],
         },
         total_calories: { type: "number" },
+        protein: { type: "number" },
+        carbs: { type: "number" },
+        fat: { type: "number" },
         items: {
           type: "array",
           items: {
@@ -181,6 +190,9 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
               name: { type: "string" },
               quantity: { type: "string" },
               calories: { type: "number" },
+              protein: { type: "number" },
+              carbs: { type: "number" },
+              fat: { type: "number" },
               assumptions: { type: "string" },
               confidence: { type: "number" },
             },

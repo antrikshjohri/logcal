@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ProgressRingView: View {
     let progress: Double // 0.0 to 1.0
-    let size: CGFloat = 80
+    var size: CGFloat = 80
     
     var body: some View {
         ZStack {
