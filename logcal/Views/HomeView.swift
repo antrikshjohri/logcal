@@ -369,6 +369,36 @@ struct HomeView: View {
                                 .font(.title2)
                                 .fontWeight(.bold)
                             
+                            // Macros row
+                            if let protein = result.protein, let carbs = result.carbs, let fat = result.fat {
+                                HStack(spacing: 20) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(Int(protein))g")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Protein")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(Int(carbs))g")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Carbs")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(Int(fat))g")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Fat")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.top, 8)
+                            }
+                            
                             Divider()
                             
                             Text("Items:")
