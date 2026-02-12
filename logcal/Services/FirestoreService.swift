@@ -33,9 +33,30 @@ struct FirestoreService {
         do {
             try await db.collection("users").document(userId).collection("meals").document(entry.id.uuidString).setData(mealData)
             print("DEBUG: Successfully saved meal entry to Firestore: \(entry.id)")
+            // Also write to mealLogs so all meals (with or without images) appear there
+            try await saveMealToMealLogs(entry: entry, userId: userId)
         } catch {
             print("DEBUG: Error saving meal to Firestore: \(error)")
             throw AppError.unknown(error)
+        }
+    }
+    
+    /// Write to mealLogs collection so it stays in sync with users/meals (for viewing all logs in one place).
+    private func saveMealToMealLogs(entry: MealEntry, userId: String) async throws {
+        let mealLogData: [String: Any] = [
+            "uid": userId,
+            "foodText": entry.foodText,
+            "mealType": entry.mealType,
+            "totalCalories": entry.totalCalories,
+            "hasImage": entry.hasImageValue,
+            "timestamp": Timestamp(date: entry.timestamp)
+        ]
+        let mealLogRef = db.collection("mealLogs").document(entry.id.uuidString)
+        do {
+            try await mealLogRef.setData(mealLogData)
+            print("DEBUG: Successfully saved meal to mealLogs: \(entry.id)")
+        } catch {
+            print("DEBUG: Warning - Failed to save to mealLogs (non-critical): \(error.localizedDescription)")
         }
     }
     
@@ -99,6 +120,7 @@ struct FirestoreService {
         do {
             try await db.collection("users").document(userId).collection("meals").document(entry.id.uuidString).delete()
             print("DEBUG: Successfully deleted meal entry from Firestore: \(entry.id)")
+            try? await db.collection("mealLogs").document(entry.id.uuidString).delete()
         } catch {
             print("DEBUG: Error deleting meal from Firestore: \(error)")
             throw AppError.unknown(error)
@@ -114,8 +136,8 @@ struct FirestoreService {
         
         print("DEBUG: Starting sync of \(entries.count) local meals to Firestore")
         
-        let batch = db.batch()
-        var count = 0
+        var batch = db.batch()
+        var ops = 0
         
         for entry in entries {
             let mealData: [String: Any] = [
@@ -128,24 +150,34 @@ struct FirestoreService {
                 "rawResponseJson": entry.rawResponseJson,
                 "hasImage": entry.hasImageValue
             ]
-            
             let mealRef = db.collection("users").document(userId).collection("meals").document(entry.id.uuidString)
             batch.setData(mealData, forDocument: mealRef)
-            count += 1
+            ops += 1
             
-            // Firestore batch limit is 500 operations
-            if count >= 500 {
+            let mealLogData: [String: Any] = [
+                "uid": userId,
+                "foodText": entry.foodText,
+                "mealType": entry.mealType,
+                "totalCalories": entry.totalCalories,
+                "hasImage": entry.hasImageValue,
+                "timestamp": Timestamp(date: entry.timestamp)
+            ]
+            let mealLogRef = db.collection("mealLogs").document(entry.id.uuidString)
+            batch.setData(mealLogData, forDocument: mealLogRef)
+            ops += 1
+            
+            // Firestore batch limit is 500 operations (2 per meal → 250 meals per batch)
+            if ops >= 500 {
                 try await batch.commit()
-                print("DEBUG: Committed batch of 500 meals")
-                // Start new batch
-                // Note: For simplicity, we'll continue with the same batch
-                // In production, you might want to handle this differently
+                print("DEBUG: Committed batch of \(ops) operations")
+                batch = db.batch()
+                ops = 0
             }
         }
         
-        if count > 0 {
+        if ops > 0 {
             try await batch.commit()
-            print("DEBUG: Successfully synced \(count) meals to Firestore")
+            print("DEBUG: Successfully synced \(entries.count) meals to Firestore (users/meals + mealLogs)")
         }
     }
     
