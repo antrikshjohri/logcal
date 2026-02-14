@@ -16,16 +16,27 @@ struct TodaysMacrosCard: View {
     let carbsGoal: Double
     let fatGoal: Double
     
+    /// Progress ratio (can exceed 1.0 for display %). Ring draws up to 100%.
     private var proteinProgress: Double {
-        min(protein / proteinGoal, 1.0)
+        proteinGoal > 0 ? protein / proteinGoal : 0
     }
     
     private var carbsProgress: Double {
-        min(carbs / carbsGoal, 1.0)
+        carbsGoal > 0 ? carbs / carbsGoal : 0
     }
     
     private var fatProgress: Double {
-        min(fat / fatGoal, 1.0)
+        fatGoal > 0 ? fat / fatGoal : 0
+    }
+    
+    /// Protein: over goal = green. Carbs/Fat: over goal = red.
+    private func ringColor(macro: String, progress: Double) -> Color {
+        let exceeded = progress >= 1.0
+        switch macro {
+        case "protein": return exceeded ? .green : Theme.accentBlue
+        case "carbs", "fat": return exceeded ? .red : Theme.accentBlue
+        default: return Theme.accentBlue
+        }
     }
     
     var body: some View {
@@ -54,7 +65,7 @@ struct TodaysMacrosCard: View {
                         Text("Protein")
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(Theme.secondaryText)
-                        ProgressRingView(progress: proteinProgress, size: 60)
+                        ProgressRingView(progress: proteinProgress, size: 60, ringColor: ringColor(macro: "protein", progress: proteinProgress))
                     }
                     .frame(maxWidth: .infinity)
                     
@@ -66,7 +77,7 @@ struct TodaysMacrosCard: View {
                         Text("Carbs")
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(Theme.secondaryText)
-                        ProgressRingView(progress: carbsProgress, size: 60)
+                        ProgressRingView(progress: carbsProgress, size: 60, ringColor: ringColor(macro: "carbs", progress: carbsProgress))
                     }
                     .frame(maxWidth: .infinity)
                     
@@ -78,7 +89,7 @@ struct TodaysMacrosCard: View {
                         Text("Fat")
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(Theme.secondaryText)
-                        ProgressRingView(progress: fatProgress, size: 60)
+                        ProgressRingView(progress: fatProgress, size: 60, ringColor: ringColor(macro: "fat", progress: fatProgress))
                     }
                     .frame(maxWidth: .infinity)
                 }
