@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+#
+# Gradle wrapper script generated manually for this project.
+#
+
+set -eu
+
+APP_HOME=$(cd "$(dirname "$0")" && pwd)
+
+WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+SHARED_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper-shared.jar"
+PROPERTIES_FILE="$APP_HOME/gradle/wrapper/gradle-wrapper.properties"
+
+if [ ! -f "$WRAPPER_JAR" ]; then
+  echo "ERROR: Gradle wrapper JAR not found at: $WRAPPER_JAR" >&2
+  echo "Download it by running: ./gradlew wrapper" >&2
+  exit 1
+fi
+
+if [ ! -f "$SHARED_JAR" ]; then
+  echo "ERROR: Gradle wrapper shared JAR not found at: $SHARED_JAR" >&2
+  echo "Re-run scaffolding to regenerate wrapper jars." >&2
+  exit 1
+fi
+
+JAVA_EXEC=${JAVA_HOME:+$JAVA_HOME/bin/java}
+if [ -z "${JAVA_EXEC:-}" ]; then
+  JAVA_EXEC=java
+fi
+
+exec "$JAVA_EXEC" -classpath "$WRAPPER_JAR:$SHARED_JAR" org.gradle.wrapper.GradleWrapperMain "$PROPERTIES_FILE" "$@"
+

@@ -42,3 +42,8 @@ functions/*.log
 
 # Cursor IDE
 .cursor/
+
+# Android local/temp
+android/.tmp_gradle/
+android/.gradle/
+android/local.properties

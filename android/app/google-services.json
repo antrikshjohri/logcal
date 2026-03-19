@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1023141890322",
+    "project_id": "logcal-ai",
+    "storage_bucket": "logcal-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1023141890322:android:ac15d2b40f86c11f03cbcb",
+        "android_client_info": {
+          "package_name": "com.serene.logcal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1023141890322-i5ob5lajc097qdfs3fg22ebc6bapfboe.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbLhlR_N0qNkKI9l6-6JGLUSEJ3S2ErrA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1023141890322-i5ob5lajc097qdfs3fg22ebc6bapfboe.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1023141890322-empsla7r8hbflkbkrsjqsoqpcedo4cuh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.serene.logcal"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
