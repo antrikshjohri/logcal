@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +72,7 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F7))
+            .background(Color(0xFFF2F2F6))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -172,7 +173,11 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
 
 @Composable
 private fun AppCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF))
+    ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
 }
@@ -205,7 +210,7 @@ private fun RingProgress(progress: Float, percentageText: String, size: Dp, stro
             val arcSize = Size(size.toPx() - strokePx, size.toPx() - strokePx)
             val topLeft = Offset(strokePx / 2, strokePx / 2)
             drawArc(
-                color = Color(0xFFE3E3E6),
+                color = Color(0xFFE8E8E8),
                 startAngle = -210f,
                 sweepAngle = 240f,
                 useCenter = false,
@@ -279,7 +284,11 @@ private fun SmallStatTile(
     suffix: String,
     footer: (@Composable () -> Unit)? = null
 ) {
-    Card(modifier = modifier, shape = RoundedCornerShape(16.dp)) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF))
+    ) {
         Column(
             modifier = Modifier.padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
