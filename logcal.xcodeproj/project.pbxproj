@@ -329,8 +329,7 @@
 				INFOPLIST_FILE = logcal/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LogCal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record your voice for speech-to-text conversion.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app needs speech recognition to convert your voice input into text for logging meals.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "LogCal records short audio when you use dictation so it can be transcribed securely for meal logging.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -373,8 +372,7 @@
 				INFOPLIST_FILE = logcal/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LogCal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record your voice for speech-to-text conversion.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app needs speech recognition to convert your voice input into text for logging meals.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "LogCal records short audio when you use dictation so it can be transcribed securely for meal logging.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;

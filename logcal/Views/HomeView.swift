@@ -56,6 +56,18 @@ struct HomeView: View {
         }
     }
     
+    /// Extra bottom padding so multi-line food text does not scroll under the mic row or listening/transcribing banner.
+    private var foodTextEditorBottomPadding: CGFloat {
+        let iconRowInset: CGFloat = 55
+        let trimmed = viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let statusBannerAtBottom = !trimmed.isEmpty && (viewModel.isListening || viewModel.isTranscribingSpeech)
+        // Subheadline can wrap; keep text above the banner that sits above the icon row (~52pt).
+        let bannerInset: CGFloat = statusBannerAtBottom ? 80 : 0
+        let total = iconRowInset + bannerInset
+        print("DEBUG: [HomeView] foodTextEditorBottomPadding=\(total) banner=\(statusBannerAtBottom)")
+        return total
+    }
+    
     private var mainContent: some View {
         ScrollView {
                 VStack(spacing: 20) {
@@ -178,13 +190,12 @@ struct HomeView: View {
                         }
                         
                         ZStack(alignment: .topLeading) {
-                            // TextEditor with extra bottom padding to reserve space for icons
                             TextEditor(text: $viewModel.foodText)
                                 .frame(minHeight: Constants.Sizes.textEditorMinHeight)
                                 .padding(EdgeInsets(
                                     top: Constants.Spacing.medium,
                                     leading: Constants.Spacing.medium,
-                                    bottom: 55, // Reserve space for icon row
+                                    bottom: foodTextEditorBottomPadding,
                                     trailing: Constants.Spacing.medium
                                 ))
                                 .focused($isTextFieldFocused)
@@ -192,68 +203,86 @@ struct HomeView: View {
                                     RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
                                         .stroke(Constants.Colors.borderGray, lineWidth: Constants.Sizes.borderWidth)
                                 )
-                            
-                            // Placeholder text or listening indicator (only show when text is truly empty)
+
                             let isTextEmpty = viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            if isTextEmpty && viewModel.selectedImage == nil {
-                                if viewModel.isListening {
-                                    HStack(spacing: 8) {
-                                        // Animated dots
-                                        HStack(spacing: 4) {
-                                            Circle()
-                                                .fill(Constants.Colors.primaryBlue)
-                                                .frame(width: 6, height: 6)
-                                                .opacity(0.4)
-                                                .animation(
-                                                    Animation.easeInOut(duration: 0.6)
-                                                        .repeatForever(autoreverses: true)
-                                                        .delay(0.0),
-                                                    value: viewModel.isListening
-                                                )
-                                            Circle()
-                                                .fill(Constants.Colors.primaryBlue)
-                                                .frame(width: 6, height: 6)
-                                                .opacity(0.6)
-                                                .animation(
-                                                    Animation.easeInOut(duration: 0.6)
-                                                        .repeatForever(autoreverses: true)
-                                                        .delay(0.2),
-                                                    value: viewModel.isListening
-                                                )
-                                            Circle()
-                                                .fill(Constants.Colors.primaryBlue)
-                                                .frame(width: 6, height: 6)
-                                                .opacity(0.8)
-                                                .animation(
-                                                    Animation.easeInOut(duration: 0.6)
-                                                        .repeatForever(autoreverses: true)
-                                                        .delay(0.4),
-                                                    value: viewModel.isListening
-                                                )
-                                        }
-                                        Text("Start speaking...")
-                                            .foregroundColor(Constants.Colors.primaryGray)
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                    }
+                            let showPlaceholder = isTextEmpty && viewModel.selectedImage == nil
+                                && !viewModel.isListening && !viewModel.isTranscribingSpeech
+
+                            if showPlaceholder {
+                                Text("Write or speak naturally about what you ate.")
+                                    .foregroundColor(Constants.Colors.primaryGray)
+                                    .font(.subheadline)
                                     .padding(.horizontal, Constants.Spacing.regular)
                                     .padding(.vertical, Constants.Spacing.large)
                                     .allowsHitTesting(false)
-                                } else {
-                                    Text("Speak naturally about your meal...")
-                                        .foregroundColor(Constants.Colors.primaryGray)
-                                        .padding(.horizontal, Constants.Spacing.regular)
-                                        .padding(.vertical, Constants.Spacing.large)
-                                        .allowsHitTesting(false)
-                                }
                             }
-                            
+
+                            if viewModel.isListening {
+                                HStack(spacing: 8) {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(Constants.Colors.primaryBlue)
+                                            .frame(width: 6, height: 6)
+                                            .opacity(0.4)
+                                            .animation(
+                                                Animation.easeInOut(duration: 0.6)
+                                                    .repeatForever(autoreverses: true)
+                                                    .delay(0.0),
+                                                value: viewModel.isListening
+                                            )
+                                        Circle()
+                                            .fill(Constants.Colors.primaryBlue)
+                                            .frame(width: 6, height: 6)
+                                            .opacity(0.6)
+                                            .animation(
+                                                Animation.easeInOut(duration: 0.6)
+                                                    .repeatForever(autoreverses: true)
+                                                    .delay(0.2),
+                                                value: viewModel.isListening
+                                            )
+                                        Circle()
+                                            .fill(Constants.Colors.primaryBlue)
+                                            .frame(width: 6, height: 6)
+                                            .opacity(0.8)
+                                            .animation(
+                                                Animation.easeInOut(duration: 0.6)
+                                                    .repeatForever(autoreverses: true)
+                                                    .delay(0.4),
+                                                value: viewModel.isListening
+                                            )
+                                    }
+                                    Text("Speak now — tap the mic again when you're done")
+                                        .foregroundColor(Constants.Colors.primaryGray)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.horizontal, Constants.Spacing.regular)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isTextEmpty ? .topLeading : .bottomLeading)
+                                .padding(.top, isTextEmpty ? Constants.Spacing.large : 0)
+                                .padding(.bottom, isTextEmpty ? 0 : 52)
+                                .allowsHitTesting(false)
+                            } else if viewModel.isTranscribingSpeech {
+                                HStack(spacing: 10) {
+                                    ProgressView()
+                                    Text("Transcribing…")
+                                        .foregroundColor(Constants.Colors.primaryGray)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.horizontal, Constants.Spacing.regular)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isTextEmpty ? .topLeading : .bottomLeading)
+                                .padding(.top, isTextEmpty ? Constants.Spacing.large : 0)
+                                .padding(.bottom, isTextEmpty ? 0 : 52)
+                                .allowsHitTesting(false)
+                            }
+
                             // Icon buttons row (overlaid at bottom, inside text editor boundary)
                             VStack {
                                 Spacer()
                                 HStack {
                                     Spacer()
-                                    
+
                                     // Camera button (only show if camera is available)
                                     if UIImagePickerController.isSourceTypeAvailable(.camera) {
                                         Button(action: {
@@ -270,7 +299,7 @@ struct HomeView: View {
                                         .padding(.trailing, Constants.Spacing.small)
                                         .padding(.bottom, Constants.Spacing.medium)
                                     }
-                                    
+
                                     // Image picker button
                                     Button(action: {
                                         AnalyticsService.trackImagePickerOpened()
@@ -285,8 +314,8 @@ struct HomeView: View {
                                     }
                                     .padding(.trailing, Constants.Spacing.small)
                                     .padding(.bottom, Constants.Spacing.medium)
-                                    
-                                    // Mic button
+
+                                    // Mic button (Whisper: record while active, transcribe when stopped)
                                     Button(action: {
                                         viewModel.toggleSpeechRecognition()
                                     }) {
@@ -297,6 +326,8 @@ struct HomeView: View {
                                             .background(viewModel.isListening ? Constants.Colors.micActiveBackground : Constants.Colors.micInactiveBackground)
                                             .clipShape(Circle())
                                     }
+                                    .disabled(viewModel.isTranscribingSpeech)
+                                    .opacity(viewModel.isTranscribingSpeech ? 0.45 : 1)
                                     .padding(.trailing, Constants.Spacing.regular)
                                     .padding(.bottom, Constants.Spacing.medium)
                                 }
@@ -550,7 +581,7 @@ struct SpeechErrorModifier: ViewModifier {
             .onChange(of: viewModel.speechService.errorMessage) { oldValue, newValue in
                 if let message = newValue, message != oldValue {
                     toastManager.show(ToastMessage(
-                        title: "Speech Recognition Error",
+                        title: "Dictation Error",
                         message: message,
                         type: .warning
                     ))

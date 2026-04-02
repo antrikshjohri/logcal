@@ -31,6 +31,7 @@ class LogViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var latestResult: MealLogResponse?
     @Published var isListening: Bool = false
+    @Published var isTranscribingSpeech: Bool = false
     @Published var selectedImage: UIImage?
     @Published var showImagePicker: Bool = false
     @Published var showCameraPicker: Bool = false
@@ -61,24 +62,27 @@ class LogViewModel: ObservableObject {
         inferredMealType = initialMealType
         selectedMealType = initialMealType
         
-        // Update foodText when speech recognition updates (only when actively listening)
-        speechService.$recognizedText
-            .combineLatest(speechService.$isListening)
-            .sink { [weak self] text, isListening in
-                if isListening {
-                    // Only update if we have recognized text, or if current text is empty
-                    // This prevents clearing existing text when listening starts
-                    if !text.isEmpty || self?.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true {
-                        self?.foodText = text
-                    }
-                }
+        speechService.onTranscriptionResult = { [weak self] text in
+            guard let self else { return }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            if self.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                self.foodText = trimmed
+            } else {
+                self.foodText += " " + trimmed
             }
-            .store(in: &cancellables)
-        
-        // Mirror isListening state to published property for SwiftUI observation
+            print("DEBUG: [LogViewModel] Merged Whisper transcript into foodText (len=\(trimmed.count))")
+        }
+
         speechService.$isListening
             .sink { [weak self] isListening in
                 self?.isListening = isListening
+            }
+            .store(in: &cancellables)
+
+        speechService.$isTranscribing
+            .sink { [weak self] transcribing in
+                self?.isTranscribingSpeech = transcribing
             }
             .store(in: &cancellables)
     }
@@ -134,10 +138,11 @@ class LogViewModel: ObservableObject {
         
         print("DEBUG: hasText: \(hasText), hasImage: \(hasImage)")
         
-        // Stop speech recognition immediately when Log Meal button is tapped
+        // Stop recording and wait for Whisper if a dictation is in progress
         if speechService.isListening {
-            speechService.stopListening()
+            await speechService.stopListening()
         }
+        await speechService.waitUntilIdle()
         
         // Check app version before proceeding
         await appConfigService.fetchConfig()
@@ -262,12 +267,16 @@ class LogViewModel: ObservableObject {
     }
     
     func toggleSpeechRecognition() {
+        if speechService.isTranscribing {
+            print("DEBUG: [LogViewModel] toggleSpeech ignored while transcribing")
+            return
+        }
         if speechService.isListening {
-            speechService.stopListening()
-            // Track analytics
             AnalyticsService.trackSpeechRecognitionStopped()
+            Task {
+                await speechService.stopListening()
+            }
         } else {
-            // Track analytics
             AnalyticsService.trackSpeechRecognitionStarted()
             Task {
                 await speechService.startListening()

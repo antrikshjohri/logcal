@@ -2,52 +2,43 @@
 //  SpeechRecognitionService.swift
 //  logcal
 //
-//  Created by Antriksh Johri on 15/12/25.
+//  Records short audio on device, transcribes via OpenAI Whisper (Firebase callable).
 //
 
 import Foundation
-import Speech
 import AVFoundation
-import AVFAudio
 import Combine
+import OSLog
 
 @MainActor
 class SpeechRecognitionService: NSObject, ObservableObject {
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: Constants.Locale.speechRecognition))
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
-    
+    private let log = Logger(subsystem: "com.serene.logcal", category: "WhisperDictation")
+    private let firebaseService = FirebaseService()
+    private var audioRecorder: AVAudioRecorder?
+    private var recordingURL: URL?
+
     @Published var isListening = false
+    @Published var isTranscribing = false
     @Published var recognizedText = ""
     @Published var errorMessage: String?
-    
-    private var isUserInitiatedStop = false
-    
+
+    /// Called on the main actor when Whisper returns non-empty text (LogViewModel merges into `foodText`).
+    var onTranscriptionResult: ((String) -> Void)?
+
     override init() {
         super.init()
     }
-    
-    func requestAuthorization() async -> Bool {
-        // Request speech recognition authorization
-        let speechStatus = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                continuation.resume(returning: status)
-            }
+
+    /// Wait until any in-flight transcription finishes (e.g. before logging a meal).
+    func waitUntilIdle() async {
+        while isTranscribing {
+            try? await Task.sleep(nanoseconds: 50_000_000)
         }
-        
-        if speechStatus != .authorized {
-            errorMessage = AppError.permissionDenied("Speech recognition").errorDescription
-            return false
-        }
-        
-        // Use AVAudioApplication for iOS 17+ (deprecated APIs replaced)
-        // Fallback to AVAudioSession for older iOS versions
+    }
+
+    func requestMicrophoneAuthorization() async -> Bool {
         if #available(iOS 17.0, *) {
-            // AVAudioApplication uses class methods, not instance methods
             let audioStatus = AVAudioApplication.shared.recordPermission
-            
-            // Check if permission is granted (enum comparison)
             if audioStatus != .granted {
                 let granted = await withCheckedContinuation { continuation in
                     AVAudioApplication.requestRecordPermission { granted in
@@ -60,9 +51,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
                 }
             }
         } else {
-            // Fallback for iOS < 17
             let audioStatus = AVAudioSession.sharedInstance().recordPermission
-            
             if audioStatus != .granted {
                 let granted = await withCheckedContinuation { continuation in
                     AVAudioSession.sharedInstance().requestRecordPermission { granted in
@@ -75,128 +64,142 @@ class SpeechRecognitionService: NSObject, ObservableObject {
                 }
             }
         }
-        
         return true
     }
-    
+
     func startListening() async {
-        guard !isListening else {
+        guard !isListening, !isTranscribing else {
+            print("DEBUG: [SpeechRecognitionService] startListening skipped (listening=\(isListening) transcribing=\(isTranscribing))")
             return
         }
-        
-        // Check authorization
-        guard await requestAuthorization() else {
+
+        guard await requestMicrophoneAuthorization() else {
             return
         }
-        
-        // Cancel previous task if exists
-        if let recognitionTask = recognitionTask {
-            recognitionTask.cancel()
-            self.recognitionTask = nil
-        }
-        
-        // Configure audio session
+
+        recognizedText = ""
+        errorMessage = nil
+
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .duckOthers])
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             errorMessage = AppError.audioConfigurationError(error.localizedDescription).errorDescription
+            print("DEBUG: [SpeechRecognitionService] Audio session error: \(error)")
             return
         }
-        
-        // Create recognition request
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else {
-            errorMessage = AppError.speechRecognitionError("Failed to create recognition request").errorDescription
-            return
-        }
-        
-        recognitionRequest.shouldReportPartialResults = true
-        
-        // Configure audio engine
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        
-        inputNode.installTap(onBus: 0, bufferSize: Constants.Audio.bufferSize, format: recordingFormat) { buffer, _ in
-            recognitionRequest.append(buffer)
-        }
-        
-        audioEngine.prepare()
-        
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("logcal-whisper-\(UUID().uuidString).m4a")
+        recordingURL = url
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44_100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+        ]
+
         do {
-            try audioEngine.start()
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.prepareToRecord()
+            guard recorder.record() else {
+                errorMessage = AppError.speechRecognitionError("Could not start recording").errorDescription
+                recordingURL = nil
+                return
+            }
+            audioRecorder = recorder
         } catch {
             errorMessage = AppError.audioConfigurationError(error.localizedDescription).errorDescription
+            recordingURL = nil
+            print("DEBUG: [SpeechRecognitionService] AVAudioRecorder error: \(error)")
             return
         }
-        
-        // Start recognition task
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-            guard let self = self else { return }
-            
-            if let result = result {
-                let transcribedText = result.bestTranscription.formattedString
-                Task { @MainActor in
-                    self.recognizedText = transcribedText
-                }
-            }
-            
-            if let error = error {
-                Task { @MainActor in
-                    // Only show error if it wasn't a user-initiated cancellation
-                    if !self.isUserInitiatedStop {
-                        // Check if it's a cancellation error (which is expected when user stops)
-                        let nsError = error as NSError
-                        if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 216 {
-                            // This is a cancellation error, don't show it
-                        } else {
-                            // It's a real error, show it
-                            self.errorMessage = AppError.speechRecognitionError(error.localizedDescription).errorDescription
-                        }
-                    }
-                    self.stopListening()
-                }
-            }
-        }
-        
+
         isListening = true
-        recognizedText = ""
-        errorMessage = nil
-        isUserInitiatedStop = false // Reset flag when starting
+        print("DEBUG: [SpeechRecognitionService] Recording started path=\(url.path)")
     }
-    
-    func stopListening() {
+
+    func stopListening() async {
         guard isListening else {
+            print("DEBUG: [SpeechRecognitionService] stopListening no-op (not listening)")
             return
         }
-        
-        // Mark as user-initiated stop to avoid showing cancellation errors
-        isUserInitiatedStop = true
-        
-        // Clear any error message since this is intentional
-        errorMessage = nil
-        
-        // Set isListening to false first to update UI immediately
+
         isListening = false
-        
-        // Stop audio engine
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
-        
-        // End recognition request
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
-        
-        // Cancel recognition task
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        
-        // Deactivate audio session
+        audioRecorder?.stop()
+        audioRecorder = nil
+
         let audioSession = AVAudioSession.sharedInstance()
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+
+        guard let url = recordingURL else {
+            print("DEBUG: [SpeechRecognitionService] stopListening: missing recording URL")
+            recordingURL = nil
+            return
+        }
+        recordingURL = nil
+
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            print("DEBUG: [SpeechRecognitionService] Recording file missing at \(url.path)")
+            try? FileManager.default.removeItem(at: url)
+            return
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            errorMessage = AppError.audioConfigurationError("Could not read recording").errorDescription
+            try? FileManager.default.removeItem(at: url)
+            print("DEBUG: [SpeechRecognitionService] Read recording failed: \(error)")
+            return
+        }
+
+        try? FileManager.default.removeItem(at: url)
+
+        // Very small files are usually silence or a failed tap — avoid a slow network round-trip
+        let minBytes = 1_500
+        if data.count < minBytes {
+            let msg = "Recording too short. Tap the mic, speak for a few seconds, then tap again."
+            errorMessage = AppError.speechRecognitionError(msg).errorDescription
+            log.warning("Audio too small (\(data.count) B) — need at least ~\(minBytes) B")
+            print("DEBUG: [SpeechRecognitionService] Audio too small (\(data.count) B), skip transcription")
+            return
+        }
+
+        isTranscribing = true
+        defer { isTranscribing = false }
+
+        let t0 = CFAbsoluteTimeGetCurrent()
+        do {
+            print("DEBUG: [SpeechRecognitionService] Sending audio to transcribeAudio bytes=\(data.count)")
+            log.debug("Sending \(data.count) bytes to transcribeAudio")
+            let text = try await firebaseService.transcribeAudio(audioData: data, mimeType: "audio/m4a")
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            recognizedText = trimmed
+            let elapsed = CFAbsoluteTimeGetCurrent() - t0
+            print("DEBUG: [SpeechRecognitionService] Whisper done in \(String(format: "%.2f", elapsed))s, chars=\(trimmed.count)")
+            log.info("Whisper completed in \(String(format: "%.2f", elapsed))s, chars=\(trimmed.count)")
+            if trimmed.isEmpty {
+                let msg = "No speech detected. Try again, speak clearly, or check your connection."
+                errorMessage = AppError.speechRecognitionError(msg).errorDescription
+                log.notice("Whisper returned empty text")
+            } else {
+                onTranscriptionResult?(trimmed)
+            }
+        } catch {
+            let elapsed = CFAbsoluteTimeGetCurrent() - t0
+            if let appError = error as? AppError {
+                errorMessage = appError.errorDescription
+                print("DEBUG: [SpeechRecognitionService] Transcription failed after \(String(format: "%.2f", elapsed))s (AppError): \(appError.errorDescription ?? "")")
+                log.error("Transcription failed after \(String(format: "%.2f", elapsed))s: \(appError.errorDescription ?? "")")
+            } else {
+                let message = error.localizedDescription
+                errorMessage = AppError.speechRecognitionError(message).errorDescription
+                print("DEBUG: [SpeechRecognitionService] Transcription failed after \(String(format: "%.2f", elapsed))s: \(message)")
+                log.error("Transcription failed after \(String(format: "%.2f", elapsed))s: \(message)")
+            }
+        }
     }
 }
-

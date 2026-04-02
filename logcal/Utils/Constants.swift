@@ -68,8 +68,36 @@ enum Constants {
     
     // MARK: - Locale
     enum Locale {
-        static let speechRecognition = "en-US"
         static let timeZone = "Asia/Kolkata"
+    }
+
+    // MARK: - Dictation (Whisper)
+    enum Dictation {
+        /// UserDefaults key: `"en"`, `"hi"`, or `"auto"` (omit `language` → Whisper auto-detect).
+        static let whisperLanguageUserDefaultsKey = "dictationWhisperLanguage"
+
+        /// Optional compile-time default (e.g. `"en"`). If `nil`, uses UserDefaults then device language.
+        static let whisperLanguageOverride: String? = nil
+
+        /// ISO 639-1 code sent to OpenAI Whisper (`language` parameter). `nil` = auto-detect.
+        static func resolvedWhisperLanguageCode() -> String? {
+            if let o = whisperLanguageOverride {
+                let t = o.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if t.isEmpty || t == "auto" { return nil }
+                return primaryLanguageTag(t)
+            }
+            if let ud = UserDefaults.standard.string(forKey: whisperLanguageUserDefaultsKey) {
+                let t = ud.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if t.isEmpty || t == "auto" { return nil }
+                return primaryLanguageTag(t)
+            }
+            return Foundation.Locale.current.language.languageCode?.identifier
+        }
+
+        private static func primaryLanguageTag(_ code: String) -> String {
+            let t = code.split(separator: "-").first.map(String.init) ?? code
+            return String(t.prefix(3)).lowercased()
+        }
     }
     
     // MARK: - Meal Type Time Ranges (IST)

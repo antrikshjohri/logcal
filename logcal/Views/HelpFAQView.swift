@@ -40,7 +40,7 @@ struct HelpFAQView: View {
         ),
         FAQItem(
             question: "How does the voice input work?",
-            answer: "Tap the microphone icon when logging a meal to use voice input. Your device will convert speech to text, which is then analyzed by our AI to estimate calories."
+                answer: "Tap the microphone to record what you ate, then tap again to stop. Your audio is sent securely to be transcribed, then our AI estimates calories from the text."
         ),
         FAQItem(
             question: "What if the calorie estimate seems wrong?",

@@ -11,7 +11,90 @@ import FirebaseAuth
 
 struct FirebaseService {
     private let functions = Functions.functions()
+
+    /// Maps Firebase Callable errors using `FunctionsErrorCode` (raw values differ from legacy numeric guesses).
+    private func mapCallableError(_ error: NSError, speechStyle: Bool) -> AppError {
+        let msg = (error.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription
+        print("DEBUG: [FirebaseService] mapCallableError speechStyle=\(speechStyle) domain=\(error.domain) code=\(error.code) msg=\(msg)")
+
+        if error.domain == NSURLErrorDomain {
+            return .networkError(error)
+        }
+
+        guard error.domain == FunctionsErrorDomain || error.domain == "FIRFunctionsErrorDomain" else {
+            return .unknown(error)
+        }
+
+        guard let fnCode = FunctionsErrorCode(rawValue: error.code) else {
+            print("DEBUG: [FirebaseService] Unknown Functions error raw code=\(error.code)")
+            return speechStyle ? .speechRecognitionError(msg) : .unknown(error)
+        }
+
+        switch fnCode {
+        case .unauthenticated:
+            return .permissionDenied("Authentication required")
+        case .resourceExhausted:
+            return speechStyle ? .speechRecognitionError(msg) : .unknown(error)
+        case .invalidArgument:
+            return speechStyle ? .speechRecognitionError(msg) : .unknown(NSError(domain: "FirebaseFunctions", code: error.code, userInfo: [NSLocalizedDescriptionKey: msg]))
+        case .deadlineExceeded:
+            let m = speechStyle
+                ? "Transcription timed out. Try a shorter clip or check your connection."
+                : msg
+            return speechStyle ? .speechRecognitionError(m) : .unknown(NSError(domain: "FirebaseFunctions", code: error.code, userInfo: [NSLocalizedDescriptionKey: m]))
+        case .unavailable:
+            return speechStyle
+                ? .speechRecognitionError("Service busy. Please try again in a moment.")
+                : .unknown(error)
+        case .internal:
+            return speechStyle
+                ? .speechRecognitionError(msg.isEmpty ? "Transcription failed. Try again." : msg)
+                : .unknown(NSError(domain: "FirebaseFunctions", code: error.code, userInfo: [NSLocalizedDescriptionKey: "Firebase Function error: \(msg)"]))
+        case .cancelled:
+            return speechStyle ? .speechRecognitionError("Request was cancelled.") : .unknown(error)
+        default:
+            return speechStyle ? .speechRecognitionError(msg) : .unknown(NSError(domain: "FirebaseFunctions", code: error.code, userInfo: [NSLocalizedDescriptionKey: msg]))
+        }
+    }
     
+    /// Transcribe meal dictation audio via Whisper (Firebase callable `transcribeAudio`).
+    /// Pass `language` as ISO 639-1 (e.g. `en`, `hi`) or `nil` to use `Constants.Dictation` / auto.
+    func transcribeAudio(audioData: Data, mimeType: String = "audio/m4a", language: String? = nil) async throws -> String {
+        if !isAuthenticated {
+            print("DEBUG: [FirebaseService] transcribeAudio: signing in anonymously")
+            try await signInAnonymously()
+        }
+
+        let base64String = audioData.base64EncodedString()
+        var requestData: [String: Any] = [
+            "audioBase64": base64String,
+            "mimeType": mimeType,
+        ]
+        let lang = language ?? Constants.Dictation.resolvedWhisperLanguageCode()
+        if let lang {
+            requestData["language"] = lang
+        }
+
+        print("DEBUG: [FirebaseService] transcribeAudio callable bytes=\(audioData.count) mime=\(mimeType) language=\(lang ?? "auto")")
+
+        let function = functions.httpsCallable("transcribeAudio")
+        function.timeoutInterval = 180
+
+        do {
+            let result = try await function.call(requestData)
+            guard let dict = result.data as? [String: Any],
+                  let text = dict["text"] as? String else {
+                print("DEBUG: [FirebaseService] transcribeAudio unexpected response: \(String(describing: result.data))")
+                throw AppError.parseError
+            }
+            return text
+        } catch {
+            let ns = error as NSError
+            print("DEBUG: [FirebaseService] transcribeAudio catch type=\(type(of: error)) domain=\(ns.domain) code=\(ns.code) desc=\(error.localizedDescription) userInfo=\(ns.userInfo)")
+            throw mapCallableError(ns, speechStyle: true)
+        }
+    }
+
     /// Log a meal using Firebase Functions (requires authentication)
     func logMeal(foodText: String, mealType: String, imageData: Data?) async throws -> MealLogResponse {
         // Ensure user is authenticated (Firebase Functions onCall handles auth automatically)
@@ -120,55 +203,10 @@ struct FirebaseService {
             }
             // #endregion
             return decoded
-        } catch let error as NSError {
-            // Debug: Print full error details
-            print("DEBUG: Firebase Function error - Domain: \(error.domain), Code: \(error.code), Description: \(error.localizedDescription)")
-            print("DEBUG: Error userInfo: \(error.userInfo)")
-            
-            // Handle Firebase Functions errors
-            if error.domain == "FIRFunctionsErrorDomain" || error.domain == "com.firebase.functions" {
-                let errorCode = error.code
-                var errorMessage = error.localizedDescription
-                
-                // Try to extract more detailed error message
-                if let userInfo = error.userInfo["NSLocalizedDescription"] as? String {
-                    errorMessage = userInfo
-                }
-                
-                // Check for underlying error details
-                if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? NSError {
-                    print("DEBUG: Underlying error: \(underlyingError)")
-                    if let underlyingMessage = underlyingError.userInfo[NSLocalizedDescriptionKey] as? String {
-                        errorMessage = underlyingMessage
-                    }
-                }
-                
-                print("DEBUG: Final error message: \(errorMessage)")
-                
-                switch errorCode {
-                case 1: // UNAUTHENTICATED
-                    throw AppError.permissionDenied("Authentication required")
-                case 3: // INVALID_ARGUMENT
-                    throw AppError.unknown(NSError(domain: "FirebaseFunctions", code: errorCode, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
-                case 8: // RESOURCE_EXHAUSTED
-                    throw AppError.unknown(NSError(domain: "FirebaseFunctions", code: errorCode, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
-                case 13: // INTERNAL
-                    // Internal error - check Firebase Console logs for details
-                    throw AppError.unknown(NSError(domain: "FirebaseFunctions", code: errorCode, userInfo: [NSLocalizedDescriptionKey: "Firebase Function internal error. Check function logs in Firebase Console. Error: \(errorMessage)"]))
-                default:
-                    throw AppError.unknown(NSError(domain: "FirebaseFunctions", code: errorCode, userInfo: [NSLocalizedDescriptionKey: "Firebase Function error (code \(errorCode)): \(errorMessage)"]))
-                }
-            }
-            
-            // Handle FunctionsError from Firebase SDK (if available)
-            // Note: FunctionsError might not be available in all Firebase SDK versions
-            
-            // Handle network errors
-            if error.domain == NSURLErrorDomain {
-                throw AppError.networkError(error)
-            }
-            
-            throw AppError.unknown(error)
+        } catch {
+            let ns = error as NSError
+            print("DEBUG: [FirebaseService] logMeal catch domain=\(ns.domain) code=\(ns.code) desc=\(error.localizedDescription) userInfo=\(ns.userInfo)")
+            throw mapCallableError(ns, speechStyle: false)
         }
     }
     

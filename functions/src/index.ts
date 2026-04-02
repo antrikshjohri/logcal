@@ -11,14 +11,27 @@ const OPENAI_MODEL = "gpt-4o-2024-08-06";
 const OPENAI_TEMPERATURE = 0.3;
 
 // Rate limiting configuration
-const MAX_REQUESTS_PER_DAY = 100; // Per user
-const MAX_REQUESTS_PER_MINUTE = 10; // Per user
+const MAX_REQUESTS_PER_DAY = 100; // Per user (logMeal)
+const MAX_REQUESTS_PER_MINUTE = 10; // Per user (logMeal)
+
+const MAX_TRANSCRIBE_PER_DAY = 200; // Per user (Whisper / transcribeAudio)
+const MAX_TRANSCRIBE_PER_MINUTE = 40; // Per user
+
+const MAX_TRANSCRIBE_AUDIO_BYTES = 4 * 1024 * 1024; // 4 MB — meal dictation clips
+const WHISPER_TRANSCRIBE_MODEL = "whisper-1";
 
 interface LogMealRequest {
   foodText: string;
   mealType: string;
   imageBase64?: string; // Optional base64-encoded image
   country?: string; // Optional country name (e.g., "India", "United States")
+}
+
+interface TranscribeAudioRequest {
+  audioBase64: string;
+  mimeType?: string; // e.g. audio/m4a
+  /** ISO 639-1 (e.g. en, hi). Omit or "auto" for Whisper auto-detect. */
+  language?: string;
 }
 
 interface MealLogResponse {
@@ -102,6 +115,143 @@ async function trackUsage(uid: string): Promise<{ allowed: boolean; reason?: str
     console.warn("WARNING: Firestore not available for rate limiting. Allowing request. Error:", error.message || error);
     return { allowed: true };
   }
+}
+
+/**
+ * Rate limits for Whisper / transcribeAudio (separate from logMeal).
+ */
+async function trackTranscribeUsage(uid: string): Promise<{ allowed: boolean; reason?: string }> {
+  try {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60 * 1000;
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+    const userRef = admin.firestore().collection("usage").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      await userRef.set({
+        requests: [],
+        transcribeRequests: [now],
+        lastTranscribeRequest: now,
+      });
+      return { allowed: true };
+    }
+
+    const data = userDoc.data()!;
+    const requests = (data.transcribeRequests as number[]) || [];
+
+    const requestsLastMinute = requests.filter((t) => t > oneMinuteAgo);
+    const requestsLastDay = requests.filter((t) => t > oneDayAgo);
+
+    if (requestsLastMinute.length >= MAX_TRANSCRIBE_PER_MINUTE) {
+      return {
+        allowed: false,
+        reason: "Transcription rate limit exceeded. Please try again in a minute.",
+      };
+    }
+
+    if (requestsLastDay.length >= MAX_TRANSCRIBE_PER_DAY) {
+      return {
+        allowed: false,
+        reason: "Daily transcription limit exceeded. Please try again tomorrow.",
+      };
+    }
+
+    requests.push(now);
+    const recentRequests = requests.filter((t) => t > oneDayAgo);
+
+    await userRef.update({
+      transcribeRequests: recentRequests,
+      lastTranscribeRequest: now,
+    });
+
+    return { allowed: true };
+  } catch (error: any) {
+    console.warn(
+      "WARNING: Firestore not available for transcribe rate limiting. Allowing request. Error:",
+      error.message || error
+    );
+    return { allowed: true };
+  }
+}
+
+/**
+ * Call OpenAI Whisper API (multipart) — API key stays on server.
+ */
+/** Whisper `language` param: ISO 639-1 style; omit for auto-detect. */
+function normalizeWhisperLanguage(code: unknown): string | undefined {
+  if (typeof code !== "string") {
+    return undefined;
+  }
+  let t = code.trim().toLowerCase();
+  if (t === "" || t === "auto") {
+    return undefined;
+  }
+  if (t.includes("-")) {
+    t = t.split("-")[0] ?? t;
+  }
+  if (!/^[a-z]{2,3}$/.test(t)) {
+    console.warn("DEBUG: Ignoring invalid whisper language code:", code);
+    return undefined;
+  }
+  return t;
+}
+
+async function callOpenAIWhisperTranscription(
+  audioBuffer: Buffer,
+  filename: string,
+  mimeType: string,
+  language?: string
+): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    console.error("ERROR: OPENAI_API_KEY is not set for transcribeAudio");
+    throw new functions.https.HttpsError(
+      "internal",
+      "OpenAI API key not configured."
+    );
+  }
+
+  const formData = new FormData();
+  const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
+  formData.append("file", blob, filename);
+  formData.append("model", WHISPER_TRANSCRIBE_MODEL);
+  if (language) {
+    formData.append("language", language);
+  }
+
+  console.log(
+    "DEBUG: transcribeAudio calling OpenAI Whisper, bytes=",
+    audioBuffer.length,
+    "model=",
+    WHISPER_TRANSCRIBE_MODEL,
+    "language=",
+    language || "(auto)"
+  );
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("ERROR: Whisper API status:", response.status, errorText);
+    throw new functions.https.HttpsError(
+      "internal",
+      `Transcription service error: ${response.status}`
+    );
+  }
+
+  const body = (await response.json()) as { text?: string };
+  const text = (body.text || "").trim();
+  console.log("DEBUG: Whisper transcription length:", text.length);
+  return text;
 }
 
 /**
@@ -381,6 +531,84 @@ export const logMeal = functions.runWith({
       throw new functions.https.HttpsError(
         "internal",
         `Firebase Function error: ${errorMessage}. Check function logs for details.`
+      );
+    }
+  }
+);
+
+/**
+ * Transcribe short meal dictation audio via OpenAI Whisper (server-side key).
+ * Client sends base64-encoded audio (e.g. M4A). Auth required.
+ */
+export const transcribeAudio = functions.runWith({
+  secrets: ["OPENAI_API_KEY"],
+  timeoutSeconds: 120,
+  memory: "512MB",
+}).https.onCall(
+  async (data: TranscribeAudioRequest, context) => {
+    console.log("DEBUG: transcribeAudio function called");
+
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated"
+      );
+    }
+
+    const uid = context.auth.uid;
+    const audioBase64 = data?.audioBase64;
+    const mimeType = typeof data?.mimeType === "string" && data.mimeType.length > 0
+      ? data.mimeType
+      : "audio/m4a";
+
+    if (!audioBase64 || typeof audioBase64 !== "string" || audioBase64.length === 0) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "audioBase64 is required"
+      );
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(audioBase64, "base64");
+    } catch (e) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid base64 audio");
+    }
+
+    if (buffer.length === 0) {
+      throw new functions.https.HttpsError("invalid-argument", "Empty audio payload");
+    }
+
+    if (buffer.length > MAX_TRANSCRIBE_AUDIO_BYTES) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Audio too large. Please record a shorter clip."
+      );
+    }
+
+    const usageCheck = await trackTranscribeUsage(uid);
+    if (!usageCheck.allowed) {
+      throw new functions.https.HttpsError(
+        "resource-exhausted",
+        usageCheck.reason || "Rate limit exceeded"
+      );
+    }
+
+    const ext = mimeType.includes("wav") ? "wav" : mimeType.includes("webm") ? "webm" : "m4a";
+    const filename = `dictation.${ext}`;
+    const whisperLang = normalizeWhisperLanguage(data?.language);
+
+    try {
+      const text = await callOpenAIWhisperTranscription(buffer, filename, mimeType, whisperLang);
+      return { text };
+    } catch (error: any) {
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      console.error("ERROR: transcribeAudio failed:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        error?.message || "Transcription failed"
       );
     }
   }
