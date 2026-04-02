@@ -149,28 +149,10 @@ struct HomeView: View {
                     }
                     .padding(.horizontal)
                     .sheet(isPresented: $viewModel.showDatePicker) {
-                        NavigationView {
-                            VStack {
-                                DatePicker(
-                                    "Select Date",
-                                    selection: $viewModel.selectedDate,
-                                    displayedComponents: [.date]
-                                )
-                                .datePickerStyle(.graphical)
-                                .padding()
-                                
-                                Spacer()
-                            }
-                            .navigationTitle("Select Date")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    Button("Done") {
-                                        viewModel.showDatePicker = false
-                                    }
-                                }
-                            }
-                        }
+                        LogDatePickerSheet(
+                            selectedDate: $viewModel.selectedDate,
+                            isPresented: $viewModel.showDatePicker
+                        )
                     }
                     
                     // Food text input
@@ -517,6 +499,50 @@ struct HomeView: View {
     }
     
     
+}
+
+/// Graphical date picker: dismisses as soon as the user taps a **different** calendar day (one tap). "Close" still available if they only browse months.
+private struct LogDatePickerSheet: View {
+    @Binding var selectedDate: Date
+    @Binding var isPresented: Bool
+    @State private var dayBaselineForDismiss: Date?
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                DatePicker(
+                    "Select Date",
+                    selection: $selectedDate,
+                    displayedComponents: [.date]
+                )
+                .datePickerStyle(.graphical)
+                .padding()
+                .onAppear {
+                    dayBaselineForDismiss = selectedDate
+                    print("DEBUG: [LogDatePickerSheet] opened baseline day=\(selectedDate)")
+                }
+                .onChange(of: selectedDate) { _, newValue in
+                    guard let baseline = dayBaselineForDismiss else { return }
+                    if !Calendar.current.isDate(newValue, equalTo: baseline, toGranularity: .day) {
+                        print("DEBUG: [LogDatePickerSheet] new day selected, dismissing")
+                        isPresented = false
+                    }
+                }
+
+                Spacer()
+            }
+            .navigationTitle("Select Date")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Close") {
+                        print("DEBUG: [LogDatePickerSheet] Close tapped")
+                        isPresented = false
+                    }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - View Modifiers
