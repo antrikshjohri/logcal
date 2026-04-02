@@ -60,7 +60,7 @@ struct OpenAIService {
     
     private func logMealDirect(foodText: String, mealType: String, image: UIImage?, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams).
+        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, use both together: identify foods and portions from the photo and use the text for context; if they disagree on something visible in the image, trust the image. When a photo is present, each item's assumptions should mention what you inferred from the photo (e.g. visible portion, condiments), not only text-based guesses.
         """
         
         // Build user message content
@@ -68,10 +68,13 @@ struct OpenAIService {
         
         // Add text if provided
         if !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let textMessage = """
+            var textMessage = """
         Food description: \(foodText)
         Meal type: \(mealType)
         """
+            if image != nil {
+                textMessage += "\nA photo of this meal is attached in this message; combine it with the description above for estimates and assumptions."
+            }
             userContent.append([
                 "type": "text",
                 "text": textMessage

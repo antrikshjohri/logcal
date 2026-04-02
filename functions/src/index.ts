@@ -280,9 +280,9 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
   // Build system prompt based on country
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams).`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   } else {
-    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams).`;
+    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   }
   
   console.log("DEBUG: System prompt:", systemPrompt);
@@ -290,11 +290,15 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
   // Build user message content array for Vision API
   const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
   
-  // Add text if provided
+  // Add text if provided (same user message will also include image below when present — one multimodal request)
   if (foodText && foodText.trim().length > 0) {
+    let text = `Food description: ${foodText}\nMeal type: ${mealType}`;
+    if (imageBase64) {
+      text += `\nA photo of this meal is attached in this message; combine it with the description above for estimates and assumptions.`;
+    }
     userContent.push({
       type: "text",
-      text: `Food description: ${foodText}\nMeal type: ${mealType}`
+      text,
     });
   } else {
     // If no text, still include meal type
