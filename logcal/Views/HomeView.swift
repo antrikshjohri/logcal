@@ -400,11 +400,11 @@ struct HomeView: View {
                                 .font(.title2)
                                 .fontWeight(.bold)
                             
-                            // Macros row
-                            if let protein = result.protein, let carbs = result.carbs, let fat = result.fat {
+                            // Macros row (meal totals or sum of items — same data history uses from rawResponseJson)
+                            if let macros = result.resolvedMealMacrosForDisplay() {
                                 HStack(spacing: 20) {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(Int(protein))g")
+                                        Text("\(Int(macros.protein))g")
                                             .font(.system(size: 16, weight: .semibold))
                                         Text("Protein")
                                             .font(.caption2)
@@ -412,7 +412,7 @@ struct HomeView: View {
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(Int(carbs))g")
+                                        Text("\(Int(macros.carbs))g")
                                             .font(.system(size: 16, weight: .semibold))
                                         Text("Carbs")
                                             .font(.caption2)
@@ -420,7 +420,7 @@ struct HomeView: View {
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(Int(fat))g")
+                                        Text("\(Int(macros.fat))g")
                                             .font(.system(size: 16, weight: .semibold))
                                         Text("Fat")
                                             .font(.caption2)
@@ -448,6 +448,11 @@ struct HomeView: View {
                                     Text("\(item.quantity)")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                    // Per-item macros (same style as History list / meal detail)
+                                    if let p = item.protein, let c = item.carbs, let f = item.fat {
+                                        MacrosCaptionLine(protein: p, carbs: c, fat: f)
+                                            .padding(.top, 2)
+                                    }
                                     if let assumptions = item.assumptions, !assumptions.isEmpty {
                                         Text("Assumptions: \(assumptions)")
                                             .font(.caption)
@@ -468,6 +473,11 @@ struct HomeView: View {
                         .onAppear {
                             // Track analytics
                             AnalyticsService.trackMealSummaryViewed()
+                            for item in result.items {
+                                if item.protein == nil || item.carbs == nil || item.fat == nil {
+                                    print("DEBUG: [HomeView] preview item '\(item.name)' missing macros p=\(String(describing: item.protein)) c=\(String(describing: item.carbs)) f=\(String(describing: item.fat))")
+                                }
+                            }
                             
                             // Auto-dismiss after 10 seconds
                             DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {

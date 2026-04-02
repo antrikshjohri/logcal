@@ -196,7 +196,8 @@ struct FirebaseService {
             // Don't use keyDecodingStrategy - MealLogResponse has custom CodingKeys
             
             let decoded = try decoder.decode(MealLogResponse.self, from: jsonData)
-            print("DEBUG: Successfully decoded MealLogResponse: \(decoded.totalCalories) calories")
+                .withMealMacrosAlignedToItems()
+            print("DEBUG: Successfully decoded MealLogResponse: \(decoded.totalCalories) calories (meal macros aligned to items when possible)")
             // #region agent log
             if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "FirebaseService.swift:108", "message": "Decoded MealLogResponse macros", "data": ["protein": decoded.protein as Any, "carbs": decoded.carbs as Any, "fat": decoded.fat as Any, "totalCalories": decoded.totalCalories], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"]), let logString = String(data: debugLogData, encoding: .utf8) {
                 try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)

@@ -48,17 +48,17 @@ final class MealEntry: Identifiable {
         return try? decoder.decode(MealLogResponse.self, from: data)
     }
     
-    // Macros computed properties (extracted from rawResponseJson)
+    // Macros: prefer sum of line items when every item has P/C/F so totals match the breakdown (same as post-log preview).
     nonisolated var protein: Double? {
-        response?.protein
+        response?.resolvedMealMacrosForDisplay()?.protein
     }
     
     nonisolated var carbs: Double? {
-        response?.carbs
+        response?.resolvedMealMacrosForDisplay()?.carbs
     }
     
     nonisolated var fat: Double? {
-        response?.fat
+        response?.resolvedMealMacrosForDisplay()?.fat
     }
 }
 

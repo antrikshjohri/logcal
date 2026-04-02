@@ -60,7 +60,7 @@ struct OpenAIService {
     
     private func logMealDirect(foodText: String, mealType: String, image: UIImage?, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores.
+        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams).
         """
         
         // Build user message content
@@ -219,7 +219,8 @@ struct OpenAIService {
         
         do {
             let decoder = JSONDecoder()
-            return try decoder.decode(MealLogResponse.self, from: contentData)
+            let parsed = try decoder.decode(MealLogResponse.self, from: contentData)
+            return parsed.withMealMacrosAlignedToItems()
         } catch {
             throw AppError.parseError
         }

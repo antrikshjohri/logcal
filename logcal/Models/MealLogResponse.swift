@@ -40,3 +40,47 @@ struct MealItem: Codable, Equatable {
     let confidence: Double
 }
 
+extension MealLogResponse {
+    /// When every item includes protein, carbs, and fat, set top-level meal macros to their sum so stored JSON matches the breakdown.
+    func withMealMacrosAlignedToItems() -> MealLogResponse {
+        let items = self.items
+        guard !items.isEmpty else { return self }
+        let allHaveMacros = items.allSatisfy { $0.protein != nil && $0.carbs != nil && $0.fat != nil }
+        guard allHaveMacros else { return self }
+        let p = items.reduce(0.0) { $0 + ($1.protein ?? 0) }
+        let c = items.reduce(0.0) { $0 + ($1.carbs ?? 0) }
+        let f = items.reduce(0.0) { $0 + ($1.fat ?? 0) }
+        print("DEBUG: [MealLogResponse] withMealMacrosAlignedToItems P=\(p) C=\(c) F=\(f) items=\(items.count)")
+        return MealLogResponse(
+            mealType: mealType,
+            totalCalories: totalCalories,
+            protein: p,
+            carbs: c,
+            fat: f,
+            items: items,
+            needsClarification: needsClarification,
+            clarifyingQuestion: clarifyingQuestion
+        )
+    }
+
+    /// Macros for UI: prefer sum of items when every item has P/C/F; else meal-level fields; else sum of items that have all three.
+    func resolvedMealMacrosForDisplay() -> (protein: Double, carbs: Double, fat: Double)? {
+        let aligned = withMealMacrosAlignedToItems()
+        if let p = aligned.protein, let c = aligned.carbs, let f = aligned.fat {
+            return (protein: p, carbs: c, fat: f)
+        }
+        var sp = 0.0, sc = 0.0, sf = 0.0
+        var n = 0
+        for item in aligned.items {
+            if let p = item.protein, let c = item.carbs, let f = item.fat {
+                sp += p
+                sc += c
+                sf += f
+                n += 1
+            }
+        }
+        guard n > 0 else { return nil }
+        return (protein: sp, carbs: sc, fat: sf)
+    }
+}
+

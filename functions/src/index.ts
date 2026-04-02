@@ -280,9 +280,9 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
   // Build system prompt based on country
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores.`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams).`;
   } else {
-    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores.`;
+    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams).`;
   }
   
   console.log("DEBUG: System prompt:", systemPrompt);
@@ -410,7 +410,39 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
     );
   }
 
-  return JSON.parse(content) as MealLogResponse;
+  const parsed = JSON.parse(content) as MealLogResponse;
+  return alignMealMacrosToItemSum(parsed);
+}
+
+/** Top-level P/C/F from the model can disagree with line items; when every item has macros, force totals to match the sum. */
+function alignMealMacrosToItemSum(response: MealLogResponse): MealLogResponse {
+  const items = response.items || [];
+  if (items.length === 0) {
+    return response;
+  }
+  const allComplete = items.every(
+    (i) =>
+      typeof i.protein === "number" &&
+      !Number.isNaN(i.protein) &&
+      typeof i.carbs === "number" &&
+      !Number.isNaN(i.carbs) &&
+      typeof i.fat === "number" &&
+      !Number.isNaN(i.fat)
+  );
+  if (!allComplete) {
+    console.log("DEBUG: alignMealMacrosToItemSum skipped — not all items have protein/carbs/fat");
+    return response;
+  }
+  let p = 0;
+  let c = 0;
+  let f = 0;
+  for (const i of items) {
+    p += i.protein as number;
+    c += i.carbs as number;
+    f += i.fat as number;
+  }
+  console.log("DEBUG: alignMealMacrosToItemSum applied", { protein: p, carbs: c, fat: f, itemCount: items.length });
+  return { ...response, protein: p, carbs: c, fat: f };
 }
 
 /**

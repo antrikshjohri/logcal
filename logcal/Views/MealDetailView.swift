@@ -118,18 +118,8 @@ struct MealDetailView: View {
                                 
                                 // Macros per item
                                 if let protein = item.protein, let carbs = item.carbs, let fat = item.fat {
-                                    HStack(spacing: 16) {
-                                        Text("P: \(Int(protein))g")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Text("C: \(Int(carbs))g")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Text("F: \(Int(fat))g")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.top, 4)
+                                    MacrosCaptionLine(protein: protein, carbs: carbs, fat: fat)
+                                        .padding(.top, 4)
                                 }
                                 
                                 if let assumptions = item.assumptions, !assumptions.isEmpty {
