@@ -6,22 +6,33 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct MealDetailView: View {
     let meal: MealEntry
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var appConfigService = AppConfigService()
     @State private var showEditSheet: Bool = false
+    @State private var quickEditPrompt = ""
+    @State private var isRefiningQuickEdit = false
+    @State private var quickEditError: String?
+    @State private var showUpdateRequiredAlert = false
+    private let cloudSyncService = CloudSyncService()
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                    Text(meal.foodText)
-                        .font(.title2)
-                        .fontWeight(.bold)
+                // What you ate + quick fix (same section as MealEditView label)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("What you ate")
+                        .font(.headline)
+                    
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(meal.foodText)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
                         
-                        // Show image indicator if image was used
                         if meal.hasImageValue {
                             Image(systemName: "photo.fill")
                                 .font(.title3)
@@ -45,10 +56,27 @@ struct MealDetailView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
+                    
+                    if meal.response != nil {
+                        QuickEditMealSection(
+                            prompt: $quickEditPrompt,
+                            isLoading: isRefiningQuickEdit,
+                            errorMessage: quickEditError
+                        ) {
+                            Task {
+                                await runQuickRefine()
+                            }
+                        }
+                    }
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Constants.Colors.secondaryBackground)
+                .cornerRadius(Constants.Sizes.largeCornerRadius)
+                .padding(.horizontal)
                 
                 Divider()
+                    .padding(.horizontal)
                 
                 // Total calories and macros
                 VStack(alignment: .leading, spacing: 12) {
@@ -159,8 +187,50 @@ struct MealDetailView: View {
         .sheet(isPresented: $showEditSheet) {
             MealEditView(meal: meal)
         }
+        .alert("Update Required", isPresented: $showUpdateRequiredAlert) {
+            Button("Update Now") {
+                if let appStoreURL = appConfigService.getAppStoreURL() {
+                    UIApplication.shared.open(appStoreURL)
+                }
+            }
+            Button("Later", role: .cancel) { }
+        } message: {
+            Text(appConfigService.appConfig.updateMessage ?? "A new version of LogCal is available. Please update to continue.")
+        }
         .onAppear {
             AnalyticsService.trackMealDetailViewed()
+        }
+    }
+
+    @MainActor
+    private func runQuickRefine() async {
+        quickEditError = nil
+        await appConfigService.fetchConfig()
+        if !appConfigService.isAppVersionValid() {
+            print("DEBUG: [MealDetailView] quick refine blocked — app update required")
+            showUpdateRequiredAlert = true
+            return
+        }
+        guard let openAIService = try? OpenAIService() else {
+            quickEditError = "Could not start correction. Check your setup."
+            print("DEBUG: [MealDetailView] OpenAIService init failed")
+            return
+        }
+        isRefiningQuickEdit = true
+        defer { isRefiningQuickEdit = false }
+        do {
+            _ = try await MealQuickRefine.apply(
+                entry: meal,
+                correctionPrompt: quickEditPrompt,
+                modelContext: modelContext,
+                openAIService: openAIService,
+                cloudSyncService: cloudSyncService
+            )
+            quickEditPrompt = ""
+            print("DEBUG: [MealDetailView] quick refine success")
+        } catch {
+            quickEditError = (error as? AppError)?.errorDescription ?? error.localizedDescription
+            print("DEBUG: [MealDetailView] quick refine error: \(error)")
         }
     }
 }

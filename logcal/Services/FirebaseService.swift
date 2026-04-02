@@ -95,6 +95,32 @@ struct FirebaseService {
         }
     }
 
+    /// Normalize callable dictionary and decode `MealLogResponse` (shared by logMeal / refineMealLog).
+    private func decodeMealLogResponse(from dataDict: [String: Any]) throws -> MealLogResponse {
+        var normalizedDict = dataDict
+        if let needsClarification = normalizedDict["needs_clarification"] {
+            if let num = needsClarification as? NSNumber {
+                normalizedDict["needs_clarification"] = num.boolValue
+            } else if let intVal = needsClarification as? Int {
+                normalizedDict["needs_clarification"] = (intVal != 0)
+            }
+        }
+        if var items = normalizedDict["items"] as? [[String: Any]] {
+            for i in 0..<items.count {
+                if let confidenceStr = items[i]["confidence"] as? String,
+                   let confidenceNum = Double(confidenceStr) {
+                    items[i]["confidence"] = confidenceNum
+                } else if let confidenceNum = items[i]["confidence"] as? NSNumber {
+                    items[i]["confidence"] = confidenceNum.doubleValue
+                }
+            }
+            normalizedDict["items"] = items
+        }
+        let jsonData = try JSONSerialization.data(withJSONObject: normalizedDict, options: [])
+        let decoder = JSONDecoder()
+        return try decoder.decode(MealLogResponse.self, from: jsonData).withMealMacrosAlignedToItems()
+    }
+    
     /// Log a meal using Firebase Functions (requires authentication)
     func logMeal(foodText: String, mealType: String, imageData: Data?) async throws -> MealLogResponse {
         // Ensure user is authenticated (Firebase Functions onCall handles auth automatically)
@@ -166,37 +192,7 @@ struct FirebaseService {
                 throw AppError.parseError
             }
             
-            // Normalize the dictionary: convert numeric booleans to actual booleans
-            var normalizedDict = dataDict
-            if let needsClarification = normalizedDict["needs_clarification"] {
-                if let num = needsClarification as? NSNumber {
-                    normalizedDict["needs_clarification"] = num.boolValue
-                } else if let intVal = needsClarification as? Int {
-                    normalizedDict["needs_clarification"] = (intVal != 0)
-                }
-            }
-            
-            // Normalize items array - convert confidence from string to number if needed
-            if var items = normalizedDict["items"] as? [[String: Any]] {
-                for i in 0..<items.count {
-                    if let confidenceStr = items[i]["confidence"] as? String,
-                       let confidenceNum = Double(confidenceStr) {
-                        items[i]["confidence"] = confidenceNum
-                    } else if let confidenceNum = items[i]["confidence"] as? NSNumber {
-                        items[i]["confidence"] = confidenceNum.doubleValue
-                    }
-                }
-                normalizedDict["items"] = items
-            }
-            
-            // Convert to JSON and decode
-            // Note: MealLogResponse uses custom CodingKeys, so we don't need keyDecodingStrategy
-            let jsonData = try JSONSerialization.data(withJSONObject: normalizedDict, options: [])
-            let decoder = JSONDecoder()
-            // Don't use keyDecodingStrategy - MealLogResponse has custom CodingKeys
-            
-            let decoded = try decoder.decode(MealLogResponse.self, from: jsonData)
-                .withMealMacrosAlignedToItems()
+            let decoded = try decodeMealLogResponse(from: dataDict)
             print("DEBUG: Successfully decoded MealLogResponse: \(decoded.totalCalories) calories (meal macros aligned to items when possible)")
             // #region agent log
             if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "FirebaseService.swift:108", "message": "Decoded MealLogResponse macros", "data": ["protein": decoded.protein as Any, "carbs": decoded.carbs as Any, "fat": decoded.fat as Any, "totalCalories": decoded.totalCalories], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"]), let logString = String(data: debugLogData, encoding: .utf8) {
@@ -207,6 +203,58 @@ struct FirebaseService {
         } catch {
             let ns = error as NSError
             print("DEBUG: [FirebaseService] logMeal catch domain=\(ns.domain) code=\(ns.code) desc=\(error.localizedDescription) userInfo=\(ns.userInfo)")
+            throw mapCallableError(ns, speechStyle: false)
+        }
+    }
+
+    /// Refine a saved meal estimate using a user correction (callable `refineMealLog`).
+    func refineMealLog(
+        foodText: String,
+        mealType: String,
+        previousResponse: MealLogResponse,
+        correctionPrompt: String
+    ) async throws -> MealLogResponse {
+        if !isAuthenticated {
+            print("DEBUG: [FirebaseService] refineMealLog: signing in anonymously")
+            try await signInAnonymously()
+        }
+
+        let userCountry = UserDefaults.standard.string(forKey: "userCountry") ?? ""
+        let countryName = getCountryName(for: userCountry)
+
+        let encoder = JSONEncoder()
+        let prevData = try encoder.encode(previousResponse)
+        guard let previousObject = try JSONSerialization.jsonObject(with: prevData) as? [String: Any] else {
+            print("DEBUG: [FirebaseService] refineMealLog: could not serialize previous estimate")
+            throw AppError.parseError
+        }
+
+        var requestData: [String: Any] = [
+            "foodText": foodText,
+            "mealType": mealType,
+            "correctionPrompt": correctionPrompt,
+            "previousEstimate": previousObject,
+        ]
+        if !countryName.isEmpty {
+            requestData["country"] = countryName
+        }
+
+        print("DEBUG: [FirebaseService] refineMealLog callable mealType=\(mealType) correctionLen=\(correctionPrompt.count)")
+
+        let function = functions.httpsCallable("refineMealLog")
+
+        do {
+            let result = try await function.call(requestData)
+            guard let dataDict = result.data as? [String: Any] else {
+                print("DEBUG: [FirebaseService] refineMealLog unexpected response: \(String(describing: result.data))")
+                throw AppError.parseError
+            }
+            let decoded = try decodeMealLogResponse(from: dataDict)
+            print("DEBUG: [FirebaseService] refineMealLog decoded \(decoded.totalCalories) cal")
+            return decoded
+        } catch {
+            let ns = error as NSError
+            print("DEBUG: [FirebaseService] refineMealLog catch domain=\(ns.domain) code=\(ns.code)")
             throw mapCallableError(ns, speechStyle: false)
         }
     }

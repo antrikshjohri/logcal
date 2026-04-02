@@ -19,6 +19,7 @@ struct HomeView: View {
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var showConfetti = false
     @State private var mealPreviewAutoDismissWork: DispatchWorkItem?
+    @State private var quickEditPrompt = ""
     
     var body: some View {
         NavigationView {
@@ -27,6 +28,9 @@ struct HomeView: View {
                 .onChange(of: viewModel.latestResult) { oldValue, newValue in
                     mealPreviewAutoDismissWork?.cancel()
                     mealPreviewAutoDismissWork = nil
+                    if newValue == nil {
+                        quickEditPrompt = ""
+                    }
                     
                     if oldValue == nil && newValue != nil {
                         showConfetti = true
@@ -397,6 +401,8 @@ struct HomeView: View {
                                     print("DEBUG: [HomeView] User dismissed meal preview (close)")
                                     mealPreviewAutoDismissWork?.cancel()
                                     mealPreviewAutoDismissWork = nil
+                                    quickEditPrompt = ""
+                                    viewModel.errorMessage = nil
                                     withAnimation(.easeOut(duration: 0.3)) {
                                         viewModel.latestResult = nil
                                     }
@@ -476,6 +482,21 @@ struct HomeView: View {
                                 
                                 if index < result.items.count - 1 {
                                     Divider()
+                                }
+                            }
+
+                            Divider()
+                            QuickEditMealSection(
+                                prompt: $quickEditPrompt,
+                                isLoading: viewModel.isRefiningMeal,
+                                errorMessage: viewModel.errorMessage
+                            ) {
+                                Task {
+                                    let text = quickEditPrompt
+                                    await viewModel.quickRefineLoggedMeal(correctionPrompt: text)
+                                    if viewModel.errorMessage == nil {
+                                        quickEditPrompt = ""
+                                    }
                                 }
                             }
                         }

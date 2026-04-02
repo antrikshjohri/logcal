@@ -57,6 +57,32 @@ struct OpenAIService {
         
         return try await logMealDirect(foodText: foodText, mealType: mealType, image: image, apiKey: apiKey)
     }
+
+    /// Re-estimate from user correction (uses `refineMealLog` when Firebase is enabled).
+    func refineMeal(foodText: String, mealType: String, previous: MealLogResponse, correctionPrompt: String) async throws -> MealLogResponse {
+        print("DEBUG: OpenAIService.refineMeal useFirebase=\(Constants.API.useFirebase)")
+        if Constants.API.useFirebase {
+            if !firebaseService.isAuthenticated {
+                try await firebaseService.signInAnonymously()
+            }
+            return try await firebaseService.refineMealLog(
+                foodText: foodText,
+                mealType: mealType,
+                previousResponse: previous,
+                correctionPrompt: correctionPrompt
+            )
+        }
+        guard let apiKey = apiKey else {
+            throw AppError.apiKeyNotFound
+        }
+        return try await refineMealDirect(
+            foodText: foodText,
+            mealType: mealType,
+            previous: previous,
+            correctionPrompt: correctionPrompt,
+            apiKey: apiKey
+        )
+    }
     
     private func logMealDirect(foodText: String, mealType: String, image: UIImage?, apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
@@ -227,6 +253,121 @@ struct OpenAIService {
         } catch {
             throw AppError.parseError
         }
+    }
+
+    private func refineMealDirect(
+        foodText: String,
+        mealType: String,
+        previous: MealLogResponse,
+        correctionPrompt: String,
+        apiKey: String
+    ) async throws -> MealLogResponse {
+        let systemPrompt = """
+        You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, and fat must equal the sum of the same fields across all items (grams).
+        """
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let prevData = try encoder.encode(previous)
+        let prevString = String(data: prevData, encoding: .utf8) ?? "{}"
+        let desc = foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "(none or image-only log)"
+            : foodText
+        let userText = """
+        Original user description (for context):
+        \(desc)
+
+        Meal type: \(mealType)
+
+        Current structured estimate (JSON):
+        \(prevString)
+
+        User correction (apply these changes):
+        \(correctionPrompt)
+        """
+
+        let jsonSchema: [String: Any] = [
+            "name": "meal_log",
+            "schema": [
+                "type": "object",
+                "additionalProperties": false,
+                "properties": [
+                    "meal_type": [
+                        "type": "string",
+                        "enum": ["breakfast", "lunch", "dinner", "snack"]
+                    ],
+                    "total_calories": ["type": "number"],
+                    "protein": ["type": "number"],
+                    "carbs": ["type": "number"],
+                    "fat": ["type": "number"],
+                    "items": [
+                        "type": "array",
+                        "items": [
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": [
+                                "name": ["type": "string"],
+                                "quantity": ["type": "string"],
+                                "calories": ["type": "number"],
+                                "protein": ["type": "number"],
+                                "carbs": ["type": "number"],
+                                "fat": ["type": "number"],
+                                "assumptions": ["type": "string"],
+                                "confidence": ["type": "number"]
+                            ],
+                            "required": ["name", "quantity", "calories", "confidence"]
+                        ]
+                    ],
+                    "needs_clarification": ["type": "boolean"],
+                    "clarifying_question": ["type": "string"]
+                ],
+                "required": ["meal_type", "total_calories", "items", "needs_clarification"]
+            ]
+        ]
+
+        let requestBody: [String: Any] = [
+            "model": Constants.API.model,
+            "temperature": 0.25,
+            "messages": [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": userText]
+            ],
+            "response_format": [
+                "type": "json_schema",
+                "json_schema": jsonSchema
+            ]
+        ]
+
+        guard let url = URL(string: Constants.API.baseURL) else {
+            throw AppError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        print("DEBUG: [OpenAI] refineMealDirect userText length=\(userText.count)")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AppError.invalidHTTPResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw AppError.apiError(statusCode: httpResponse.statusCode, message: errorString)
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String,
+              let contentData = content.data(using: .utf8) else {
+            throw AppError.parseError
+        }
+        let decoder = JSONDecoder()
+        let parsed = try decoder.decode(MealLogResponse.self, from: contentData)
+        return parsed.withMealMacrosAlignedToItems()
     }
 }
 

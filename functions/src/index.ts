@@ -20,6 +20,10 @@ const MAX_TRANSCRIBE_PER_MINUTE = 40; // Per user
 const MAX_TRANSCRIBE_AUDIO_BYTES = 4 * 1024 * 1024; // 4 MB — meal dictation clips
 const WHISPER_TRANSCRIBE_MODEL = "whisper-1";
 
+/** Whisper `prompt`: nudges vocabulary toward meal logging (works best when audio is English or mixed with English food terms). */
+const WHISPER_MEAL_CONTEXT_PROMPT =
+  "The speaker is logging a meal: what they ate or drank, ingredients, and portions. Typical terms: breakfast, lunch, dinner, snack, calories, protein, carbs, fat, rice, roti, bread, dal, curry, chicken, fish, eggs, salad, vegetables, fruit, yogurt, coffee, tea, juice, water.";
+
 interface LogMealRequest {
   foodText: string;
   mealType: string;
@@ -53,6 +57,46 @@ interface MealLogResponse {
   needs_clarification: boolean;
   clarifying_question: string;
 }
+
+/** Shared JSON schema for meal_log responses (log + refine). */
+const MEAL_LOG_JSON_SCHEMA = {
+  name: "meal_log",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      meal_type: {
+        type: "string",
+        enum: ["breakfast", "lunch", "dinner", "snack"],
+      },
+      total_calories: { type: "number" },
+      protein: { type: "number" },
+      carbs: { type: "number" },
+      fat: { type: "number" },
+      items: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: "string" },
+            quantity: { type: "string" },
+            calories: { type: "number" },
+            protein: { type: "number" },
+            carbs: { type: "number" },
+            fat: { type: "number" },
+            assumptions: { type: "string" },
+            confidence: { type: "number" },
+          },
+          required: ["name", "quantity", "calories", "confidence"],
+        },
+      },
+      needs_clarification: { type: "boolean" },
+      clarifying_question: { type: "string" },
+    },
+    required: ["meal_type", "total_calories", "items", "needs_clarification"],
+  },
+};
 
 /**
  * Track user usage for rate limiting
@@ -221,6 +265,7 @@ async function callOpenAIWhisperTranscription(
   if (language) {
     formData.append("language", language);
   }
+  formData.append("prompt", WHISPER_MEAL_CONTEXT_PROMPT);
 
   console.log(
     "DEBUG: transcribeAudio calling OpenAI Whisper, bytes=",
@@ -228,7 +273,8 @@ async function callOpenAIWhisperTranscription(
     "model=",
     WHISPER_TRANSCRIBE_MODEL,
     "language=",
-    language || "(auto)"
+    language || "(auto)",
+    "mealContextPrompt=yes"
   );
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
@@ -321,45 +367,6 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
     console.log("DEBUG: Image added to request, base64 length:", imageBase64.length);
   }
 
-  const jsonSchema = {
-    name: "meal_log",
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        meal_type: {
-          type: "string",
-          enum: ["breakfast", "lunch", "dinner", "snack"],
-        },
-        total_calories: { type: "number" },
-        protein: { type: "number" },
-        carbs: { type: "number" },
-        fat: { type: "number" },
-        items: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              name: { type: "string" },
-              quantity: { type: "string" },
-              calories: { type: "number" },
-              protein: { type: "number" },
-              carbs: { type: "number" },
-              fat: { type: "number" },
-              assumptions: { type: "string" },
-              confidence: { type: "number" },
-            },
-            required: ["name", "quantity", "calories", "confidence"],
-          },
-        },
-        needs_clarification: { type: "boolean" },
-        clarifying_question: { type: "string" },
-      },
-      required: ["meal_type", "total_calories", "items", "needs_clarification"],
-    },
-  };
-
   const requestBody = {
     model: OPENAI_MODEL,
     temperature: OPENAI_TEMPERATURE,
@@ -369,7 +376,7 @@ async function callOpenAI(foodText: string, mealType: string, imageBase64?: stri
     ],
     response_format: {
       type: "json_schema",
-      json_schema: jsonSchema,
+      json_schema: MEAL_LOG_JSON_SCHEMA,
     },
   };
 
@@ -447,6 +454,82 @@ function alignMealMacrosToItemSum(response: MealLogResponse): MealLogResponse {
   }
   console.log("DEBUG: alignMealMacrosToItemSum applied", { protein: p, carbs: c, fat: f, itemCount: items.length });
   return { ...response, protein: p, carbs: c, fat: f };
+}
+
+/**
+ * Re-estimate a meal from the user's correction text (no image; uses prior JSON + description).
+ */
+async function callOpenAIRefineMeal(
+  foodText: string,
+  mealType: string,
+  previousEstimate: MealLogResponse,
+  correctionPrompt: string,
+  country?: string
+): Promise<MealLogResponse> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new functions.https.HttpsError(
+      "internal",
+      "OpenAI API key not configured."
+    );
+  }
+
+  let systemPrompt: string;
+  if (country && country.trim().length > 0) {
+    systemPrompt = `You are a calorie logging assistant for ${country} food. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, and fat must equal the sum of the same fields across all items (grams).`;
+  } else {
+    systemPrompt =
+      "You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, and fat must equal the sum of the same fields across all items (grams).";
+  }
+
+  const previousJson = JSON.stringify(previousEstimate);
+  const userText = `Original user description (for context):\n${foodText.trim().length > 0 ? foodText.trim() : "(none or image-only log)"}\n\nMeal type: ${mealType}\n\nCurrent structured estimate (JSON):\n${previousJson}\n\nUser correction (apply these changes):\n${correctionPrompt.trim()}`;
+
+  const requestBody = {
+    model: OPENAI_MODEL,
+    temperature: 0.25,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userText },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: MEAL_LOG_JSON_SCHEMA,
+    },
+  };
+
+  console.log("DEBUG: callOpenAIRefineMeal request (chars):", userText.length);
+
+  const response = await fetch(OPENAI_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("ERROR: refine OpenAI API status:", response.status, errorText);
+    throw new functions.https.HttpsError(
+      "internal",
+      `OpenAI API error: ${response.status} - ${errorText}`
+    );
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new functions.https.HttpsError(
+      "internal",
+      "Invalid response from OpenAI API (refine)"
+    );
+  }
+
+  const parsed = JSON.parse(content) as MealLogResponse;
+  console.log("DEBUG: callOpenAIRefineMeal done total_calories:", parsed.total_calories);
+  return alignMealMacrosToItemSum(parsed);
 }
 
 /**
@@ -571,6 +654,72 @@ export const logMeal = functions.runWith({
     }
   }
 );
+
+/**
+ * Refine an existing meal estimate from a short user correction (counts toward same logMeal rate limits).
+ */
+export const refineMealLog = functions.runWith({
+  secrets: ["OPENAI_API_KEY"],
+}).https.onCall(async (data: unknown, context) => {
+  console.log("DEBUG: refineMealLog function called");
+
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "User must be authenticated"
+    );
+  }
+
+  const uid = context.auth.uid;
+  const d = data as Record<string, unknown>;
+  const foodText = typeof d.foodText === "string" ? d.foodText : "";
+  const mealType = typeof d.mealType === "string" ? d.mealType : "";
+  const correctionPrompt = typeof d.correctionPrompt === "string" ? d.correctionPrompt : "";
+  const country = typeof d.country === "string" ? d.country : undefined;
+  const previousEstimate = d.previousEstimate as MealLogResponse | undefined;
+
+  if (!mealType.trim()) {
+    throw new functions.https.HttpsError("invalid-argument", "mealType is required");
+  }
+  if (!correctionPrompt.trim()) {
+    throw new functions.https.HttpsError("invalid-argument", "correctionPrompt is required");
+  }
+  if (!previousEstimate || !Array.isArray(previousEstimate.items)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "previousEstimate with items is required"
+    );
+  }
+
+  const usageCheck = await trackUsage(uid);
+  if (!usageCheck.allowed) {
+    throw new functions.https.HttpsError(
+      "resource-exhausted",
+      usageCheck.reason || "Rate limit exceeded"
+    );
+  }
+
+  try {
+    const response = await callOpenAIRefineMeal(
+      foodText,
+      mealType,
+      previousEstimate,
+      correctionPrompt.trim(),
+      country
+    );
+    console.log("DEBUG: refineMealLog success total_calories:", response.total_calories);
+    return response;
+  } catch (error: any) {
+    console.error("ERROR: refineMealLog:", error?.message || error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError(
+      "internal",
+      error?.message || "Refine failed"
+    );
+  }
+});
 
 /**
  * Transcribe short meal dictation audio via OpenAI Whisper (server-side key).

@@ -28,8 +28,11 @@ class LogViewModel: ObservableObject {
     
     private var isUpdatingFromInference: Bool = false
     @Published var isLoading: Bool = false
+    @Published var isRefiningMeal: Bool = false
     @Published var errorMessage: String?
     @Published var latestResult: MealLogResponse?
+    /// Set after a successful log so the preview quick-edit can update the same `MealEntry`.
+    @Published var lastLoggedMealId: UUID?
     @Published var isListening: Bool = false
     @Published var isTranscribingSpeech: Bool = false
     @Published var selectedImage: UIImage?
@@ -163,6 +166,7 @@ class LogViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         latestResult = nil
+        lastLoggedMealId = nil
         
         do {
             let mealTypeString = selectedMealType.rawValue
@@ -206,6 +210,8 @@ class LogViewModel: ObservableObject {
                 
                 context.insert(entry)
                 try context.save()
+                lastLoggedMealId = entry.id
+                print("DEBUG: [LogViewModel] lastLoggedMealId=\(entry.id)")
                 
                 // Sync to Firestore if user is signed in
                 Task {
@@ -295,6 +301,51 @@ class LogViewModel: ObservableObject {
     func removeImage() {
         selectedImage = nil
         print("DEBUG: [LogViewModel] Image removed")
+    }
+
+    /// Quick-edit the meal shown in the success preview (same row as `latestResult`).
+    func quickRefineLoggedMeal(correctionPrompt: String) async {
+        guard let id = lastLoggedMealId, let context = modelContext else {
+            errorMessage = "Could not find the saved meal to update."
+            print("DEBUG: [LogViewModel] quickRefineLoggedMeal missing id or context")
+            return
+        }
+        await appConfigService.fetchConfig()
+        if !appConfigService.isAppVersionValid() {
+            showUpdateRequiredAlert = true
+            return
+        }
+        guard let openAIService = openAIService else {
+            errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
+            return
+        }
+        let descriptor = FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == id })
+        guard let entry = try? context.fetch(descriptor).first else {
+            errorMessage = "Meal not found."
+            print("DEBUG: [LogViewModel] quickRefineLoggedMeal no entry for id=\(id)")
+            return
+        }
+        isRefiningMeal = true
+        errorMessage = nil
+        defer { isRefiningMeal = false }
+        do {
+            let refined = try await MealQuickRefine.apply(
+                entry: entry,
+                correctionPrompt: correctionPrompt,
+                modelContext: context,
+                openAIService: openAIService,
+                cloudSyncService: cloudSyncService
+            )
+            latestResult = refined
+            print("DEBUG: [LogViewModel] quickRefineLoggedMeal success")
+        } catch {
+            if let appError = error as? AppError {
+                errorMessage = appError.errorDescription
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            print("DEBUG: [LogViewModel] quickRefineLoggedMeal error: \(error)")
+        }
     }
 }
 
