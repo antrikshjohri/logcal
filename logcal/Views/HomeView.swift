@@ -18,18 +18,33 @@ struct HomeView: View {
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var showConfetti = false
+    @State private var mealPreviewAutoDismissWork: DispatchWorkItem?
     
     var body: some View {
         NavigationView {
             mainContent
                 .navigationTitle("Log Calories")
                 .onChange(of: viewModel.latestResult) { oldValue, newValue in
+                    mealPreviewAutoDismissWork?.cancel()
+                    mealPreviewAutoDismissWork = nil
+                    
                     if oldValue == nil && newValue != nil {
                         showConfetti = true
                         // Auto-dismiss confetti after animation completes (3 seconds)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                             showConfetti = false
                         }
+                    }
+                    
+                    if newValue != nil {
+                        let work = DispatchWorkItem { [viewModel] in
+                            print("DEBUG: [HomeView] Meal preview auto-dismiss after 2 minutes")
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                viewModel.latestResult = nil
+                            }
+                        }
+                        mealPreviewAutoDismissWork = work
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 120.0, execute: work)
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SetMealTypeFromNotification"))) { notification in
@@ -384,16 +399,32 @@ struct HomeView: View {
                     // Result card
                     if let result = viewModel.latestResult {
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Logged Successfully")
-                                    .font(.headline)
-                                Spacer()
-                                Text(result.mealType.capitalized)
-                                    .font(.caption)
-                                    .padding(.horizontal, Constants.Spacing.medium)
-                                    .padding(.vertical, Constants.Spacing.small)
-                                    .background(Constants.Colors.badgeBackground)
-                                    .cornerRadius(Constants.Spacing.small)
+                            HStack(alignment: .center, spacing: 0) {
+                                HStack(alignment: .center, spacing: 8) {
+                                    Text("Logged Successfully")
+                                        .font(.headline)
+                                    Text(result.mealType.capitalized)
+                                        .font(.caption)
+                                        .padding(.horizontal, Constants.Spacing.medium)
+                                        .padding(.vertical, Constants.Spacing.small)
+                                        .background(Constants.Colors.badgeBackground)
+                                        .cornerRadius(Constants.Spacing.small)
+                                }
+                                Spacer(minLength: 12)
+                                Button(action: {
+                                    print("DEBUG: [HomeView] User dismissed meal preview (close)")
+                                    mealPreviewAutoDismissWork?.cancel()
+                                    mealPreviewAutoDismissWork = nil
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        viewModel.latestResult = nil
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityLabel("Dismiss meal summary")
+                                }
+                                .buttonStyle(.plain)
                             }
                             
                             Text("Total Calories: \(Int(result.totalCalories))")
@@ -476,13 +507,6 @@ struct HomeView: View {
                             for item in result.items {
                                 if item.protein == nil || item.carbs == nil || item.fat == nil {
                                     print("DEBUG: [HomeView] preview item '\(item.name)' missing macros p=\(String(describing: item.protein)) c=\(String(describing: item.carbs)) f=\(String(describing: item.fat))")
-                                }
-                            }
-                            
-                            // Auto-dismiss after 10 seconds
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
-                                withAnimation(.easeOut(duration: 0.3)) {
-                                    viewModel.latestResult = nil
                                 }
                             }
                         }
