@@ -15,6 +15,9 @@ interface MealDao {
     @Query("SELECT * FROM meal_entries ORDER BY timestampMillis DESC, createdAtMillis DESC")
     fun observeMeals(): Flow<List<MealEntryEntity>>
 
+    @Query("SELECT * FROM meal_entries WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): MealEntryEntity?
+
     @Query("DELETE FROM meal_entries WHERE id = :id")
     suspend fun deleteById(id: String)
 

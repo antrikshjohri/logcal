@@ -94,7 +94,10 @@ private fun AppRoot() {
             }
             RootTab.HISTORY -> {
                 androidx.compose.foundation.layout.Box(modifier = Modifier.padding(innerPadding)) {
-                    HistoryScreen(viewModel = historyViewModel)
+                    HistoryScreen(
+                        viewModel = historyViewModel,
+                        onNavigateToLogTab = { selectedTab = RootTab.LOG },
+                    )
                 }
             }
             RootTab.PROFILE -> {

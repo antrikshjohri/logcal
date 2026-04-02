@@ -53,5 +53,35 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+
+    fun deleteMeals(ids: List<String>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                DebugLogger.d("DEBUG: [HistoryViewModel] deleteMeals() count=${ids.size}")
+                localRepo.deleteMeals(ids)
+            } catch (t: Throwable) {
+                DebugLogger.e("DEBUG: [HistoryViewModel] deleteMeals() failed", t)
+                _uiState.update { it.copy(errorMessage = "Failed to delete meals") }
+            }
+        }
+    }
+
+    fun deleteAllMeals() {
+        viewModelScope.launch {
+            try {
+                DebugLogger.d("DEBUG: [HistoryViewModel] deleteAllMeals()")
+                localRepo.deleteAllMeals()
+            } catch (t: Throwable) {
+                DebugLogger.e("DEBUG: [HistoryViewModel] deleteAllMeals() failed", t)
+                _uiState.update { it.copy(errorMessage = "Failed to clear history") }
+            }
+        }
+    }
+
+    suspend fun getMealById(id: String): HistoryMeal? {
+        DebugLogger.d("DEBUG: [HistoryViewModel] getMealById() id=$id")
+        return localRepo.getMealById(id)
+    }
 }
 

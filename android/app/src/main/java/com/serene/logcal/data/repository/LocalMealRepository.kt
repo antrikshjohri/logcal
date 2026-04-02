@@ -5,8 +5,10 @@ import com.serene.logcal.data.local.MealEntryEntity
 import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.util.DebugLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -21,30 +23,42 @@ class LocalMealRepository(
 
     fun observeHistoryMeals(): Flow<List<HistoryMeal>> {
         return mealDao.observeMeals().map { rows ->
-            rows.mapNotNull { row ->
-                try {
-                    val response = json.decodeFromString<MealLogResponse>(row.rawResponseJson)
-                    HistoryMeal(
-                        id = row.id,
-                        timestampMillis = row.timestampMillis,
-                        mealType = row.mealType,
-                        totalCalories = row.totalCalories,
-                        foodText = row.foodText,
-                        response = response
-                    )
-                } catch (t: Throwable) {
-                    DebugLogger.e("DEBUG: [LocalMealRepository] Failed to decode rawResponseJson for id=${row.id}", t)
-                    null
-                }
-            }
+            rows.mapNotNull { row -> entityToHistoryMeal(row) }
         }
+    }
+
+    private fun entityToHistoryMeal(row: MealEntryEntity): HistoryMeal? {
+        return try {
+            val response = json.decodeFromString<MealLogResponse>(row.rawResponseJson)
+            HistoryMeal(
+                id = row.id,
+                timestampMillis = row.timestampMillis,
+                createdAtMillis = row.createdAtMillis,
+                mealType = row.mealType,
+                totalCalories = row.totalCalories,
+                foodText = row.foodText,
+                response = response,
+                hasImage = row.hasImage,
+            )
+        } catch (t: Throwable) {
+            DebugLogger.e("DEBUG: [LocalMealRepository] Failed to decode rawResponseJson for id=${row.id}", t)
+            null
+        }
+    }
+
+    suspend fun getMealById(id: String): HistoryMeal? = withContext(Dispatchers.IO) {
+        val row = mealDao.getById(id) ?: return@withContext null
+        val meal = entityToHistoryMeal(row)
+        DebugLogger.d("DEBUG: [LocalMealRepository] getMealById() id=$id found=${meal != null}")
+        meal
     }
 
     suspend fun saveMeal(
         timestampMillis: Long,
         foodText: String,
         mealType: String,
-        response: MealLogResponse
+        response: MealLogResponse,
+        hasImage: Boolean = false,
     ) {
         val entity = MealEntryEntity(
             id = UUID.randomUUID().toString(),
@@ -54,14 +68,27 @@ class LocalMealRepository(
             mealType = mealType,
             totalCalories = response.totalCalories,
             rawResponseJson = json.encodeToString(response),
+            hasImage = hasImage,
         )
-        DebugLogger.d("DEBUG: [LocalMealRepository] saveMeal() id=${entity.id} mealType=$mealType calories=${response.totalCalories}")
+        DebugLogger.d(
+            "DEBUG: [LocalMealRepository] saveMeal() id=${entity.id} mealType=$mealType calories=${response.totalCalories} hasImage=$hasImage"
+        )
         mealDao.insertMeal(entity)
     }
 
     suspend fun deleteMeal(id: String) {
         DebugLogger.d("DEBUG: [LocalMealRepository] deleteMeal() id=$id")
         mealDao.deleteById(id)
+    }
+
+    suspend fun deleteMeals(ids: List<String>) {
+        DebugLogger.d("DEBUG: [LocalMealRepository] deleteMeals() count=${ids.size}")
+        ids.forEach { mealDao.deleteById(it) }
+    }
+
+    suspend fun deleteAllMeals() {
+        DebugLogger.d("DEBUG: [LocalMealRepository] deleteAllMeals()")
+        mealDao.deleteAll()
     }
 }
 

@@ -9,9 +9,12 @@ import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
 import com.serene.logcal.util.DebugLogger
+import com.serene.logcal.util.MealImageEncoder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -21,6 +24,7 @@ data class LogUiState(
     val selectedDate: LocalDate = LocalDate.now(),
     val selectedMealType: MealType = MealType.BREAKFAST,
     val foodText: String = "",
+    val attachedImageUri: String? = null,
     val latestResult: MealLogResponse? = null,
     val errorMessage: String? = null,
 )
@@ -69,6 +73,28 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun appendFoodText(recognizedText: String) {
+        val incoming = recognizedText.trim()
+        if (incoming.isEmpty()) {
+            DebugLogger.w("DEBUG: [LogViewModel] appendFoodText skipped because recognized text is empty")
+            return
+        }
+        val current = _uiState.value.foodText.trim()
+        val next = if (current.isEmpty()) incoming else "$current $incoming"
+        DebugLogger.d("DEBUG: [LogViewModel] appendFoodText appendedLength=${incoming.length} newTotalLength=${next.length}")
+        _uiState.value = _uiState.value.copy(foodText = next, latestResult = null)
+    }
+
+    fun setAttachedImageUri(uri: String?) {
+        DebugLogger.d("DEBUG: [LogViewModel] setAttachedImageUri uriPresent=${!uri.isNullOrBlank()}")
+        _uiState.value = _uiState.value.copy(attachedImageUri = uri, latestResult = null)
+    }
+
+    fun clearAttachedImage() {
+        DebugLogger.d("DEBUG: [LogViewModel] clearAttachedImage")
+        _uiState.value = _uiState.value.copy(attachedImageUri = null, latestResult = null)
+    }
+
     fun setMealType(newMealType: MealType) {
         _uiState.value = _uiState.value.copy(selectedMealType = newMealType, latestResult = null)
     }
@@ -85,19 +111,43 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val trimmed = state.foodText.trim()
-        if (trimmed.isEmpty()) {
-            _uiState.value = state.copy(errorMessage = "Please enter what you ate.")
+        val hasImage = !state.attachedImageUri.isNullOrBlank()
+        if (trimmed.isEmpty() && !hasImage) {
+            _uiState.value = state.copy(errorMessage = "Please enter what you ate or attach a photo.")
             return
         }
 
-        DebugLogger.d("DEBUG: [LogViewModel] logMeal() tapped date=${state.selectedDate} mealType=${state.selectedMealType.rawValue}")
+        DebugLogger.d("DEBUG: [LogViewModel] logMeal() tapped date=${state.selectedDate} mealType=${state.selectedMealType.rawValue} hasImage=$hasImage")
         _uiState.value = state.copy(isLoading = true, errorMessage = null, latestResult = null)
 
         viewModelScope.launch {
-            val result = repo.logMeal(trimmed, state.selectedMealType)
+            val imageBase64: String? = if (hasImage) {
+                withContext(Dispatchers.IO) {
+                    MealImageEncoder.encodeUriToJpegBase64(getApplication(), state.attachedImageUri!!)
+                }
+            } else {
+                null
+            }
+            if (hasImage && imageBase64.isNullOrBlank()) {
+                DebugLogger.e("DEBUG: [LogViewModel] logMeal() image encode failed")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "Could not read the photo. Please try again."
+                )
+                return@launch
+            }
+
+            val result = repo.logMeal(
+                foodText = trimmed,
+                mealType = state.selectedMealType,
+                imageBase64 = imageBase64
+            )
             result.fold(
                 onSuccess = { response ->
                     DebugLogger.d("DEBUG: [LogViewModel] logMeal() success totalCalories=${response.totalCalories}")
+                    val storedLabel = trimmed.ifBlank {
+                        response.items.firstOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Photo meal"
+                    }
                     viewModelScope.launch {
                         try {
                             val timestampMillis = state.selectedDate
@@ -106,11 +156,12 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                                 .toEpochMilli()
                             localRepo.saveMeal(
                                 timestampMillis = timestampMillis,
-                                foodText = trimmed,
+                                foodText = storedLabel,
                                 mealType = response.mealType,
-                                response = response
+                                response = response,
+                                hasImage = imageBase64 != null,
                             )
-                            DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB")
+                            DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
                         } catch (t: Throwable) {
                             DebugLogger.e("DEBUG: [LogViewModel] Failed to save meal to local DB", t)
                         }
@@ -118,7 +169,9 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         latestResult = response,
-                        errorMessage = null
+                        errorMessage = null,
+                        foodText = "",
+                        attachedImageUri = null
                     )
                 },
                 onFailure = { t ->

@@ -9,6 +9,8 @@ color purple_700
 color teal_200
 color teal_700
 color white
+raw confetti_animation
+raw loading_animation
 string app_name
 string date
 string default_web_client_id
@@ -20,3 +22,4 @@ string google_storage_bucket
 string log_meal
 string project_id
 style Theme.LogCalAndroid
+xml file_paths

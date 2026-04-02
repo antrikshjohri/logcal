@@ -14,14 +14,18 @@ data class MealEntryEntity(
     val mealType: String,
     val totalCalories: Double,
     val rawResponseJson: String,
+    /** Set when the meal was logged with a photo (parity with iOS hasImage). */
+    val hasImage: Boolean = false,
 )
 
 data class HistoryMeal(
     val id: String,
     val timestampMillis: Long,
+    val createdAtMillis: Long,
     val mealType: String,
     val totalCalories: Double,
     val foodText: String,
     val response: MealLogResponse,
+    val hasImage: Boolean = false,
 )
 

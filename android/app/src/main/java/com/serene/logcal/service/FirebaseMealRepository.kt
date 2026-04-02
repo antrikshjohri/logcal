@@ -17,14 +17,28 @@ class FirebaseMealRepository(
         isLenient = true
     }
 
-    suspend fun logMeal(foodText: String, mealType: MealType): Result<MealLogResponse> {
-        DebugLogger.d("DEBUG: [FirebaseMealRepository] logMeal() start foodTextLen=${foodText.length} mealType=${mealType.rawValue}")
+    suspend fun logMeal(
+        foodText: String,
+        mealType: MealType,
+        imageBase64: String? = null,
+        country: String? = null,
+    ): Result<MealLogResponse> {
+        val hasImage = !imageBase64.isNullOrBlank()
+        DebugLogger.d(
+            "DEBUG: [FirebaseMealRepository] logMeal() start foodTextLen=${foodText.length} mealType=${mealType.rawValue} hasImage=$hasImage imageBase64Len=${imageBase64?.length ?: 0}"
+        )
 
         return try {
             val payload = hashMapOf<String, Any>(
                 "foodText" to foodText,
                 "mealType" to mealType.rawValue
             )
+            if (hasImage) {
+                payload["imageBase64"] = imageBase64!!
+            }
+            if (!country.isNullOrBlank()) {
+                payload["country"] = country
+            }
 
             val callable = functions.getHttpsCallable("logMeal")
             val response = callable.call(payload).await()
