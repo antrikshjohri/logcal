@@ -140,11 +140,6 @@ struct AnalyticsService {
         logEvent("meal_summary_viewed", parameters: nil)
     }
     
-    /// Track meal detail viewed
-    static func trackMealDetailViewed() {
-        logEvent("meal_detail_viewed", parameters: nil)
-    }
-    
     /// Track help/FAQ opened
     static func trackHelpFAQOpened() {
         logEvent("help_faq_opened", parameters: nil)

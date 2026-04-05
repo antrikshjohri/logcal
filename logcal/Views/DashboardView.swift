@@ -32,14 +32,10 @@ struct DashboardView: View {
             .reduce(0) { $0 + $1.totalCalories }
     }
     
-    // Remaining calories
-    private var remainingCalories: Double {
-        max(dailyGoal - todayCalories, 0)
-    }
-    
-    // Progress percentage
-    private var progressPercentage: Double {
-        min(todayCalories / dailyGoal, 1.0)
+    /// Uncapped ratio for today's calories card (ring caps at full circle; center label can exceed 100%).
+    private var calorieProgressRatio: Double {
+        guard dailyGoal > 0 else { return 0 }
+        return todayCalories / dailyGoal
     }
     
     // Today's macros
@@ -161,8 +157,7 @@ struct DashboardView: View {
                     TodaysCaloriesCard(
                         calories: todayCalories,
                         goal: dailyGoal,
-                        remaining: remainingCalories,
-                        progress: progressPercentage
+                        progress: calorieProgressRatio
                     )
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     

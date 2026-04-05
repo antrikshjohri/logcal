@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct MealEditView: View {
     @Environment(\.dismiss) var dismiss

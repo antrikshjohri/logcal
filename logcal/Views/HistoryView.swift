@@ -342,7 +342,15 @@ struct MealRowView: View {
                             Text("•")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            MacrosCaptionLine(protein: protein, carbs: carbs, fat: fat)
+                            Text("\(Int(protein))P")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(Int(carbs))C")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(Int(fat))F")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
