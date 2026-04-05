@@ -84,7 +84,7 @@ struct HistoryView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: Constants.Spacing.large) {
                 ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in

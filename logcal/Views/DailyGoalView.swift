@@ -124,7 +124,7 @@ struct DailyGoalView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         DailyGoalView()
     }
 }

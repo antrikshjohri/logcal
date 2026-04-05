@@ -157,7 +157,7 @@ struct FAQCard: View {
 }
 
 #Preview {
-        NavigationView {
+        NavigationStack {
         HelpFAQView()
     }
 }

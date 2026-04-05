@@ -53,7 +53,7 @@ struct ProfileView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: Constants.Spacing.extraLarge) {
                     // Header

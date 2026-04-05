@@ -381,7 +381,7 @@ struct MealEditView: View {
             }
         }
         .sheet(isPresented: $showDatePicker) {
-                NavigationView {
+                NavigationStack {
                     VStack {
                         DatePicker(
                             "Select Date",
@@ -649,7 +649,7 @@ struct FocusableTextField: UIViewRepresentable {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         MealEditView(meal: MealEntry(
             foodText: "Apple",
             mealType: "snack",

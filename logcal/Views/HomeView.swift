@@ -22,7 +22,7 @@ struct HomeView: View {
     @State private var quickEditPrompt = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             mainContent
                 .navigationTitle("Log Calories")
                 .onChange(of: viewModel.latestResult) { oldValue, newValue in
@@ -529,7 +529,7 @@ private struct LogDatePickerSheet: View {
     @State private var dayBaselineForDismiss: Date?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 DatePicker(
                     "Select Date",

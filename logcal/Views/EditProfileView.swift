@@ -49,7 +49,7 @@ struct EditProfileView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: Constants.Spacing.extraLarge) {
                     // Profile Photo Section
@@ -572,7 +572,7 @@ struct CountryPickerView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Search bar
                 HStack {
