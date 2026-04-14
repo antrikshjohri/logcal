@@ -1,5 +1,8 @@
 # Cloud Sync Setup Guide
 
+Legacy note:
+This file is retained as a reference guide. For the current source of truth, use [README.md](./README.md), [SETUP.md](./SETUP.md), and [FEATURES/auth-and-sync.md](./FEATURES/auth-and-sync.md).
+
 ## Overview
 
 The app now syncs meal logs to Firebase Firestore, allowing users to access their data across devices and after reinstalling the app.
@@ -133,4 +136,3 @@ When a user signs in for the first time:
 - Local data is always available (SwiftData)
 - Cloud sync happens in background
 - Failed syncs are logged but don't block the app
-

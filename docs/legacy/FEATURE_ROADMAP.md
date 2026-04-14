@@ -1,5 +1,8 @@
 # LogCal Feature Roadmap
 
+Planning note:
+This file is still useful for product ideas, but it is not a guaranteed reflection of what is implemented. Keep current behavior documented in the canonical docs linked from [README.md](./README.md).
+
 ## Priority Features
 
 ### 1. Macros Tracking

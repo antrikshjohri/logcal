@@ -1,5 +1,8 @@
 # Quick Start Guide - Firebase Backend
 
+Legacy note:
+This file is kept for historical reference. For the current project docs, start with [README.md](./README.md) and [SETUP.md](./SETUP.md).
+
 ## 5-Minute Setup
 
 ### Step 1: Firebase Console Setup (2 min)
@@ -84,4 +87,3 @@ static let useFirebase = false
 - Add email/password authentication
 - Migrate to Firestore for cloud sync
 - Add user profiles
-

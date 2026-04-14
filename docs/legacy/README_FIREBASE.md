@@ -1,5 +1,8 @@
 # Firebase Backend Integration
 
+Legacy note:
+This file reflects an earlier Firebase integration phase. For the current source of truth, use [README.md](./README.md), [SETUP.md](./SETUP.md), and [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 This app now uses Firebase Functions to securely proxy OpenAI API calls.
 
 ## Architecture
@@ -133,4 +136,3 @@ To upgrade to full authentication:
 - **Production**: Set `useFirebase = true` to use Firebase Functions
 
 This allows easy switching between modes during development.
-

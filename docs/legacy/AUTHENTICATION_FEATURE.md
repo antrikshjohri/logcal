@@ -1,5 +1,8 @@
 # Authentication Feature - Implementation Summary
 
+Legacy note:
+This file describes an earlier auth phase and does not fully match the current app behavior. For the current source of truth, use [README.md](./README.md), [ARCHITECTURE.md](./ARCHITECTURE.md), and [FEATURES/auth-and-sync.md](./FEATURES/auth-and-sync.md).
+
 ## What Was Added
 
 ### 1. **AuthViewModel** (`logcal/ViewModels/AuthViewModel.swift`)
@@ -98,4 +101,3 @@ Add reversed client ID from `GoogleService-Info.plist` to URL Types in Xcode pro
 2. **Profile Screen**: Show user info, allow editing
 3. **Email/Password**: Add email/password sign-in option
 4. **Account Linking**: Link anonymous account to social account
-
