@@ -12,6 +12,12 @@ import FirebaseAuth
 struct FirebaseService {
     private let functions = Functions.functions()
 
+    private func makeNetworkStyleError(_ message: String) -> AppError {
+        AppError.networkError(NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet, userInfo: [
+            NSLocalizedDescriptionKey: message,
+        ]))
+    }
+
     /// Maps Firebase Callable errors using `FunctionsErrorCode` (raw values differ from legacy numeric guesses).
     private func mapCallableError(_ error: NSError, speechStyle: Bool) -> AppError {
         let msg = (error.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription
@@ -40,12 +46,14 @@ struct FirebaseService {
         case .deadlineExceeded:
             let m = speechStyle
                 ? "Transcription timed out. Try a shorter clip or check your connection."
-                : msg
-            return speechStyle ? .speechRecognitionError(m) : .unknown(NSError(domain: "FirebaseFunctions", code: error.code, userInfo: [NSLocalizedDescriptionKey: m]))
+                : "Request timed out. Check your connection and try again."
+            return speechStyle
+                ? .speechRecognitionError(m)
+                : makeNetworkStyleError(m)
         case .unavailable:
             return speechStyle
                 ? .speechRecognitionError("Service busy. Please try again in a moment.")
-                : .unknown(error)
+                : makeNetworkStyleError("No internet connection. Please check your connection and try again.")
         case .internal:
             return speechStyle
                 ? .speechRecognitionError(msg.isEmpty ? "Transcription failed. Try again." : msg)
@@ -275,4 +283,3 @@ struct FirebaseService {
         return Locale.current.localizedString(forRegionCode: code) ?? ""
     }
 }
-

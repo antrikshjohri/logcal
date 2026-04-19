@@ -16,11 +16,16 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     private let firebaseService = FirebaseService()
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
+    private var meteringTask: Task<Void, Never>?
+    private var voicedSampleCount = 0
+    private var totalMeterSamples = 0
+    private var maxObservedLevel: CGFloat = 0.08
 
     @Published var isListening = false
     @Published var isTranscribing = false
     @Published var recognizedText = ""
     @Published var errorMessage: String?
+    @Published var waveformSamples: [CGFloat] = Array(repeating: 0.08, count: 64)
 
     /// Called on the main actor when Whisper returns non-empty text (LogViewModel merges into `foodText`).
     var onTranscriptionResult: ((String) -> Void)?
@@ -79,6 +84,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
 
         recognizedText = ""
         errorMessage = nil
+        voicedSampleCount = 0
+        totalMeterSamples = 0
+        maxObservedLevel = 0.08
 
         let audioSession = AVAudioSession.sharedInstance()
         do {
@@ -102,6 +110,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
 
         do {
             let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.isMeteringEnabled = true
             recorder.prepareToRecord()
             guard recorder.record() else {
                 errorMessage = AppError.speechRecognitionError("Could not start recording").errorDescription
@@ -117,6 +126,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
 
         isListening = true
+        startMetering()
         print("DEBUG: [SpeechRecognitionService] Recording started path=\(url.path)")
     }
 
@@ -127,6 +137,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
 
         isListening = false
+        stopMetering(resetToIdle: false)
         audioRecorder?.stop()
         audioRecorder = nil
 
@@ -168,8 +179,20 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             return
         }
 
+        // Reject clips that never showed enough real speech energy.
+        if !hasClearSpeechEvidence() {
+            let msg = "Couldn’t detect clear speech. Try again."
+            errorMessage = AppError.speechRecognitionError(msg).errorDescription
+            log.notice("Skipping transcription due to low speech evidence voiced=\(self.voicedSampleCount) total=\(self.totalMeterSamples) maxLevel=\(self.maxObservedLevel)")
+            print("DEBUG: [SpeechRecognitionService] Low speech evidence, skip transcription voiced=\(voicedSampleCount) total=\(totalMeterSamples) maxLevel=\(maxObservedLevel)")
+            return
+        }
+
         isTranscribing = true
-        defer { isTranscribing = false }
+        defer {
+            isTranscribing = false
+            stopMetering(resetToIdle: true)
+        }
 
         let t0 = CFAbsoluteTimeGetCurrent()
         do {
@@ -181,10 +204,10 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             let elapsed = CFAbsoluteTimeGetCurrent() - t0
             print("DEBUG: [SpeechRecognitionService] Whisper done in \(String(format: "%.2f", elapsed))s, chars=\(trimmed.count)")
             log.info("Whisper completed in \(String(format: "%.2f", elapsed))s, chars=\(trimmed.count)")
-            if trimmed.isEmpty {
-                let msg = "No speech detected. Try again, speak clearly, or check your connection."
+            if trimmed.isEmpty || shouldRejectTranscriptAsUnclearSpeech(trimmed) {
+                let msg = "Couldn’t detect clear speech. Try again."
                 errorMessage = AppError.speechRecognitionError(msg).errorDescription
-                log.notice("Whisper returned empty text")
+                log.notice("Rejecting transcript as unclear speech")
             } else {
                 onTranscriptionResult?(trimmed)
             }
@@ -201,5 +224,97 @@ class SpeechRecognitionService: NSObject, ObservableObject {
                 log.error("Transcription failed after \(String(format: "%.2f", elapsed))s: \(message)")
             }
         }
+    }
+
+    func cancelListening() {
+        guard isListening else {
+            print("DEBUG: [SpeechRecognitionService] cancelListening no-op (not listening)")
+            return
+        }
+
+        isListening = false
+        recognizedText = ""
+        errorMessage = nil
+        stopMetering(resetToIdle: true)
+
+        audioRecorder?.stop()
+        audioRecorder = nil
+
+        let audioSession = AVAudioSession.sharedInstance()
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        recordingURL = nil
+
+        print("DEBUG: [SpeechRecognitionService] Recording cancelled and discarded")
+    }
+
+    private func startMetering() {
+        stopMetering(resetToIdle: true)
+        meteringTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled, self.isListening {
+                if let recorder = self.audioRecorder {
+                    recorder.updateMeters()
+                    let averagePower = recorder.averagePower(forChannel: 0)
+                    let normalizedLevel = self.normalizePowerLevel(averagePower)
+                    self.pushWaveformSample(normalizedLevel)
+                }
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+    }
+
+    private func stopMetering(resetToIdle: Bool) {
+        meteringTask?.cancel()
+        meteringTask = nil
+        if resetToIdle {
+            waveformSamples = Array(repeating: 0.08, count: waveformSamples.count)
+        }
+    }
+
+    private func normalizePowerLevel(_ power: Float) -> CGFloat {
+        guard power.isFinite else { return 0.08 }
+        let minDb: Float = -55
+        let clamped = max(power, minDb)
+        let amplitude = pow(10, clamped / 20)
+        return max(0.08, min(1.0, CGFloat(amplitude) * 2.4))
+    }
+
+    private func pushWaveformSample(_ sample: CGFloat) {
+        totalMeterSamples += 1
+        maxObservedLevel = max(maxObservedLevel, sample)
+        if sample > 0.16 {
+            voicedSampleCount += 1
+        }
+        var next = waveformSamples
+        if !next.isEmpty {
+            next.removeFirst()
+        }
+        let previous = next.last ?? 0.08
+        let smoothed = (previous * 0.45) + (sample * 0.55)
+        next.append(smoothed)
+        waveformSamples = next
+    }
+
+    private func hasClearSpeechEvidence() -> Bool {
+        guard totalMeterSamples > 0 else { return false }
+        let voicedRatio = CGFloat(voicedSampleCount) / CGFloat(totalMeterSamples)
+        return maxObservedLevel >= 0.22 || voicedSampleCount >= 4 || voicedRatio >= 0.12
+    }
+
+    private func shouldRejectTranscriptAsUnclearSpeech(_ text: String) -> Bool {
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return true }
+
+        // If the clip barely registered any speech energy but the model still produced text,
+        // treat it as a likely hallucinated transcription.
+        if !hasClearSpeechEvidence() {
+            return true
+        }
+
+        return false
     }
 }

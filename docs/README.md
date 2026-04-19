@@ -25,6 +25,10 @@ App Store-facing release notes live in [`releases/`](./releases).
 
 - [releases/README.md](./releases/README.md)
 
+## PRDs
+
+Product requirement docs and feature planning docs live in [`PRDS/`](./PRDS).
+
 ## Reference Docs
 
 Operational and task-specific docs live in [`reference/`](./reference).

@@ -24,6 +24,20 @@ Users can log a meal with text, speech input, a photo, or a combination of text 
 - app saves the result locally
 - signed-in users sync the saved meal to Firestore
 
+### Dictation Behavior
+
+- tapping the mic starts recording
+- while recording:
+  - camera and photo actions are hidden so the composer focuses on voice actions
+  - a live waveform reacts to the user's voice while recording
+  - `Cancel` discards the active recording without transcription
+  - `Stop` ends recording and transcribes into the text box only
+  - the inline send control ends recording, transcribes, and logs immediately
+  - `Log Meal` behaves the same as send while recording
+- low-signal clips with no clear speech evidence are rejected before transcription is trusted, and show: `Couldn’t detect clear speech. Try again.`
+- while transcription is running, submission waits until transcription completes
+- transcribed text is appended to any existing meal text
+
 ## Backend Path
 
 Current default path:
@@ -70,4 +84,3 @@ Update this doc when any of these change:
 - save/sync behavior
 - refine/correction flow
 - meal result schema
-
