@@ -14,13 +14,13 @@ const OPENAI_TEMPERATURE = 0.3;
 const MAX_REQUESTS_PER_DAY = 100; // Per user (logMeal)
 const MAX_REQUESTS_PER_MINUTE = 10; // Per user (logMeal)
 
-const MAX_TRANSCRIBE_PER_DAY = 200; // Per user (Whisper / transcribeAudio)
+const MAX_TRANSCRIBE_PER_DAY = 200; // Per user (speech-to-text / transcribeAudio)
 const MAX_TRANSCRIBE_PER_MINUTE = 40; // Per user
 
 const MAX_TRANSCRIBE_AUDIO_BYTES = 4 * 1024 * 1024; // 4 MB — meal dictation clips
-const WHISPER_TRANSCRIBE_MODEL = "whisper-1";
+const WHISPER_TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
 
-/** Whisper `prompt`: nudges vocabulary toward meal logging (works best when audio is English or mixed with English food terms). */
+/** Speech-to-text `prompt`: nudges vocabulary toward meal logging (works best when audio is English or mixed with English food terms). */
 const WHISPER_MEAL_CONTEXT_PROMPT =
   "The speaker is logging a meal: what they ate or drank, ingredients, and portions. Typical terms: breakfast, lunch, dinner, snack, calories, protein, carbs, fat, rice, roti, bread, dal, curry, chicken, fish, eggs, salad, vegetables, fruit, yogurt, coffee, tea, juice, water.";
 
@@ -809,4 +809,3 @@ export const healthCheck = functions.https.onRequest((req, res) => {
     service: "logcal-functions",
   });
 });
-
