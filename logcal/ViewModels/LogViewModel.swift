@@ -309,6 +309,11 @@ class LogViewModel: ObservableObject {
             await speechService.stopListening()
         }
     }
+
+    func cancelSpeechRecognition() {
+        guard speechService.isListening else { return }
+        speechService.cancelListening()
+    }
     
     func selectImage(_ image: UIImage?) {
         selectedImage = image

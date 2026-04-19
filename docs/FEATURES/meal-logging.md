@@ -30,6 +30,7 @@ Users can log a meal with text, speech input, a photo, or a combination of text 
 - while recording:
   - camera and photo actions are hidden so the composer focuses on voice actions
   - a live waveform reacts to the user's voice while recording
+  - `Cancel` discards the active recording without transcription
   - `Stop` ends recording and transcribes into the text box only
   - the inline send control ends recording, transcribes, and logs immediately
   - `Log Meal` behaves the same as send while recording

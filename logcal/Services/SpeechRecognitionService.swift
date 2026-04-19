@@ -211,6 +211,31 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
     }
 
+    func cancelListening() {
+        guard isListening else {
+            print("DEBUG: [SpeechRecognitionService] cancelListening no-op (not listening)")
+            return
+        }
+
+        isListening = false
+        recognizedText = ""
+        errorMessage = nil
+        stopMetering(resetToIdle: true)
+
+        audioRecorder?.stop()
+        audioRecorder = nil
+
+        let audioSession = AVAudioSession.sharedInstance()
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        recordingURL = nil
+
+        print("DEBUG: [SpeechRecognitionService] Recording cancelled and discarded")
+    }
+
     private func startMetering() {
         stopMetering(resetToIdle: true)
         meteringTask = Task { [weak self] in

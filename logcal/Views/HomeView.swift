@@ -287,6 +287,18 @@ struct HomeView: View {
 
                                     if viewModel.isListening {
                                         Button(action: {
+                                            viewModel.cancelSpeechRecognition()
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: Constants.Sizes.micIcon - 1, weight: .semibold))
+                                                .foregroundColor(.white)
+                                                .padding(Constants.Spacing.medium)
+                                                .background(Color.red.opacity(0.9))
+                                                .clipShape(Circle())
+                                        }
+                                        .padding(.trailing, Constants.Spacing.small)
+
+                                        Button(action: {
                                             viewModel.stopSpeechRecognition()
                                         }) {
                                             Image(systemName: "stop.fill")
