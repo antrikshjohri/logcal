@@ -15,6 +15,7 @@ struct HomeView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var toastManager: ToastManager
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var showConfetti = false
@@ -91,6 +92,9 @@ struct HomeView: View {
         ScrollView {
                 let isComposerBusy = viewModel.isListening || viewModel.isTranscribingSpeech
                 let canSubmitMeal = viewModel.canSubmitMeal
+                let stopButtonBackground = colorScheme == .dark
+                    ? Color(white: 0.22)
+                    : Constants.Colors.primaryBlue.opacity(0.18)
                 VStack(spacing: 20) {
                     // Welcome message (if signed in)
                     if authViewModel.isSignedIn, let userName = authViewModel.userName {
@@ -305,7 +309,7 @@ struct HomeView: View {
                                                 .font(.system(size: Constants.Sizes.micIcon - 1))
                                                 .foregroundColor(Constants.Colors.primaryBlue)
                                                 .padding(Constants.Spacing.medium)
-                                                .background(Constants.Colors.primaryBlue.opacity(0.18))
+                                                .background(stopButtonBackground)
                                                 .clipShape(Circle())
                                         }
                                         .padding(.trailing, Constants.Spacing.small)
