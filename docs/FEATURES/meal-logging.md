@@ -34,6 +34,7 @@ Users can log a meal with text, speech input, a photo, or a combination of text 
   - `Stop` ends recording and transcribes into the text box only
   - the inline send control ends recording, transcribes, and logs immediately
   - `Log Meal` behaves the same as send while recording
+- low-signal clips with no clear speech evidence are rejected before transcription is trusted, and show: `Couldn’t detect clear speech. Try again.`
 - while transcription is running, submission waits until transcription completes
 - transcribed text is appended to any existing meal text
 

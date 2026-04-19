@@ -710,8 +710,8 @@ struct SpeechErrorModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .onChange(of: viewModel.speechService.errorMessage) { oldValue, newValue in
-                if let message = newValue, message != oldValue {
+            .onReceive(viewModel.$speechErrorMessage) { message in
+                if let message {
                     toastManager.show(ToastMessage(
                         title: "Dictation Error",
                         message: message,

@@ -16,8 +16,8 @@ class ToastManager: ObservableObject {
             currentToast = message
         }
         
-        // Auto-dismiss after 4 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+        // Auto-dismiss after 10 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
             if self.currentToast?.id == message.id {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     self.currentToast = nil
@@ -89,16 +89,10 @@ struct ToastNotification: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(toast.type.iconColor)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(toast.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Text(toast.message)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
+            Text(toast.message)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+                .lineLimit(2)
             
             Spacer()
             
@@ -121,7 +115,7 @@ struct ToastNotification: View {
                 .stroke(toast.type.iconColor.opacity(0.2), lineWidth: 1)
         )
         .padding(.horizontal, Constants.Spacing.regular)
-        .padding(.top, Constants.Spacing.regular)
+        .padding(.bottom, 96)
     }
 }
 
@@ -129,7 +123,7 @@ struct ToastNotificationModifier: ViewModifier {
     @ObservedObject var toastManager: ToastManager
     
     func body(content: Content) -> some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             content
             
             if let toast = toastManager.currentToast {
@@ -138,8 +132,8 @@ struct ToastNotificationModifier: ViewModifier {
                     set: { if !$0 { toastManager.dismiss() } }
                 ))
                 .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity),
-                    removal: .move(edge: .top).combined(with: .opacity)
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)
                 ))
                 .zIndex(1000)
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: toastManager.currentToast?.id)
@@ -185,4 +179,3 @@ extension View {
     }
     .padding()
 }
-

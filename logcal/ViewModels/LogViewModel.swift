@@ -35,6 +35,7 @@ class LogViewModel: ObservableObject {
     @Published var lastLoggedMealId: UUID?
     @Published var isListening: Bool = false
     @Published var isTranscribingSpeech: Bool = false
+    @Published var speechErrorMessage: String?
     @Published var waveformSamples: [CGFloat] = Array(repeating: 0.08, count: 64)
     @Published var selectedImage: UIImage?
     @Published var showImagePicker: Bool = false
@@ -93,6 +94,12 @@ class LogViewModel: ObservableObject {
         speechService.$waveformSamples
             .sink { [weak self] samples in
                 self?.waveformSamples = samples
+            }
+            .store(in: &cancellables)
+
+        speechService.$errorMessage
+            .sink { [weak self] message in
+                self?.speechErrorMessage = message
             }
             .store(in: &cancellables)
     }

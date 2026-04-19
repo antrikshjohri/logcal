@@ -39,7 +39,7 @@ enum AppError: LocalizedError {
         case .audioConfigurationError(let message):
             return "Audio configuration error: \(message)"
         case .speechRecognitionError(let message):
-            return "Speech recognition error: \(message)"
+            return message
         case .permissionDenied(let permission):
             return "\(permission) permission denied. Please enable it in Settings."
         case .unknown(let error):
@@ -60,4 +60,3 @@ enum AppError: LocalizedError {
         }
     }
 }
-

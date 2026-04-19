@@ -17,6 +17,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
     private var meteringTask: Task<Void, Never>?
+    private var voicedSampleCount = 0
+    private var totalMeterSamples = 0
+    private var maxObservedLevel: CGFloat = 0.08
 
     @Published var isListening = false
     @Published var isTranscribing = false
@@ -81,6 +84,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
 
         recognizedText = ""
         errorMessage = nil
+        voicedSampleCount = 0
+        totalMeterSamples = 0
+        maxObservedLevel = 0.08
 
         let audioSession = AVAudioSession.sharedInstance()
         do {
@@ -173,6 +179,15 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             return
         }
 
+        // Reject clips that never showed enough real speech energy.
+        if !hasClearSpeechEvidence() {
+            let msg = "Couldn’t detect clear speech. Try again."
+            errorMessage = AppError.speechRecognitionError(msg).errorDescription
+            log.notice("Skipping transcription due to low speech evidence voiced=\(self.voicedSampleCount) total=\(self.totalMeterSamples) maxLevel=\(self.maxObservedLevel)")
+            print("DEBUG: [SpeechRecognitionService] Low speech evidence, skip transcription voiced=\(voicedSampleCount) total=\(totalMeterSamples) maxLevel=\(maxObservedLevel)")
+            return
+        }
+
         isTranscribing = true
         defer {
             isTranscribing = false
@@ -189,10 +204,10 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             let elapsed = CFAbsoluteTimeGetCurrent() - t0
             print("DEBUG: [SpeechRecognitionService] Whisper done in \(String(format: "%.2f", elapsed))s, chars=\(trimmed.count)")
             log.info("Whisper completed in \(String(format: "%.2f", elapsed))s, chars=\(trimmed.count)")
-            if trimmed.isEmpty {
-                let msg = "No speech detected. Try again, speak clearly, or check your connection."
+            if trimmed.isEmpty || shouldRejectTranscriptAsUnclearSpeech(trimmed) {
+                let msg = "Couldn’t detect clear speech. Try again."
                 errorMessage = AppError.speechRecognitionError(msg).errorDescription
-                log.notice("Whisper returned empty text")
+                log.notice("Rejecting transcript as unclear speech")
             } else {
                 onTranscriptionResult?(trimmed)
             }
@@ -269,6 +284,11 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     }
 
     private func pushWaveformSample(_ sample: CGFloat) {
+        totalMeterSamples += 1
+        maxObservedLevel = max(maxObservedLevel, sample)
+        if sample > 0.16 {
+            voicedSampleCount += 1
+        }
         var next = waveformSamples
         if !next.isEmpty {
             next.removeFirst()
@@ -277,5 +297,24 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         let smoothed = (previous * 0.45) + (sample * 0.55)
         next.append(smoothed)
         waveformSamples = next
+    }
+
+    private func hasClearSpeechEvidence() -> Bool {
+        guard totalMeterSamples > 0 else { return false }
+        let voicedRatio = CGFloat(voicedSampleCount) / CGFloat(totalMeterSamples)
+        return maxObservedLevel >= 0.22 || voicedSampleCount >= 4 || voicedRatio >= 0.12
+    }
+
+    private func shouldRejectTranscriptAsUnclearSpeech(_ text: String) -> Bool {
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return true }
+
+        // If the clip barely registered any speech energy but the model still produced text,
+        // treat it as a likely hallucinated transcription.
+        if !hasClearSpeechEvidence() {
+            return true
+        }
+
+        return false
     }
 }
