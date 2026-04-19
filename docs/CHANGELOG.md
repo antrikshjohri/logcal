@@ -8,4 +8,5 @@ This changelog tracks notable project changes from the point we adopted the new 
 - Added a documentation workflow to make doc updates part of the definition of done
 - Added feature docs for meal logging and auth/cloud sync
 - Marked older setup and feature docs as legacy references where appropriate
-
+- Reorganized docs into canonical, reference, legacy, and release-note sections
+- Updated the iOS dictation composer so recording now exposes `Stop` and inline send actions, and `Log Meal` can submit directly while recording

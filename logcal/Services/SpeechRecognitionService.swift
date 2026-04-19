@@ -16,11 +16,13 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     private let firebaseService = FirebaseService()
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
+    private var meteringTask: Task<Void, Never>?
 
     @Published var isListening = false
     @Published var isTranscribing = false
     @Published var recognizedText = ""
     @Published var errorMessage: String?
+    @Published var waveformSamples: [CGFloat] = Array(repeating: 0.08, count: 64)
 
     /// Called on the main actor when Whisper returns non-empty text (LogViewModel merges into `foodText`).
     var onTranscriptionResult: ((String) -> Void)?
@@ -102,6 +104,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
 
         do {
             let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.isMeteringEnabled = true
             recorder.prepareToRecord()
             guard recorder.record() else {
                 errorMessage = AppError.speechRecognitionError("Could not start recording").errorDescription
@@ -117,6 +120,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
 
         isListening = true
+        startMetering()
         print("DEBUG: [SpeechRecognitionService] Recording started path=\(url.path)")
     }
 
@@ -127,6 +131,7 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
 
         isListening = false
+        stopMetering(resetToIdle: false)
         audioRecorder?.stop()
         audioRecorder = nil
 
@@ -169,7 +174,10 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         }
 
         isTranscribing = true
-        defer { isTranscribing = false }
+        defer {
+            isTranscribing = false
+            stopMetering(resetToIdle: true)
+        }
 
         let t0 = CFAbsoluteTimeGetCurrent()
         do {
@@ -201,5 +209,48 @@ class SpeechRecognitionService: NSObject, ObservableObject {
                 log.error("Transcription failed after \(String(format: "%.2f", elapsed))s: \(message)")
             }
         }
+    }
+
+    private func startMetering() {
+        stopMetering(resetToIdle: true)
+        meteringTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled, self.isListening {
+                if let recorder = self.audioRecorder {
+                    recorder.updateMeters()
+                    let averagePower = recorder.averagePower(forChannel: 0)
+                    let normalizedLevel = self.normalizePowerLevel(averagePower)
+                    self.pushWaveformSample(normalizedLevel)
+                }
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+    }
+
+    private func stopMetering(resetToIdle: Bool) {
+        meteringTask?.cancel()
+        meteringTask = nil
+        if resetToIdle {
+            waveformSamples = Array(repeating: 0.08, count: waveformSamples.count)
+        }
+    }
+
+    private func normalizePowerLevel(_ power: Float) -> CGFloat {
+        guard power.isFinite else { return 0.08 }
+        let minDb: Float = -55
+        let clamped = max(power, minDb)
+        let amplitude = pow(10, clamped / 20)
+        return max(0.08, min(1.0, CGFloat(amplitude) * 2.4))
+    }
+
+    private func pushWaveformSample(_ sample: CGFloat) {
+        var next = waveformSamples
+        if !next.isEmpty {
+            next.removeFirst()
+        }
+        let previous = next.last ?? 0.08
+        let smoothed = (previous * 0.45) + (sample * 0.55)
+        next.append(smoothed)
+        waveformSamples = next
     }
 }

@@ -35,6 +35,7 @@ class LogViewModel: ObservableObject {
     @Published var lastLoggedMealId: UUID?
     @Published var isListening: Bool = false
     @Published var isTranscribingSpeech: Bool = false
+    @Published var waveformSamples: [CGFloat] = Array(repeating: 0.08, count: 64)
     @Published var selectedImage: UIImage?
     @Published var showImagePicker: Bool = false
     @Published var showCameraPicker: Bool = false
@@ -88,9 +89,19 @@ class LogViewModel: ObservableObject {
                 self?.isTranscribingSpeech = transcribing
             }
             .store(in: &cancellables)
+
+        speechService.$waveformSamples
+            .sink { [weak self] samples in
+                self?.waveformSamples = samples
+            }
+            .store(in: &cancellables)
     }
     
     private var cancellables = Set<AnyCancellable>()
+
+    var canSubmitMeal: Bool {
+        isListening || !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedImage != nil
+    }
     
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
@@ -130,22 +141,23 @@ class LogViewModel: ObservableObject {
         print("DEBUG: selectedMealType: \(selectedMealType.rawValue)")
         print("DEBUG: Constants.API.useFirebase: \(Constants.API.useFirebase)")
         
-        // Allow logging if either text or image is present
+        // Stop recording and wait for Whisper if a dictation is in progress
+        if speechService.isListening {
+            AnalyticsService.trackSpeechRecognitionStopped()
+            await speechService.stopListening()
+        }
+        await speechService.waitUntilIdle()
+
+        // Allow logging if either text or image is present after any in-flight dictation is merged in.
         let hasText = !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let hasImage = selectedImage != nil
         
         guard hasText || hasImage else {
-            print("DEBUG: Both food text and image are empty, returning")
+            print("DEBUG: Both food text and image are empty after dictation/transcription, returning")
             return
         }
         
         print("DEBUG: hasText: \(hasText), hasImage: \(hasImage)")
-        
-        // Stop recording and wait for Whisper if a dictation is in progress
-        if speechService.isListening {
-            await speechService.stopListening()
-        }
-        await speechService.waitUntilIdle()
         
         // Check app version before proceeding
         await appConfigService.fetchConfig()
@@ -289,6 +301,14 @@ class LogViewModel: ObservableObject {
             }
         }
     }
+
+    func stopSpeechRecognition() {
+        guard speechService.isListening else { return }
+        AnalyticsService.trackSpeechRecognitionStopped()
+        Task {
+            await speechService.stopListening()
+        }
+    }
     
     func selectImage(_ image: UIImage?) {
         selectedImage = image
@@ -348,4 +368,3 @@ class LogViewModel: ObservableObject {
         }
     }
 }
-

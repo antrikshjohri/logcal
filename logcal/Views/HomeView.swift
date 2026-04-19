@@ -86,9 +86,11 @@ struct HomeView: View {
         print("DEBUG: [HomeView] foodTextEditorBottomPadding=\(total) banner=\(statusBannerAtBottom)")
         return total
     }
-    
+
     private var mainContent: some View {
         ScrollView {
+                let isComposerBusy = viewModel.isListening || viewModel.isTranscribingSpeech
+                let canSubmitMeal = viewModel.canSubmitMeal
                 VStack(spacing: 20) {
                     // Welcome message (if signed in)
                     if authViewModel.isSignedIn, let userName = authViewModel.userName {
@@ -200,6 +202,7 @@ struct HomeView: View {
                                     trailing: Constants.Spacing.medium
                                 ))
                                 .focused($isTextFieldFocused)
+                                .allowsHitTesting(!viewModel.isListening && !viewModel.isTranscribingSpeech)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
                                         .stroke(Constants.Colors.borderGray, lineWidth: Constants.Sizes.borderWidth)
@@ -218,52 +221,7 @@ struct HomeView: View {
                                     .allowsHitTesting(false)
                             }
 
-                            if viewModel.isListening {
-                                HStack(spacing: 8) {
-                                    HStack(spacing: 4) {
-                                        Circle()
-                                            .fill(Constants.Colors.primaryBlue)
-                                            .frame(width: 6, height: 6)
-                                            .opacity(0.4)
-                                            .animation(
-                                                Animation.easeInOut(duration: 0.6)
-                                                    .repeatForever(autoreverses: true)
-                                                    .delay(0.0),
-                                                value: viewModel.isListening
-                                            )
-                                        Circle()
-                                            .fill(Constants.Colors.primaryBlue)
-                                            .frame(width: 6, height: 6)
-                                            .opacity(0.6)
-                                            .animation(
-                                                Animation.easeInOut(duration: 0.6)
-                                                    .repeatForever(autoreverses: true)
-                                                    .delay(0.2),
-                                                value: viewModel.isListening
-                                            )
-                                        Circle()
-                                            .fill(Constants.Colors.primaryBlue)
-                                            .frame(width: 6, height: 6)
-                                            .opacity(0.8)
-                                            .animation(
-                                                Animation.easeInOut(duration: 0.6)
-                                                    .repeatForever(autoreverses: true)
-                                                    .delay(0.4),
-                                                value: viewModel.isListening
-                                            )
-                                    }
-                                    Text("Speak now — tap the mic again when you're done")
-                                        .foregroundColor(Constants.Colors.primaryGray)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                .padding(.horizontal, Constants.Spacing.regular)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isTextEmpty ? .topLeading : .bottomLeading)
-                                .padding(.top, isTextEmpty ? Constants.Spacing.large : 0)
-                                .padding(.bottom, isTextEmpty ? 0 : 52)
-                                .allowsHitTesting(false)
-                            } else if viewModel.isTranscribingSpeech {
+                            if viewModel.isTranscribingSpeech {
                                 HStack(spacing: 10) {
                                     ProgressView()
                                     Text("Transcribing…")
@@ -281,61 +239,101 @@ struct HomeView: View {
                             // Icon buttons row (overlaid at bottom, inside text editor boundary)
                             VStack {
                                 Spacer()
-                                HStack {
-                                    Spacer()
+                                HStack(alignment: .center) {
+                                    if viewModel.isListening {
+                                        DictationWaveformView(samples: viewModel.waveformSamples)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.leading, Constants.Spacing.regular)
+                                            .padding(.trailing, Constants.Spacing.small)
+                                    } else {
+                                        Spacer()
+                                    }
 
-                                    // Camera button (only show if camera is available)
-                                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                    if !viewModel.isListening {
+                                        // Camera button (only show if camera is available)
+                                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                            Button(action: {
+                                                AnalyticsService.trackCameraPickerOpened()
+                                                viewModel.showCameraPicker = true
+                                            }) {
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: Constants.Sizes.micIcon))
+                                                    .foregroundColor(Constants.Colors.primaryBlue)
+                                                    .padding(Constants.Spacing.medium)
+                                                    .background(Constants.Colors.micInactiveBackground)
+                                                    .clipShape(Circle())
+                                            }
+                                            .disabled(isComposerBusy)
+                                            .opacity(isComposerBusy ? 0.45 : 1)
+                                            .padding(.trailing, Constants.Spacing.small)
+                                        }
+
+                                        // Image picker button
                                         Button(action: {
-                                            AnalyticsService.trackCameraPickerOpened()
-                                            viewModel.showCameraPicker = true
+                                            AnalyticsService.trackImagePickerOpened()
+                                            viewModel.showImagePicker = true
                                         }) {
-                                            Image(systemName: "camera.fill")
+                                            Image(systemName: viewModel.selectedImage != nil ? "photo.fill" : "photo")
                                                 .font(.system(size: Constants.Sizes.micIcon))
                                                 .foregroundColor(Constants.Colors.primaryBlue)
                                                 .padding(Constants.Spacing.medium)
                                                 .background(Constants.Colors.micInactiveBackground)
                                                 .clipShape(Circle())
                                         }
+                                        .disabled(isComposerBusy)
+                                        .opacity(isComposerBusy ? 0.45 : 1)
                                         .padding(.trailing, Constants.Spacing.small)
-                                        .padding(.bottom, Constants.Spacing.medium)
                                     }
 
-                                    // Image picker button
-                                    Button(action: {
-                                        AnalyticsService.trackImagePickerOpened()
-                                        viewModel.showImagePicker = true
-                                    }) {
-                                        Image(systemName: viewModel.selectedImage != nil ? "photo.fill" : "photo")
-                                            .font(.system(size: Constants.Sizes.micIcon))
-                                            .foregroundColor(Constants.Colors.primaryBlue)
-                                            .padding(Constants.Spacing.medium)
-                                            .background(Constants.Colors.micInactiveBackground)
-                                            .clipShape(Circle())
+                                    if viewModel.isListening {
+                                        Button(action: {
+                                            viewModel.stopSpeechRecognition()
+                                        }) {
+                                            Image(systemName: "stop.fill")
+                                                .font(.system(size: Constants.Sizes.micIcon - 1))
+                                                .foregroundColor(Constants.Colors.primaryBlue)
+                                                .padding(Constants.Spacing.medium)
+                                                .background(Constants.Colors.primaryBlue.opacity(0.18))
+                                                .clipShape(Circle())
+                                        }
+                                        .padding(.trailing, Constants.Spacing.small)
                                     }
-                                    .padding(.trailing, Constants.Spacing.small)
-                                    .padding(.bottom, Constants.Spacing.medium)
 
-                                    // Mic button (Whisper: record while active, transcribe when stopped)
+                                    // Mic/send button (record while idle, transcribe+log while listening)
                                     Button(action: {
-                                        viewModel.toggleSpeechRecognition()
+                                        if viewModel.isListening {
+                                            isTextFieldFocused = false
+                                            Task {
+                                                print("DEBUG: Send tapped while dictating")
+                                                await viewModel.logMeal()
+                                                print("DEBUG: Send while dictating completed")
+                                            }
+                                        } else {
+                                            isTextFieldFocused = false
+                                            viewModel.toggleSpeechRecognition()
+                                        }
                                     }) {
-                                        Image(systemName: viewModel.isListening ? "mic.fill" : "mic")
+                                        Image(systemName: viewModel.isListening ? "arrow.up" : "mic")
                                             .font(.system(size: Constants.Sizes.micIcon))
-                                            .foregroundColor(viewModel.isListening ? Constants.Colors.primaryRed : Constants.Colors.primaryBlue)
+                                            .foregroundColor(viewModel.isListening ? .white : Constants.Colors.primaryBlue)
                                             .padding(Constants.Spacing.medium)
-                                            .background(viewModel.isListening ? Constants.Colors.micActiveBackground : Constants.Colors.micInactiveBackground)
+                                            .background(viewModel.isListening ? Constants.Colors.primaryBlue : Constants.Colors.micInactiveBackground)
                                             .clipShape(Circle())
                                     }
                                     .disabled(viewModel.isTranscribingSpeech)
                                     .opacity(viewModel.isTranscribingSpeech ? 0.45 : 1)
                                     .padding(.trailing, Constants.Spacing.regular)
-                                    .padding(.bottom, Constants.Spacing.medium)
                                 }
+                                .padding(.bottom, Constants.Spacing.medium)
                             }
                         }
                     }
                     .padding(.horizontal)
+                    .onChange(of: viewModel.isListening) { _, isListening in
+                        if isListening {
+                            isTextFieldFocused = false
+                        }
+                    }
                     .sheet(isPresented: $viewModel.showImagePicker) {
                         ImagePickerView(selectedImage: Binding(
                             get: { viewModel.selectedImage },
@@ -374,12 +372,12 @@ struct HomeView: View {
                         .background(
                             viewModel.isLoading 
                                 ? Color.gray.opacity(0.3) 
-                                : ((viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.selectedImage == nil) ? Constants.Colors.primaryGray : Constants.Colors.primaryBlue)
+                                : (canSubmitMeal ? Constants.Colors.primaryBlue : Constants.Colors.primaryGray)
                         )
                         .foregroundColor(.white)
                         .cornerRadius(Constants.Sizes.cornerRadius + 2)
                     }
-                    .disabled((viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.selectedImage == nil) || viewModel.isLoading)
+                    .disabled(!canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech)
                     .padding(.horizontal)
                     
                     // Result card
@@ -649,7 +647,44 @@ struct ErrorMessageModifier: ViewModifier {
                         type: .error
                     ))
                 }
+        }
+    }
+}
+
+private struct DictationWaveformView: View {
+    let samples: [CGFloat]
+
+    var body: some View {
+        GeometryReader { geometry in
+            let spacing: CGFloat = 3
+            let barWidth: CGFloat = 3
+            let visibleSamples = displayedSamples(for: geometry.size.width, barWidth: barWidth, spacing: spacing)
+
+            HStack(alignment: .center, spacing: spacing) {
+                ForEach(Array(visibleSamples.enumerated()), id: \.offset) { index, sample in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(barColor(for: index, count: visibleSamples.count))
+                        .frame(width: barWidth, height: max(6, 28 * sample))
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .frame(height: 36)
+    }
+
+    private func displayedSamples(for availableWidth: CGFloat, barWidth: CGFloat, spacing: CGFloat) -> [CGFloat] {
+        let capacity = max(1, Int((availableWidth + spacing) / (barWidth + spacing)))
+        let visible = Array(samples.suffix(capacity))
+        if visible.count == capacity {
+            return visible
+        }
+        return Array(repeating: 0.08, count: capacity - visible.count) + visible
+    }
+
+    private func barColor(for index: Int, count: Int) -> Color {
+        index > count / 2
+            ? Constants.Colors.primaryBlue.opacity(0.55)
+            : Constants.Colors.primaryBlue.opacity(0.9)
     }
 }
 
@@ -711,4 +746,3 @@ struct HomeViewOverlayModifier: ViewModifier {
     HomeView()
         .modelContainer(for: MealEntry.self)
 }
-
