@@ -655,15 +655,15 @@ struct ErrorMessageModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .onChange(of: viewModel.errorMessage) { oldValue, newValue in
-                if let message = newValue, message != oldValue {
+            .onReceive(viewModel.$errorMessage) { message in
+                if let message {
                     toastManager.show(ToastMessage(
                         title: "Error",
                         message: message,
                         type: .error
                     ))
                 }
-        }
+            }
     }
 }
 
