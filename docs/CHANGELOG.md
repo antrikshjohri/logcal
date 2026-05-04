@@ -12,3 +12,9 @@ This changelog tracks notable project changes from the point we adopted the new 
 - Updated the iOS dictation composer so recording now exposes `Stop` and inline send actions, and `Log Meal` can submit directly while recording
 - Added a `Cancel` action to the iOS recording strip to discard an in-progress voice recording without transcription
 - Switched the backend dictation transcription model from `whisper-1` to `gpt-4o-mini-transcribe` for testing
+
+## 2026-05-04
+
+- Prepared the App Store release notes for v1.6
+- Bumped the iOS app marketing version to `1.6`
+- Bumped the iOS build number to `7`
