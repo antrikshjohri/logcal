@@ -39,33 +39,39 @@ const howItWorks = [
 const features = [
   {
     title: "AI Meal Logging",
-    body: "Describe or snap your meal instantly.",
-    icon: "spark"
+    imageSrc: "/features/ai-meal-logging.png",
+    imageWidth: 800,
+    imageHeight: 1127
   },
   {
     title: "Voice Food Logging",
-    body: "Log meals hands-free in any language.",
-    icon: "mic"
+    imageSrc: "/features/voice-food-logging.png",
+    imageWidth: 800,
+    imageHeight: 1127
   },
   {
     title: "Photo-Based Estimates",
-    body: "Snap your meal. Get instant calorie insights.",
-    icon: "camera"
+    imageSrc: "/features/photo-based-estimates.png",
+    imageWidth: 800,
+    imageHeight: 1127
   },
   {
     title: "Daily Calorie Dashboard",
-    body: "See your progress and stay on track.",
-    icon: "chart"
+    imageSrc: "/features/daily-calorie-dashboard.png",
+    imageWidth: 800,
+    imageHeight: 1127
   },
   {
     title: "Meal History",
-    body: "Review your meals anytime, anywhere.",
-    icon: "history"
+    imageSrc: "/features/meal-history.png",
+    imageWidth: 800,
+    imageHeight: 1127
   },
   {
     title: "Streaks & Consistency",
-    body: "Build streaks and stay consistent.",
-    icon: "flame"
+    imageSrc: "/features/streaks-and-consistency.png",
+    imageWidth: 800,
+    imageHeight: 1127
   }
 ];
 
@@ -118,6 +124,9 @@ const testimonials = [
   }
 ];
 
+const appStoreUrl =
+  "https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315";
+
 function Icon({ name }: { name: string }) {
   return <span className={`icon icon-${name}`} aria-hidden="true" />;
 }
@@ -154,8 +163,12 @@ function LeafMark() {
 
 function DownloadButton({ className = "" }: { className?: string }) {
   return (
-    // Replace "#" with the real store URL once the listing is live.
-    <a className={`download-button ${className}`} href="#">
+    <a
+      className={`download-button ${className}`}
+      href={appStoreUrl}
+      target="_blank"
+      rel="noreferrer"
+    >
       <ProofIcon
         src="/icons/mobile.png"
         alt=""
@@ -409,9 +422,13 @@ export default function HomePage() {
         <div className="feature-grid">
           {features.map((feature) => (
             <article className="feature-card" key={feature.title}>
-              <Icon name={feature.icon} />
-              <h3>{feature.title}</h3>
-              <p>{feature.body}</p>
+              <Image
+                src={feature.imageSrc}
+                alt={feature.title}
+                width={feature.imageWidth}
+                height={feature.imageHeight}
+                className="feature-card-image"
+              />
             </article>
           ))}
         </div>

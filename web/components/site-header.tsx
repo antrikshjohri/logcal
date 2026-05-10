@@ -7,6 +7,9 @@ const navItems = [
   { href: "/app/", label: "About" }
 ];
 
+const appStoreUrl =
+  "https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315";
+
 export function SiteHeader() {
   return (
     <header className="site-shell">
@@ -21,7 +24,7 @@ export function SiteHeader() {
               className="brand-mark-image"
             />
           </span>
-          <span>LogCalAI</span>
+          <span>LogCal AI</span>
         </a>
 
         <nav className="nav" aria-label="Primary">
@@ -33,7 +36,12 @@ export function SiteHeader() {
         </nav>
 
         <div className="topbar-cta">
-          <a className="header-download" href="#">
+          <a
+            className="header-download"
+            href={appStoreUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
             Download the app
           </a>
         </div>
