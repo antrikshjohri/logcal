@@ -1,7 +1,18 @@
+import Image from "next/image";
+
 const proofPoints = [
-  "Voice, text, or photo",
-  "AI calorie estimates",
-  "Built for real life"
+  {
+    label: "Voice, text, or photo",
+    icon: "/icons/mic.png"
+  },
+  {
+    label: "AI calorie estimates",
+    icon: "/icons/ai-sparkle.webp"
+  },
+  {
+    label: "Built for health",
+    icon: "/icons/health.png"
+  }
 ];
 
 const howItWorks = [
@@ -108,6 +119,26 @@ function Icon({ name }: { name: string }) {
   return <span className={`icon icon-${name}`} aria-hidden="true" />;
 }
 
+function ProofIcon({
+  src,
+  alt,
+  className = ""
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={28}
+      height={28}
+      className={`proof-asset-icon ${className}`}
+    />
+  );
+}
+
 function LeafMark() {
   return (
     <span className="leaf-mark" aria-hidden="true">
@@ -120,11 +151,13 @@ function LeafMark() {
 
 function DownloadButton({ className = "" }: { className?: string }) {
   return (
-    // Replace "#" with the real App Store URL once the listing is live.
+    // Replace "#" with the real store URL once the listing is live.
     <a className={`download-button ${className}`} href="#">
-      <span className="apple-symbol" aria-hidden="true">
-        a
-      </span>
+      <ProofIcon
+        src="/icons/mobile.png"
+        alt=""
+        className="proof-asset-icon-mobile"
+      />
       <span>Download the app</span>
     </a>
   );
@@ -236,9 +269,9 @@ export default function HomePage() {
           </div>
           <div className="proof-row">
             {proofPoints.map((point) => (
-              <span key={point}>
-                <Icon name="check" />
-                {point}
+              <span key={point.label}>
+                <ProofIcon src={point.icon} alt="" />
+                {point.label}
               </span>
             ))}
           </div>
