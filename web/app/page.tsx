@@ -18,18 +18,21 @@ const proofPoints = [
 const howItWorks = [
   {
     title: "Speak it",
-    body: "Say what you ate in natural language.",
-    visual: "speech"
+    imageSrc: "/how-it-works/speak-it.png",
+    imageWidth: 857,
+    imageHeight: 1143
   },
   {
     title: "Snap it",
-    body: "Upload a photo of your meal in just one tap.",
-    visual: "photo"
+    imageSrc: "/how-it-works/snap-it.png",
+    imageWidth: 857,
+    imageHeight: 1143
   },
   {
     title: "Track it",
-    body: "LogCalAI estimates calories and updates your day.",
-    visual: "result"
+    imageSrc: "/how-it-works/track-it.png",
+    imageWidth: 857,
+    imageHeight: 1143
   }
 ];
 
@@ -381,23 +384,14 @@ export default function HomePage() {
           {howItWorks.map((step, index) => (
             <article className="step-block" key={step.title}>
               <span className="number-circle">{index + 1}</span>
-              <div className="step-icon">
-                <Icon name={step.visual} />
-              </div>
-              <h3>{step.title}</h3>
-              <p>{step.body}</p>
-              <div className={`step-preview preview-${step.visual}`}>
-                {step.visual === "speech" && (
-                  <span>"I had dal, rice, paneer and salad."</span>
-                )}
-                {step.visual === "photo" && <MiniMealPhoto />}
-                {step.visual === "result" && (
-                  <>
-                    <span>Lunch - 1:15 PM</span>
-                    <strong>Paneer Rice Bowl</strong>
-                    <em>520 kcal</em>
-                  </>
-                )}
+              <div className="step-image-card">
+                <Image
+                  src={step.imageSrc}
+                  alt={step.title}
+                  width={step.imageWidth}
+                  height={step.imageHeight}
+                  className="step-image"
+                />
               </div>
               {index < howItWorks.length - 1 && (
                 <span className="dotted-arrow" aria-hidden="true" />

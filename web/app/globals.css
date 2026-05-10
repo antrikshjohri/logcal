@@ -1502,13 +1502,14 @@ main {
 .steps-layout {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 78px;
+  gap: 44px;
 }
 
 .step-block {
   position: relative;
   display: grid;
   justify-items: center;
+  align-content: start;
   text-align: center;
 }
 
@@ -1517,12 +1518,23 @@ main {
   place-items: center;
   width: 52px;
   height: 52px;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
   border-radius: 999px;
   background: radial-gradient(circle at 35% 25%, #0c8356, #005f3b);
   color: white;
   font-size: 24px;
   font-weight: 900;
+}
+
+.step-image-card {
+  width: min(100%, 360px);
+}
+
+.step-image {
+  width: 100%;
+  height: auto;
+  border-radius: 30px;
+  box-shadow: 0 18px 34px rgba(6, 27, 23, 0.08);
 }
 
 .step-icon {
@@ -1604,17 +1616,32 @@ main {
 
 .dotted-arrow {
   position: absolute;
-  top: 168px;
-  right: -63px;
-  width: 120px;
-  border-top: 4px dashed rgba(6, 27, 23, 0.3);
+  top: 24px;
+  right: -50px;
+  width: 96px;
+  height: 18px;
+}
+
+.dotted-arrow::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 82px;
+  height: 4px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(6, 27, 23, 0.26) 0 11px,
+    transparent 11px 17px
+  );
 }
 
 .dotted-arrow::after {
   content: "";
   position: absolute;
-  top: -9px;
-  right: -1px;
+  top: 2px;
+  right: 0;
   width: 14px;
   height: 14px;
   border-top: 4px solid rgba(6, 27, 23, 0.3);
