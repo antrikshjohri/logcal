@@ -377,7 +377,7 @@ export default function HomePage() {
 
       <section id="how-it-works" className="design-panel how-panel">
         <div className="section-heading centered">
-          <h2>Three simple ways to log any meal</h2>
+          <h2>How it works</h2>
           <p>LogCalAI makes calorie tracking effortless.</p>
         </div>
         <div className="steps-layout">

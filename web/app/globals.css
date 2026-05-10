@@ -189,6 +189,7 @@ main {
   align-items: center;
   min-height: 650px;
   margin-top: 0;
+  margin-bottom: 44px;
   padding: 12px 56px 28px;
   background: transparent;
 }
