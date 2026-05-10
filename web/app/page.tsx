@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { FeatureCard } from "../components/feature-card";
+import { FiveStarRating } from "../components/star-rating";
 
 const proofPoints = [
   {
@@ -71,54 +72,29 @@ const features = [
   }
 ] as const;
 
-const benefits = [
-  {
-    title: "Spend less time logging",
-    body: "Log meals in seconds, not minutes.",
-    icon: "clock"
-  },
-  {
-    title: "Build consistency without stress",
-    body: "Simple is easy to stick with.",
-    icon: "target"
-  },
-  {
-    title: "Understand calories, not obsess over them",
-    body: "Get clear insight without guilt.",
-    icon: "heart"
-  },
-  {
-    title: "Works for real meals and messy plates",
-    body: "No need for perfect meals or perfect days.",
-    icon: "utensils"
-  },
-  {
-    title: "Stay mindful on busy days",
-    body: "Track what matters, even when life's busy.",
-    icon: "leaf"
-  }
-];
-
 const testimonials = [
   {
     quote:
-      "LogCalAI makes tracking food so easy that I actually lost weight without overthinking.",
-    name: "Neha S.",
-    role: "Busy Professional"
+      "Very easy to use. I always had difficulty in tracking my calories but its so easy with this app. Just have to speak it out. Love it!",
+    name: "Jahnvi S.",
+    role: "Fitness Enthusiast",
+    initials: "JS"
+  },
+  {
+    quote:
+      "Finally able to track calories for Indian food! Loving the fact that AI meets food tracking. Definitely give it a shot.",
+    name: "Paaras S.",
+    role: "Entrepreneur",
+    initials: "PS"
   },
   {
     quote:
       "Logging takes literally 10 seconds. I just speak and boom. Super convenient.",
-    name: "Rahul M.",
-    role: "Fitness Enthusiast"
-  },
-  {
-    quote:
-      "Finally, an app that understands real food. The photo logging feels incredibly useful.",
-    name: "Priya K.",
-    role: "Health Coach"
+    name: "Aakash J.",
+    role: "MBA graduate",
+    initials: "AJ"
   }
-];
+] as const;
 
 const appStoreUrl =
   "https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315";
@@ -190,56 +166,6 @@ function StoreBadge({ store }: { store: "apple" | "google" }) {
   );
 }
 
-function PhoneMockup({ tilted = false }: { tilted?: boolean }) {
-  return (
-    <div className={`phone-shell ${tilted ? "phone-tilted" : ""}`}>
-      <div className="phone-frame">
-        <div className="phone-notch" />
-        <div className="phone-screen">
-          <div className="phone-status">
-            <span>9:41</span>
-            <span className="status-icons" />
-          </div>
-          <div className="phone-date">
-            <strong>Today</strong>
-            <span>May 20</span>
-          </div>
-          <div className="progress-ring">
-            <span>1,340</span>
-            <small>/ 2,000 kcal</small>
-            <em>67% of goal</em>
-          </div>
-          <div className="macro-strip">
-            <span>
-              Protein <strong>92g</strong>
-            </span>
-            <span>
-              Carbs <strong>165g</strong>
-            </span>
-            <span>
-              Fat <strong>46g</strong>
-            </span>
-          </div>
-          <div className="recent-meal">
-            <span className="meal-thumb" />
-            <span>
-              <strong>Grilled Chicken Bowl</strong>
-              <small>520 kcal</small>
-            </span>
-          </div>
-          <div className="phone-tabs">
-            <span className="active" />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function HeroPhoneMockup() {
   return (
     <div className="hero-phone-shell hero-phone-image-shell">
@@ -251,6 +177,20 @@ function HeroPhoneMockup() {
         height={1254}
         className="hero-phone-image"
         priority
+      />
+    </div>
+  );
+}
+
+function FinalDashboardMockup() {
+  return (
+    <div className="final-dashboard-shell">
+      <Image
+        src="/final-cta/dashboard-view.png"
+        alt="LogCal dashboard showing daily calories, macros, and recent meals"
+        width={727}
+        height={1593}
+        className="final-dashboard-image"
       />
     </div>
   );
@@ -337,17 +277,6 @@ function HeroMealCard() {
   );
 }
 
-function AvatarStack() {
-  return (
-    <div className="avatar-stack" aria-hidden="true">
-      <span className="avatar avatar-1" />
-      <span className="avatar avatar-2" />
-      <span className="avatar avatar-3" />
-      <span className="avatar avatar-4" />
-    </div>
-  );
-}
-
 export default function HomePage() {
   return (
     <div className="homepage">
@@ -427,32 +356,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="benefits" className="design-panel benefits-panel">
-        <div className="section-copy-block benefit-copy">
-          <h2>Why LogCalAI makes tracking easier</h2>
-          <p>
-            We built LogCalAI for real life. No rigid rules. No complicated
-            processes. Just effortless tracking that fits your day.
-          </p>
-          <div className="leaf-cluster" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
-        <div className="benefit-list">
-          {benefits.map((benefit) => (
-            <article className="benefit-card" key={benefit.title}>
-              <Icon name={benefit.icon} />
-              <div>
-                <h3>{benefit.title}</h3>
-                <p>{benefit.body}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section id="testimonials" className="design-panel testimonials-panel">
         <div className="section-copy-block">
           <h2>Loved by people who want simplicity</h2>
@@ -461,26 +364,26 @@ export default function HomePage() {
         <div className="testimonial-grid">
           {testimonials.map((testimonial, index) => (
             <article className="testimonial-card" key={testimonial.name}>
-              <div className="stars" aria-label="5 star rating">
-                *****
-              </div>
-              <blockquote>"{testimonial.quote}"</blockquote>
-              <div className="testimonial-person">
-                <span className={`avatar avatar-${index + 1}`} />
-                <div>
-                  <strong>{testimonial.name}</strong>
-                  <span>{testimonial.role}</span>
-                </div>
-              </div>
+              <FiveStarRating />
+              <figure className="testimonial-figure">
+                <blockquote>
+                  <p>&ldquo;{testimonial.quote}&rdquo;</p>
+                </blockquote>
+                <figcaption className="testimonial-person">
+                  <span
+                    className={`avatar avatar-${index + 1}`}
+                    aria-hidden="true"
+                  >
+                    {testimonial.initials}
+                  </span>
+                  <div>
+                    <strong>{testimonial.name}</strong>
+                    <span>{testimonial.role}</span>
+                  </div>
+                </figcaption>
+              </figure>
             </article>
           ))}
-        </div>
-        <div className="social-proof">
-          <AvatarStack />
-          <span>Join thousands of happy users</span>
-          <strong>4.8</strong>
-          <span className="stars">*****</span>
-          <span>(2.1K+ ratings)</span>
         </div>
       </section>
 
@@ -508,7 +411,7 @@ export default function HomePage() {
             <span />
             <span />
           </div>
-          <PhoneMockup tilted />
+          <FinalDashboardMockup />
         </div>
       </section>
 

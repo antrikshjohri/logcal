@@ -17,7 +17,6 @@
   - Hero
   - How it works
   - Features
-  - Benefits
   - Testimonials
   - Final CTA
   - Footer
@@ -52,7 +51,21 @@
 - The right side includes two stacked supporting cards:
   - `Voice log`
   - `Meal recognized`
-- The gap between the phone and the right-side cards was increased in the latest change.
+- Hero spacing was tightened:
+  - less whitespace between header and hero
+  - less gap between hero and `How it works`
+- Header brand text now reads `LogCal AI` with a space.
+- Header and homepage `Download the app` buttons now point to the live App Store URL and open in a new tab.
+
+## How It Works Status
+
+- The `How it works` section no longer uses code-built icon/title/body/preview cards.
+- It now uses three full-card PNG assets provided by the user:
+  - `web/public/how-it-works/speak-it.png`
+  - `web/public/how-it-works/snap-it.png`
+  - `web/public/how-it-works/track-it.png`
+- The numbered circles `1 / 2 / 3` and the dotted connectors between cards were preserved.
+- The connector arrow styling was adjusted after the image swap so the arrowhead reads as attached to the dotted line.
 
 ## Files Most Relevant Right Now
 
@@ -62,8 +75,31 @@
   - `web/app/globals.css`
 - Hero image asset:
   - `web/public/hero/voice-meal-logging.png`
+- How it works image assets:
+  - `web/public/how-it-works/`
+- Features image assets:
+  - `web/public/features/`
 - Existing design brief:
   - `design-reference.md`
+
+## Features Section Status
+
+- The `Features` section no longer uses code-built cards.
+- It now renders six image cards using user-supplied PNG assets:
+  - `web/public/features/ai-meal-logging.png`
+  - `web/public/features/voice-food-logging.png`
+  - `web/public/features/photo-based-estimates.png`
+  - `web/public/features/daily-calorie-dashboard.png`
+  - `web/public/features/meal-history.png`
+  - `web/public/features/streaks-and-consistency.png`
+- All six feature assets currently share the same dimensions:
+  - `800 x 1127`
+- Extra shadow was added to the feature cards so they separate more clearly from the cream background.
+
+## Removed Section
+
+- The old `Benefits` section (`Why LogCalAI makes tracking easier`) was removed from the homepage.
+- The page now flows directly from `Features` to `Testimonials`.
 
 ## Important History / Lessons
 
@@ -87,7 +123,7 @@
 - Commands used successfully:
   - `cd web && npm run lint`
   - `cd web && npm run build`
-- Build and lint were passing after the latest hero spacing update.
+- Build and lint were passing earlier in the hero iteration phase, but they were not rerun after the newest image-section and copy/link changes in this chat.
 - There is likely still unrelated generated noise in:
   - `web/tsconfig.tsbuildinfo`
 - The worktree may be dirty.
@@ -96,7 +132,7 @@
 
 Use something like:
 
-> Read `chat-handoff.md` and then inspect `web/app/page.tsx` and `web/app/globals.css`. Continue improving the LogCal marketing website with a high-fidelity, design-first approach. Do not rebuild the hero from scratch unless necessary. Preserve the current real phone screenshot hero setup and refine from there.
+> Read `chat-handoff.md` and then inspect `web/app/page.tsx` and `web/app/globals.css`. Continue improving the LogCal marketing website with a high-fidelity, design-first approach. Preserve the real screenshot hero. Keep the `How it works` and `Features` sections image-driven unless the user explicitly wants them rebuilt in code.
 
 ## If The Next Chat Needs To Review Hero Specifically
 
@@ -107,3 +143,9 @@ Use something like:
   - mobile stacking behavior
 - Avoid replacing the real screenshot with a code-built phone mockup.
 
+## If The Next Chat Needs To Review Recent Changes
+
+- Check that the App Store CTA links work correctly and open in a new tab.
+- Check that the `How it works` image cards still align well on desktop and mobile.
+- Check that the `Features` image cards have enough separation/shadow and feel balanced in the grid.
+- Remember that the `Benefits` section was intentionally removed and should not be reintroduced unless requested.
