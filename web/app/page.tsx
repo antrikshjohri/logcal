@@ -185,33 +185,6 @@ function FinalDashboardMockup() {
   );
 }
 
-function MiniMealPhoto() {
-  return (
-    <div className="mini-meal-photo" aria-hidden="true">
-      <span className="bowl" />
-      <span className="rice" />
-      <span className="greens" />
-      <span className="tomatoes" />
-    </div>
-  );
-}
-
-function SandwichPlate() {
-  return (
-    <div className="sandwich-plate" aria-hidden="true">
-      <span className="sandwich-plate-base" />
-      <span className="sandwich-bread sandwich-top" />
-      <span className="sandwich-filling sandwich-lettuce" />
-      <span className="sandwich-filling sandwich-tomato" />
-      <span className="sandwich-filling sandwich-avocado" />
-      <span className="sandwich-bread sandwich-bottom" />
-      <span className="apple-slice slice-one" />
-      <span className="apple-slice slice-two" />
-      <span className="apple-slice slice-three" />
-    </div>
-  );
-}
-
 function HeroVoiceCard() {
   return (
     <div className="hero-side-card voice-log-card">
@@ -252,7 +225,15 @@ function HeroMealCard() {
   return (
     <div className="hero-side-card meal-card">
       <span className="meal-badge">Meal recognized</span>
-      <SandwichPlate />
+      <span className="meal-card-image-frame">
+        <Image
+          src="/hero/sourdough-sandwich.png"
+          alt="Turkey sandwich with avocado and apple slices"
+          width={1254}
+          height={1254}
+          className="meal-card-image"
+        />
+      </span>
       <strong className="meal-card-title">
         Turkey sandwich with avocado and an apple
       </strong>
