@@ -123,16 +123,6 @@ function ProofIcon({
   );
 }
 
-function LeafMark() {
-  return (
-    <span className="leaf-mark" aria-hidden="true">
-      <span />
-      <span />
-      <span />
-    </span>
-  );
-}
-
 function DownloadButton({ className = "" }: { className?: string }) {
   return (
     <a
@@ -151,17 +141,16 @@ function DownloadButton({ className = "" }: { className?: string }) {
   );
 }
 
-function StoreBadge({ store }: { store: "apple" | "google" }) {
+function StoreBadge() {
   return (
-    // Replace "#" with the real store URL once available.
-    <a className="store-badge" href="#">
-      <span className="store-icon" aria-hidden="true">
-        {store === "apple" ? "a" : "p"}
-      </span>
-      <span>
-        <small>{store === "apple" ? "Download on the" : "GET IT ON"}</small>
-        <strong>{store === "apple" ? "App Store" : "Google Play"}</strong>
-      </span>
+    <a
+      className="store-badge"
+      href={appStoreUrl}
+      aria-label="Download LogCalAI on the App Store"
+      target="_blank"
+      rel="noreferrer"
+    >
+      <img src="/badges/app-store-badge.svg" alt="Download on the App Store" />
     </a>
   );
 }
@@ -418,51 +407,36 @@ export default function HomePage() {
       <footer className="footer-panel">
         <div className="footer-brand">
           <a className="footer-logo" href="/">
-            <LeafMark />
-            <span>LogCalAI</span>
+            <span className="brand-mark">
+              <Image
+                src="/images/logcal-app-icon.png"
+                alt=""
+                width={64}
+                height={64}
+                className="brand-mark-image"
+              />
+            </span>
+            <span>LogCal AI</span>
           </a>
-          <p>AI calorie tracking that fits your life. Speak it. Snap it. Track it.</p>
+          <p>Download LogCal AI</p>
           <div className="store-row">
-            <StoreBadge store="apple" />
-            <StoreBadge store="google" />
-          </div>
-          <div className="social-icons">
-            <a href="#" aria-label="Instagram">ig</a>
-            <a href="#" aria-label="Facebook">f</a>
-            <a href="#" aria-label="LinkedIn">in</a>
+            <StoreBadge />
           </div>
         </div>
 
-        <nav className="footer-column" aria-label="Product">
-          <h3>Product</h3>
-          <a href="#features">Features</a>
-          <a href="#how-it-works">How it works</a>
-          <a href="#testimonials">Testimonials</a>
-          <a href="/app/">About</a>
-        </nav>
-
-        <nav className="footer-column" aria-label="Support">
-          <h3>Support</h3>
-          <a href="/support/">Help Center</a>
-          <a href="mailto:johriantriksh24@gmail.com">Contact Us</a>
+        <nav className="footer-column" aria-label="Legal">
+          <h3>Legal</h3>
           <a href="/privacy/">Privacy Policy</a>
-          <a href="/terms/">Terms of Use</a>
         </nav>
 
-        <div className="footer-column newsletter">
-          <h3>Stay updated</h3>
-          <p>Get tips, updates, and health insights.</p>
-          <form className="email-form">
-            <label htmlFor="email">Email address</label>
-            <input id="email" type="email" placeholder="Enter your email" />
-            <button type="submit" aria-label="Subscribe">
-              <span className="arrow-mark" aria-hidden="true" />
-            </button>
-          </form>
-        </div>
+        <nav className="footer-column" aria-label="Company">
+          <h3>Company</h3>
+          <a href="mailto:johriantriksh24@gmail.com">Contact Us</a>
+          <a href="/support/">Support</a>
+        </nav>
 
         <div className="footer-bottom">
-          <span>&copy; 2026 LogCalAI. All rights reserved.</span>
+          <span>&copy; Copyright 2026, All rights reserved</span>
         </div>
       </footer>
     </div>
