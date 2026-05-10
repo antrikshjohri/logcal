@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { FeatureCard } from "../components/feature-card";
+
 const proofPoints = [
   {
     label: "Voice, text, or photo",
@@ -38,42 +40,36 @@ const howItWorks = [
 
 const features = [
   {
+    icon: "spark",
     title: "AI Meal Logging",
-    imageSrc: "/features/ai-meal-logging.png",
-    imageWidth: 800,
-    imageHeight: 1127
+    description: "Describe or snap your meal instantly."
   },
   {
+    icon: "mic",
     title: "Voice Food Logging",
-    imageSrc: "/features/voice-food-logging.png",
-    imageWidth: 800,
-    imageHeight: 1127
+    description: "Log meals hands-free in any language."
   },
   {
+    icon: "camera",
     title: "Photo-Based Estimates",
-    imageSrc: "/features/photo-based-estimates.png",
-    imageWidth: 800,
-    imageHeight: 1127
+    description: "Snap your meal. Get instant calorie insights."
   },
   {
+    icon: "chart",
     title: "Daily Calorie Dashboard",
-    imageSrc: "/features/daily-calorie-dashboard.png",
-    imageWidth: 800,
-    imageHeight: 1127
+    description: "See your progress and stay on track."
   },
   {
+    icon: "history",
     title: "Meal History",
-    imageSrc: "/features/meal-history.png",
-    imageWidth: 800,
-    imageHeight: 1127
+    description: "Review your meals anytime, anywhere."
   },
   {
+    icon: "flame",
     title: "Streaks & Consistency",
-    imageSrc: "/features/streaks-and-consistency.png",
-    imageWidth: 800,
-    imageHeight: 1127
+    description: "Build streaks and stay consistent."
   }
-];
+] as const;
 
 const benefits = [
   {
@@ -421,15 +417,12 @@ export default function HomePage() {
         </div>
         <div className="feature-grid">
           {features.map((feature) => (
-            <article className="feature-card" key={feature.title}>
-              <Image
-                src={feature.imageSrc}
-                alt={feature.title}
-                width={feature.imageWidth}
-                height={feature.imageHeight}
-                className="feature-card-image"
-              />
-            </article>
+            <FeatureCard
+              key={feature.title}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+            />
           ))}
         </div>
       </section>
