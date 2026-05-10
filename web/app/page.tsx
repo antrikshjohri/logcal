@@ -228,6 +228,22 @@ function PhoneMockup({ tilted = false }: { tilted?: boolean }) {
   );
 }
 
+function HeroPhoneMockup() {
+  return (
+    <div className="hero-phone-shell hero-phone-image-shell">
+      {/* Replace this file if you export a newer hero screenshot from the app. */}
+      <Image
+        src="/hero/voice-meal-logging.png"
+        alt="LogCal voice meal logging screen"
+        width={1254}
+        height={1254}
+        className="hero-phone-image"
+        priority
+      />
+    </div>
+  );
+}
+
 function MiniMealPhoto() {
   return (
     <div className="mini-meal-photo" aria-hidden="true">
@@ -235,6 +251,76 @@ function MiniMealPhoto() {
       <span className="rice" />
       <span className="greens" />
       <span className="tomatoes" />
+    </div>
+  );
+}
+
+function SandwichPlate() {
+  return (
+    <div className="sandwich-plate" aria-hidden="true">
+      <span className="sandwich-plate-base" />
+      <span className="sandwich-bread sandwich-top" />
+      <span className="sandwich-filling sandwich-lettuce" />
+      <span className="sandwich-filling sandwich-tomato" />
+      <span className="sandwich-filling sandwich-avocado" />
+      <span className="sandwich-bread sandwich-bottom" />
+      <span className="apple-slice slice-one" />
+      <span className="apple-slice slice-two" />
+      <span className="apple-slice slice-three" />
+    </div>
+  );
+}
+
+function HeroVoiceCard() {
+  return (
+    <div className="hero-side-card voice-log-card">
+      <div className="voice-log-header">
+        <span className="voice-log-pill">
+          <ProofIcon src="/icons/mic.png" alt="" />
+        </span>
+        <strong>Voice log</strong>
+      </div>
+      <p>
+        &ldquo;I had a turkey sandwich on sourdough with avocado and a side of
+        apple.&rdquo;
+      </p>
+      <div className="voice-wave">
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
+      <button className="voice-mic-button" type="button" aria-label="Voice log">
+        <ProofIcon src="/icons/mic.png" alt="" />
+      </button>
+      <span className="voice-listening">Listening...</span>
+    </div>
+  );
+}
+
+function HeroMealCard() {
+  return (
+    <div className="hero-side-card meal-card">
+      <span className="meal-badge">Meal recognized</span>
+      <SandwichPlate />
+      <strong className="meal-card-title">
+        Turkey sandwich with avocado and an apple
+      </strong>
+      <span className="meal-card-calories">520 kcal</span>
+      <div className="meal-card-macros">
+        <span>Protein 28g</span>
+        <span>Carbs 45g</span>
+        <span>Fat 18g</span>
+      </div>
     </div>
   );
 }
@@ -278,19 +364,10 @@ export default function HomePage() {
         </div>
 
         <div className="hero-visual">
-          <PhoneMockup />
-          <div className="floating-card card-speak">
-            <strong>Speak it</strong>
-            <Icon name="wave" />
-            <span>"I had dal, rice and salad"</span>
-          </div>
-          <div className="floating-card card-snap">
-            <strong>Snap it</strong>
-            <MiniMealPhoto />
-          </div>
-          <div className="floating-card card-type">
-            <strong>Type it</strong>
-            <span>Chicken wrap and smoothie</span>
+          <HeroPhoneMockup />
+          <div className="hero-side-stack">
+            <HeroVoiceCard />
+            <HeroMealCard />
           </div>
         </div>
       </section>
