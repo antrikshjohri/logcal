@@ -40,6 +40,11 @@ functions/lib/
 functions/.env
 functions/*.log
 
+# Web
+web/node_modules/
+web/.next/
+web/out/
+
 # Cursor IDE
 .cursor/
 

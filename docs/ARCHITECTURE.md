@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the current architecture of the LogCal iOS app and Firebase backend.
+This document describes the current architecture of the LogCal iOS app, web surface, and Firebase backend.
 
 ## High-Level Overview
 
@@ -9,10 +9,12 @@ LogCal is an iOS calorie logging app with an AI-assisted meal analysis backend.
 Primary stack:
 
 - SwiftUI for the app UI
+- Next.js for the marketing website and future web app shell
 - SwiftData for local meal persistence
 - Firebase Auth for identity
 - Firebase Functions for secure OpenAI calls
 - Firestore for cloud sync and remote config
+- Firebase Hosting for the website deployment target
 
 ## Main User Flows
 
@@ -38,6 +40,13 @@ Primary stack:
 - `DashboardView` computes totals from local SwiftData meals
 - `HistoryView` groups meals by day and supports refresh/delete flows
 - Firestore sync merges remote meals into local storage
+
+### Website and Future Web App
+
+1. Users land on `logcalai.com` for marketing, support, and privacy content.
+2. The site is built in `web/` with Next.js App Router and exported as static files.
+3. Firebase Hosting serves the built `web/out` directory.
+4. The `/app` route is reserved as the bridge into a future authenticated web product.
 
 ## iOS App Structure
 
@@ -76,6 +85,16 @@ Responsibilities:
 - `Services/NotificationService.swift`: schedules smart meal reminders
 - `Services/AnalyticsService.swift`: event tracking
 - `Services/SpeechRecognitionService.swift`: dictation flow
+
+## Web App Structure
+
+- `web/app/page.tsx`: marketing homepage
+- `web/app/features/page.tsx`: product feature page
+- `web/app/support/page.tsx`: support route for the live product
+- `web/app/privacy/page.tsx`: privacy summary route linking to the full policy
+- `web/app/app/page.tsx`: placeholder route for the future authenticated web app
+- `web/public/legal/privacypolicy.html`: preserved full privacy-policy document
+- `web/public/legal/support-legacy.html`: preserved legacy support page
 
 ## Local Data Model
 
@@ -123,6 +142,11 @@ Firestore is currently used for:
 - usage tracking for backend limits
 - an additional `mealLogs` collection for combined meal visibility
 
+### Hosting
+
+Firebase Hosting is configured in the repo root `firebase.json` to serve the
+static export produced by `web/`.
+
 ## Configuration
 
 ### App-side
@@ -142,6 +166,7 @@ Notable behavior:
 Key config lives in:
 
 - `functions/src/index.ts`
+- `firebase.json`
 - Firebase project settings
 - Firebase secret `OPENAI_API_KEY`
 
@@ -150,4 +175,3 @@ Key config lives in:
 Older docs in this repo were written during multiple product iterations.
 Some of them describe earlier auth assumptions or setup flows.
 Use this file as the current architectural reference and update it whenever the system shape changes.
-

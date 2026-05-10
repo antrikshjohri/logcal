@@ -5,6 +5,7 @@ This document describes the current local setup for the LogCal iOS app and Fireb
 ## Scope
 
 - iOS app in `logcal/`
+- web app in `web/`
 - Firebase Functions in `functions/`
 - Firebase project config in the repo root
 
@@ -21,6 +22,7 @@ Android exists in the repository, but it is intentionally out of scope for this 
 ## Repository Areas
 
 - `logcal/`: SwiftUI app
+- `web/`: Next.js marketing site and future web app shell
 - `functions/`: Firebase Functions TypeScript project
 - `firebase.json`, `firestore.rules`, `storage.rules`: Firebase config
 - `logcal.xcodeproj/`: iOS project
@@ -96,6 +98,31 @@ npm run build
 firebase deploy --only functions
 ```
 
+## Web Setup
+
+### 1. Install dependencies
+
+```bash
+cd web
+npm install
+```
+
+### 2. Run the site locally
+
+```bash
+cd web
+npm run dev
+```
+
+### 3. Build the static export
+
+```bash
+cd web
+npm run build
+```
+
+This generates the Firebase-ready static output in `web/out`.
+
 ## Firestore Setup
 
 The app uses Firestore for:
@@ -115,6 +142,7 @@ firebase deploy --only firestore:rules
 ## Current Runtime Behavior
 
 - iOS defaults to the Firebase-backed flow via `Constants.API.useFirebase = true`
+- the website is deployed from `web/` via Firebase Hosting
 - meal logging goes through Firebase Functions
 - meals are stored locally in SwiftData
 - signed-in users sync meals to Firestore
@@ -135,4 +163,4 @@ After setup, verify these flows:
 3. Logging a meal returns an AI result
 4. A meal is saved locally
 5. Signed-in user data appears in Firestore
-
+6. `cd web && npm run build` succeeds and produces `web/out`

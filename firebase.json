@@ -5,6 +5,17 @@
     ],
     "source": "functions"
   },
+  "hosting": {
+    "public": "web/out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "predeploy": [
+      "npm --prefix web run build"
+    ]
+  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -13,4 +24,3 @@
     "rules": "storage.rules"
   }
 }
-

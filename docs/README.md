@@ -1,6 +1,6 @@
 # LogCal Documentation
 
-This folder contains the canonical documentation for the iOS app and Firebase backend.
+This folder contains the canonical documentation for the iOS app, web surface, and Firebase backend.
 
 ## Start Here
 
@@ -14,8 +14,8 @@ If you are new to the project, read these in order:
 
 These files should reflect the current state of the codebase.
 
-- [SETUP.md](./SETUP.md): local setup for the iOS app and Firebase Functions
-- [ARCHITECTURE.md](./ARCHITECTURE.md): app structure, data flow, and backend responsibilities
+- [SETUP.md](./SETUP.md): local setup for the iOS app, website, and Firebase services
+- [ARCHITECTURE.md](./ARCHITECTURE.md): app, website, data flow, and backend responsibilities
 - [CHANGELOG.md](./CHANGELOG.md): notable project changes going forward
 - [DOCUMENTATION_WORKFLOW.md](./DOCUMENTATION_WORKFLOW.md): rules for keeping docs current
 

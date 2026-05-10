@@ -5,6 +5,7 @@ This folder contains operational and task-specific reference material.
 Use these docs when you need details for a focused task such as:
 
 - Firebase setup and troubleshooting
+- website hosting and domain connection
 - analytics setup or event naming
 - App Store submission preparation
 - version/build number management
@@ -22,8 +23,8 @@ These docs are useful, but they are not the same as the canonical project docs.
 ## Typical Examples Here
 
 - Firebase setup guides
+- website deployment guides
 - App Store metadata and submission checklists
 - analytics references
 - versioning guides
 - package-specific setup notes
-
