@@ -6,7 +6,7 @@ import { FiveStarRating } from "../components/star-rating";
 const proofPoints = [
   {
     label: "Voice, text, or photo",
-    icon: "/icons/mic.png"
+    icon: "/icons/mic.webp"
   },
   {
     label: "AI calorie estimates",
@@ -14,28 +14,28 @@ const proofPoints = [
   },
   {
     label: "Built for health",
-    icon: "/icons/health.png"
+    icon: "/icons/health.webp"
   }
 ];
 
 const howItWorks = [
   {
     title: "Speak it",
-    imageSrc: "/how-it-works/speak-it.png",
-    imageWidth: 857,
-    imageHeight: 1143
+    imageSrc: "/how-it-works/speak-it.webp",
+    imageWidth: 520,
+    imageHeight: 694
   },
   {
     title: "Snap it",
-    imageSrc: "/how-it-works/snap-it.png",
-    imageWidth: 857,
-    imageHeight: 1143
+    imageSrc: "/how-it-works/snap-it.webp",
+    imageWidth: 520,
+    imageHeight: 694
   },
   {
     title: "Track it",
-    imageSrc: "/how-it-works/track-it.png",
-    imageWidth: 857,
-    imageHeight: 1143
+    imageSrc: "/how-it-works/track-it.webp",
+    imageWidth: 520,
+    imageHeight: 694
   }
 ];
 
@@ -132,7 +132,7 @@ function DownloadButton({ className = "" }: { className?: string }) {
       rel="noreferrer"
     >
       <ProofIcon
-        src="/icons/mobile.png"
+        src="/icons/mobile.webp"
         alt=""
         className="proof-asset-icon-mobile"
       />
@@ -160,12 +160,14 @@ function HeroPhoneMockup() {
     <div className="hero-phone-shell hero-phone-image-shell">
       {/* Replace this file if you export a newer hero screenshot from the app. */}
       <Image
-        src="/hero/voice-meal-logging.png"
+        src="/hero/voice-meal-logging.webp"
         alt="LogCal voice meal logging screen"
         width={1254}
         height={1254}
         className="hero-phone-image"
         priority
+        fetchPriority="high"
+        sizes="(max-width: 900px) 430px, 582px"
       />
     </div>
   );
@@ -175,11 +177,12 @@ function FinalDashboardMockup() {
   return (
     <div className="final-dashboard-shell">
       <Image
-        src="/final-cta/dashboard-view.png"
+        src="/final-cta/dashboard-view.webp"
         alt="LogCal dashboard showing daily calories, macros, and recent meals"
-        width={727}
-        height={1593}
+        width={360}
+        height={789}
         className="final-dashboard-image"
+        sizes="(max-width: 560px) 210px, (max-width: 900px) 250px, 360px"
       />
     </div>
   );
@@ -190,7 +193,7 @@ function HeroVoiceCard() {
     <div className="hero-side-card voice-log-card">
       <div className="voice-log-header">
         <span className="voice-log-pill">
-          <ProofIcon src="/icons/mic.png" alt="" />
+          <ProofIcon src="/icons/mic.webp" alt="" />
         </span>
         <strong>Voice log</strong>
       </div>
@@ -214,7 +217,7 @@ function HeroVoiceCard() {
         <i />
       </div>
       <button className="voice-mic-button" type="button" aria-label="Voice log">
-        <ProofIcon src="/icons/mic.png" alt="" />
+        <ProofIcon src="/icons/mic.webp" alt="" />
       </button>
       <span className="voice-listening">Listening...</span>
     </div>
@@ -227,10 +230,10 @@ function HeroMealCard() {
       <span className="meal-badge">Meal recognized</span>
       <span className="meal-card-image-frame">
         <Image
-          src="/hero/sourdough-sandwich.png"
+          src="/hero/sourdough-sandwich.webp"
           alt="Turkey sandwich with avocado and apple slices"
-          width={1254}
-          height={1254}
+          width={360}
+          height={360}
           className="meal-card-image"
         />
       </span>
@@ -299,6 +302,7 @@ export default function HomePage() {
                   width={step.imageWidth}
                   height={step.imageHeight}
                   className="step-image"
+                  sizes="(max-width: 900px) 78vw, 33vw"
                 />
               </div>
               {index < howItWorks.length - 1 && (
@@ -390,7 +394,7 @@ export default function HomePage() {
           <a className="footer-logo" href="/">
             <span className="brand-mark">
               <Image
-                src="/images/logcal-transparent-logo.png"
+                src="/images/logcal-transparent-logo.webp"
                 alt=""
                 width={64}
                 height={64}

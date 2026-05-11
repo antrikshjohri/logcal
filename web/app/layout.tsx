@@ -12,17 +12,33 @@ const appFont = Manrope({
 export const metadata: Metadata = {
   metadataBase: new URL("https://logcalai.com"),
   title: {
-    default: "LogCal AI",
-    template: "%s | LogCal AI"
+    default: "LogCal: AI Calorie Tracker",
+    template: "%s | LogCal: AI Calorie Tracker"
   },
   description:
     "AI-assisted calorie logging for people who want a faster, calmer way to track meals.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.png",
+        type: "image/png",
+        sizes: "48x48"
+      }
+    ],
+    apple: [
+      {
+        url: "/apple-touch-icon.png",
+        type: "image/png",
+        sizes: "180x180"
+      }
+    ]
+  },
   openGraph: {
-    title: "LogCal AI",
+    title: "LogCal: AI Calorie Tracker",
     description:
       "Track meals quickly with AI-assisted calorie logging built for everyday life.",
     url: "https://logcalai.com",
-    siteName: "LogCal AI",
+    siteName: "LogCal: AI Calorie Tracker",
     type: "website"
   }
 };

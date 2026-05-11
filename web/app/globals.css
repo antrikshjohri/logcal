@@ -3136,7 +3136,27 @@ main {
 
 @media (max-width: 560px) {
   .nav {
+    display: flex;
+    width: 100%;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 0 8px;
+    scroll-padding-inline: 0;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .nav a {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 254, 250, 0.72);
+    font-size: 14px;
   }
 
   .blog-page,
