@@ -29,3 +29,11 @@ This changelog tracks notable project changes from the point we adopted the new 
 - Rebuilt the website homepage around a premium consumer-app landing page direction
 - Added a reusable App Store placeholder link, richer product mockups, and a placeholder `Terms` route
 - Recreated the website homepage from the seven section-level design references: hero, how it works, features, benefits, testimonials, final CTA, and footer
+
+## 2026-05-11
+
+- Added a reusable LogCal AI SEO blog agent spec for product-led blog articles
+- Added a copy-ready SEO blog article prompt template for future content generation
+- Added the first LogCal AI SEO blog draft about tracking calories without weighing food
+- Added a website Blog section with a blog index, article route, placeholder visuals, and SEO schema
+- Updated the SEO blog agent with production article rules, region-agnostic defaults, portion guidance, and image-generation prompt requirements

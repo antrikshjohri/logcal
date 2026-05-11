@@ -1,0 +1,20 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" rx="48" fill="#FFFDF8"/>
+  <path d="M0 526c176-80 288-30 438-83 172-61 254-206 430-184 118 15 220 97 332 30v471H0V526Z" fill="#EAF3E5"/>
+  <rect x="190" y="96" width="316" height="568" rx="52" fill="#102D26"/>
+  <rect x="218" y="142" width="260" height="474" rx="34" fill="#FFFDF8"/>
+  <rect x="258" y="188" width="180" height="20" rx="10" fill="#00643D"/>
+  <circle cx="348" cy="314" r="78" fill="#F3EFE2"/>
+  <path d="M300 318c28-44 68-54 102-14 23 27 18 68-8 91H300v-77Z" fill="#DCE9C8"/>
+  <rect x="262" y="436" width="172" height="18" rx="9" fill="#CFC7AF"/>
+  <rect x="262" y="476" width="132" height="18" rx="9" fill="#CFC7AF"/>
+  <circle cx="348" cy="548" r="34" fill="#00643D"/>
+  <path d="M348 527v42M327 548h42" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  <rect x="604" y="160" width="406" height="126" rx="32" fill="#FFFFFF" stroke="#E3DFD4" stroke-width="2"/>
+  <rect x="646" y="204" width="248" height="16" rx="8" fill="#0B6F47"/>
+  <rect x="646" y="240" width="176" height="14" rx="7" fill="#D8D0B9"/>
+  <rect x="604" y="330" width="406" height="126" rx="32" fill="#FFFFFF" stroke="#E3DFD4" stroke-width="2"/>
+  <path d="M664 394h22M708 394h54M784 394h96M902 394h38" stroke="#91A475" stroke-width="16" stroke-linecap="round"/>
+  <rect x="604" y="500" width="406" height="126" rx="32" fill="#00643D"/>
+  <text x="650" y="576" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="700">Log it before you forget</text>
+</svg>

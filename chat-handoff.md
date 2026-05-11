@@ -128,6 +128,38 @@
   - `web/tsconfig.tsbuildinfo`
 - The worktree may be dirty.
 
+## Latest Website Changes To Preserve
+
+- Header/footer branding now use the transparent logo asset:
+  - `web/public/images/logcal-transparent-logo.png`
+  - Source user file was `App Icon/Logo Transparent Background.png`
+  - Brand mark styling uses `object-fit: contain` so the transparent logo is not cropped.
+- Mobile header hides the topbar download button because the hero already has the primary app download CTA.
+- Mobile hero proof row shows only:
+  - `Voice, text, or photo`
+  - `AI calorie estimates`
+  - `Built for health` is hidden on mobile so there is no horizontal scroll.
+- Hero supporting meal card uses the static sandwich asset:
+  - `web/public/hero/sourdough-sandwich.png`
+  - It is displayed small inside a soft green circular frame with visible padding/gap.
+- Final CTA uses a real dashboard screenshot instead of a code-built phone:
+  - `web/public/final-cta/dashboard-view.png`
+  - Phone visual has been intentionally reduced in size, especially on mobile.
+- Features and Testimonials are horizontally scrollable on mobile.
+- Footer has been simplified to a minimal Cal AI-style layout:
+  - LogCal brand/logo
+  - Official App Store badge asset only
+  - Legal column: Privacy Policy
+  - Company column: Contact Us, Support
+  - No Google Play badge, Terms link, or social icons.
+- App Store badge is rendered from:
+  - `web/public/badges/app-store-badge.svg`
+  - Do not recreate the badge manually in CSS or modify its colors/proportions.
+- Privacy and Support pages are implemented:
+  - `/privacy/` renders local Termly HTML from `web/public/legal/privacypolicy.html`
+  - `/support/` renders a native React support/FAQ page
+- The user explicitly disliked visual bugs and asked that UI changes be checked for obvious layout issues. They also specifically asked not to open the browser/take screenshots unless requested, so prefer code inspection plus lint unless they ask for visual verification.
+
 ## Good Next-Step Prompt For A New Chat
 
 Use something like:

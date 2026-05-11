@@ -390,7 +390,7 @@ export default function HomePage() {
           <a className="footer-logo" href="/">
             <span className="brand-mark">
               <Image
-                src="/images/logcal-app-icon.png"
+                src="/images/logcal-transparent-logo.png"
                 alt=""
                 width={64}
                 height={64}
@@ -412,6 +412,7 @@ export default function HomePage() {
 
         <nav className="footer-column" aria-label="Company">
           <h3>Company</h3>
+          <a href="/blog/">Blogs</a>
           <a href="mailto:johriantriksh24@gmail.com">Contact Us</a>
           <a href="/support/">Support</a>
         </nav>

@@ -3,6 +3,7 @@ import Image from "next/image";
 const navItems = [
   { href: "/#features", label: "Features" },
   { href: "/#how-it-works", label: "How it works" },
+  { href: "/blog/", label: "Blogs" },
   { href: "/#testimonials", label: "Testimonials" },
   { href: "/app/", label: "About" }
 ];
@@ -17,7 +18,7 @@ export function SiteHeader() {
         <a className="brand" href="/">
           <span className="brand-mark">
             <Image
-              src="/images/logcal-app-icon.png"
+              src="/images/logcal-transparent-logo.png"
               alt=""
               width={64}
               height={64}

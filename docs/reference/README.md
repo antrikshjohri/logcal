@@ -28,3 +28,8 @@ These docs are useful, but they are not the same as the canonical project docs.
 - analytics references
 - versioning guides
 - package-specific setup notes
+- content and SEO agent references
+
+## Content Agents
+
+- [SEO_BLOG_AGENT.md](./SEO_BLOG_AGENT.md): reusable agent spec for LogCal AI SEO blog articles

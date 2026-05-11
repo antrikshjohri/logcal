@@ -3,6 +3,7 @@ import { StoreLink } from "./store-link";
 
 const footerLinks = [
   { href: "/features/", label: "Features" },
+  { href: "/blog/", label: "Blogs" },
   { href: "/support/", label: "Support" },
   { href: "/privacy/", label: "Privacy" },
   { href: "/terms/", label: "Terms" }

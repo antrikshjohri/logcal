@@ -35,6 +35,12 @@ Operational and task-specific docs live in [`reference/`](./reference).
 
 - [reference/README.md](./reference/README.md)
 
+## Blog Drafts
+
+SEO blog article drafts live in [`blog-drafts/`](./blog-drafts).
+
+- [how-to-track-calories-without-weighing-food.md](./blog-drafts/how-to-track-calories-without-weighing-food.md)
+
 ## Legacy Docs
 
 Historical docs that may not match the latest code live in [`legacy/`](./legacy).
@@ -54,6 +60,7 @@ Reusable templates live in [`TEMPLATES/`](./TEMPLATES).
 
 - [feature-template.md](./TEMPLATES/feature-template.md)
 - [decision-template.md](./TEMPLATES/decision-template.md)
+- [seo-blog-article-prompt.md](./TEMPLATES/seo-blog-article-prompt.md)
 
 ## Documentation Rule
 
