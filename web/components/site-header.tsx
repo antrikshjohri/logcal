@@ -18,7 +18,7 @@ export function SiteHeader() {
         <a className="brand" href="/">
           <span className="brand-mark">
             <Image
-              src="/images/logcal-transparent-logo.webp"
+              src="/images/logcal-transparent-logo-64.webp"
               alt=""
               width={64}
               height={64}

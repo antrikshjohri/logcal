@@ -150,7 +150,12 @@ function StoreBadge() {
       target="_blank"
       rel="noreferrer"
     >
-      <img src="/badges/app-store-badge.svg" alt="Download on the App Store" />
+      <img
+        src="/badges/app-store-badge.svg"
+        alt="Download on the App Store"
+        width={140}
+        height={42}
+      />
     </a>
   );
 }
@@ -159,16 +164,25 @@ function HeroPhoneMockup() {
   return (
     <div className="hero-phone-shell hero-phone-image-shell">
       {/* Replace this file if you export a newer hero screenshot from the app. */}
-      <Image
-        src="/hero/voice-meal-logging.webp"
-        alt="LogCal voice meal logging screen"
-        width={1254}
-        height={1254}
-        className="hero-phone-image"
-        priority
-        fetchPriority="high"
-        sizes="(max-width: 900px) 430px, 582px"
-      />
+      <picture>
+        <source
+          media="(max-width: 900px)"
+          srcSet="/hero/voice-meal-logging-520.webp"
+        />
+        <source
+          media="(max-width: 1180px)"
+          srcSet="/hero/voice-meal-logging-720.webp"
+        />
+        <img
+          src="/hero/voice-meal-logging.webp"
+          alt="LogCal voice meal logging screen"
+          width={1254}
+          height={1254}
+          className="hero-phone-image"
+          fetchPriority="high"
+          decoding="async"
+        />
+      </picture>
     </div>
   );
 }
@@ -230,10 +244,10 @@ function HeroMealCard() {
       <span className="meal-badge">Meal recognized</span>
       <span className="meal-card-image-frame">
         <Image
-          src="/hero/sourdough-sandwich.webp"
+          src="/hero/sourdough-sandwich-144.webp"
           alt="Turkey sandwich with avocado and apple slices"
-          width={360}
-          height={360}
+          width={144}
+          height={144}
           className="meal-card-image"
         />
       </span>
@@ -405,7 +419,7 @@ export default function HomePage() {
           <a className="footer-logo" href="/">
             <span className="brand-mark">
               <Image
-                src="/images/logcal-transparent-logo.webp"
+                src="/images/logcal-transparent-logo-64.webp"
                 alt=""
                 width={64}
                 height={64}
