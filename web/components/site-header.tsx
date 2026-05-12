@@ -1,11 +1,11 @@
 import Image from "next/image";
 
 const navItems = [
+  { href: "/", label: "Home" },
   { href: "/#features", label: "Features" },
   { href: "/#how-it-works", label: "How it works" },
   { href: "/blog/", label: "Blogs" },
-  { href: "/#testimonials", label: "Testimonials" },
-  { href: "/app/", label: "About" }
+  { href: "/#testimonials", label: "Testimonials" }
 ];
 
 const appStoreUrl =
@@ -35,6 +35,21 @@ export function SiteHeader() {
             </a>
           ))}
         </nav>
+
+        <details className="mobile-menu">
+          <summary aria-label="Open navigation menu">
+            <span />
+            <span />
+            <span />
+          </summary>
+          <nav className="mobile-menu-panel" aria-label="Mobile">
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </details>
 
         <div className="topbar-cta">
           <a

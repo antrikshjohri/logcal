@@ -313,6 +313,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="blog-promo-band" aria-label="LogCal AI blog">
+        <div>
+          <span className="eyebrow">From the blog</span>
+          <h2>Practical guides for easier calorie tracking</h2>
+        </div>
+        <p>
+          Explore portions, photo logging, weight-loss consistency, and small
+          habits that make food tracking easier to keep up with.
+        </p>
+        <a href="/blog/">Browse all posts</a>
+      </section>
+
       <section id="features" className="design-panel features-panel">
         <div className="section-copy-block">
           <h2>Everything you need to track smarter</h2>
