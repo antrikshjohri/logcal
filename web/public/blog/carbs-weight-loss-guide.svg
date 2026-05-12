@@ -1,0 +1,18 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#FFFDF8"/>
+  <rect x="82" y="72" width="1036" height="616" rx="44" fill="#F4F0E7" stroke="#D8DECF"/>
+  <text x="150" y="158" fill="#003E33" font-family="Arial, sans-serif" font-size="54" font-weight="800">Carbs are not the enemy</text>
+  <text x="152" y="208" fill="#53615E" font-family="Arial, sans-serif" font-size="24">4 calories per gram. Portions and context matter.</text>
+  <rect x="170" y="306" width="200" height="210" rx="32" fill="#FFFEFA" stroke="#D8DECF"/>
+  <rect x="410" y="306" width="200" height="210" rx="32" fill="#FFFEFA" stroke="#D8DECF"/>
+  <rect x="650" y="306" width="200" height="210" rx="32" fill="#FFFEFA" stroke="#D8DECF"/>
+  <rect x="890" y="306" width="140" height="210" rx="32" fill="#FFFEFA" stroke="#D8DECF"/>
+  <circle cx="270" cy="390" r="54" fill="#D1C39A"/>
+  <rect x="462" y="352" width="96" height="78" rx="18" fill="#D1C39A"/>
+  <circle cx="750" cy="390" r="54" fill="#B9CFAA"/>
+  <rect x="940" y="342" width="40" height="116" rx="20" fill="#D1C39A"/>
+  <text x="234" y="570" fill="#003E33" font-family="Arial, sans-serif" font-size="26" font-weight="800">Oats</text>
+  <text x="462" y="570" fill="#003E33" font-family="Arial, sans-serif" font-size="26" font-weight="800">Bread</text>
+  <text x="716" y="570" fill="#003E33" font-family="Arial, sans-serif" font-size="26" font-weight="800">Fruit</text>
+  <text x="916" y="570" fill="#003E33" font-family="Arial, sans-serif" font-size="26" font-weight="800">Pasta</text>
+</svg>

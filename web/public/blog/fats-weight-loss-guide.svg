@@ -1,0 +1,16 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#FFFDF8"/>
+  <rect x="82" y="72" width="1036" height="616" rx="44" fill="#EEF5E9" stroke="#CAD8CE"/>
+  <text x="150" y="158" fill="#003E33" font-family="Arial, sans-serif" font-size="54" font-weight="800">Fats are not bad</text>
+  <text x="152" y="208" fill="#53615E" font-family="Arial, sans-serif" font-size="24">9 calories per gram means small portions count.</text>
+  <rect x="172" y="300" width="230" height="250" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <rect x="486" y="300" width="230" height="250" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <rect x="800" y="300" width="230" height="250" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <path d="M248 372c35-62 78-62 112 0 28 52-7 108-56 108s-84-56-56-108Z" fill="#D1C39A"/>
+  <circle cx="601" cy="420" r="64" fill="#B9CFAA"/>
+  <path d="M880 356h70v136h-70z" fill="#C8A7AF"/>
+  <circle cx="915" cy="356" r="35" fill="#C8A7AF"/>
+  <text x="238" y="610" fill="#003E33" font-family="Arial, sans-serif" font-size="28" font-weight="800">Oil</text>
+  <text x="562" y="610" fill="#003E33" font-family="Arial, sans-serif" font-size="28" font-weight="800">Nuts</text>
+  <text x="850" y="610" fill="#003E33" font-family="Arial, sans-serif" font-size="28" font-weight="800">Dressing</text>
+</svg>

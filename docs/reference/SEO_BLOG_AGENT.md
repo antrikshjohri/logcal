@@ -90,6 +90,14 @@ Return the article package in this order. Clearly separate production-ready cont
 
 ## Image Prompt Rules
 
+Default blog cover image rule:
+
+- Treat blog cover images as normal editorial blog visuals, not product ads.
+- Do not include the LogCal AI logo, LogCal AI branding, branded mobile app screens, or phone mockups unless the user explicitly asks for a product/app image.
+- The visual should explain the article idea at thumbnail size. Prefer one clear concept over many small details.
+- Use text only when it materially improves comprehension. If text is used, it must be large, short, and readable on mobile/blog-card previews.
+- Do not make a supporting fact the whole image. The image should represent the article's main message.
+
 For every blog article, provide ChatGPT image-generation prompts for:
 
 - Blog cover image

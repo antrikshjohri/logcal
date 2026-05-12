@@ -910,6 +910,573 @@ export const blogPosts: BlogPost[] = [
         alt: "Calorie tracking habit calendar"
       }
     ]
+  },
+  {
+    slug: "how-to-calculate-and-balance-macros",
+    title: "How to Calculate and Balance Your Macros",
+    seoTitle: "How to Calculate and Balance Macros",
+    description:
+      "Learn what macros are, how many calories protein, carbs, and fat contain, and how to build a balanced macro approach.",
+    date: "2026-05-12",
+    readTime: "8 min read",
+    category: "Macros",
+    heroImage: "/blog/macro-balance-guide.webp",
+    heroAlt:
+      "Macro balance guide showing protein, carbs, and fat calorie values",
+    primaryKeyword: "how to calculate macros",
+    excerpt:
+      "A simple guide to protein, carbs, fat, calories per gram, and balanced macro tracking without making food feel complicated.",
+    intentSummary:
+      "Readers want a beginner-friendly explanation of macros, calories per gram, and what a balanced macro approach looks like.",
+    sections: [
+      {
+        id: "what-are-macros",
+        heading: "What Are Macros?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Macros, short for macronutrients, are the nutrients your body uses in larger amounts: protein, carbohydrates, and fat. Each macro gives you calories, but they do different jobs in your body."
+          },
+          {
+            type: "paragraph",
+            text: "If you are tracking calories, learning macros helps you understand where those calories come from. A meal can have the same calories but feel very different depending on its protein, carbs, and fat."
+          }
+        ]
+      },
+      {
+        id: "calories-per-gram",
+        heading: "How Many Calories Are in Protein, Carbs, and Fat?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "The basic macro math is simple: protein has 4 calories per gram, carbohydrates have 4 calories per gram, and fat has 9 calories per gram. Alcohol has 7 calories per gram, but it is usually tracked separately from the three main macros."
+          },
+          {
+            type: "list",
+            items: [
+              "Protein: 4 calories per gram.",
+              "Carbs: 4 calories per gram.",
+              "Fat: 9 calories per gram.",
+              "Alcohol: 7 calories per gram, if you choose to track it."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "That is why fats are easy to undercount. One spoon of oil can add more calories than people expect, even though fat itself is not bad."
+          }
+        ]
+      },
+      {
+        id: "how-to-calculate-macro-calories",
+        heading: "How to Calculate Macro Calories",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "To calculate calories from macros, multiply the grams by the calories per gram."
+          },
+          {
+            type: "list",
+            items: [
+              "Protein calories = protein grams x 4.",
+              "Carb calories = carb grams x 4.",
+              "Fat calories = fat grams x 9."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "For example, a meal with 30g protein, 50g carbs, and 15g fat has about 120 calories from protein, 200 calories from carbs, and 135 calories from fat. That is about 455 calories before any rounding or hidden ingredients."
+          }
+        ]
+      },
+      {
+        id: "what-is-a-good-macro-balance",
+        heading: "What Is a Good Macro Balance?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "There is no perfect macro split for everyone. A useful balance usually includes enough protein to support fullness and muscle maintenance, enough carbs for energy, and enough fat for taste, satisfaction, and normal body functions."
+          },
+          {
+            type: "paragraph",
+            text: "For a normal meal, a simple starting point is: include a protein source, add a carb source if it fits your day, include vegetables or fruit when possible, and track fats like oil, dressing, nuts, cheese, or creamy sauces honestly."
+          },
+          {
+            type: "paragraph",
+            text: "If you are also working on weight loss, consistency matters more than chasing a perfect macro split every day.",
+            links: [
+              {
+                text: "consistency matters",
+                href: "/blog/best-way-to-track-calories-for-weight-loss/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "macro-balance-examples",
+        heading: "Simple Macro Balance Examples",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Breakfast: yoghurt, fruit, oats, and a small handful of nuts.",
+              "Lunch: chicken or tofu bowl with rice, vegetables, and one spoon of dressing.",
+              "Snack: fruit with yoghurt, cottage cheese, or a small handful of nuts.",
+              "Dinner: fish, beans, tofu, or lean meat with potatoes, pasta, rice, or bread plus vegetables."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "You do not need to weigh every ingredient to start. Use portion words like bowl, cup, plate, spoon, or handful, then get more precise only when you need to.",
+            links: [
+              {
+                text: "portion words",
+                href: "/blog/how-to-estimate-portion-sizes/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "when-to-track-macros",
+        heading: "When Should You Track Macros?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Macro tracking is useful if you want to improve protein intake, understand why some meals keep you full longer, support training goals, or troubleshoot a calorie target that does not feel sustainable."
+          },
+          {
+            type: "paragraph",
+            text: "You do not need to track macros forever. Many people start by tracking calories, then look at macros when they want more detail."
+          },
+          {
+            type: "callout",
+            title: "A quick health note",
+            text: "Macro needs vary by body size, activity, health status, and goals. This guide is educational and should not replace advice from a qualified medical or nutrition professional."
+          }
+        ]
+      },
+      {
+        id: "how-logcal-ai-can-help",
+        heading: "How LogCal AI Can Help",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "LogCal AI can estimate calories and macros from text, voice, or photos. That means you can log a meal in normal language and still get a useful breakdown of protein, carbs, and fat."
+          },
+          {
+            type: "paragraph",
+            text: "Start simple. Track the meal, notice the pattern, and use macros as extra context instead of another thing to stress about."
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "What are macros in food?",
+        answer:
+          "Macros are protein, carbohydrates, and fat. They provide calories and each plays a different role in meals and nutrition."
+      },
+      {
+        question: "How many calories are in each macro?",
+        answer:
+          "Protein has 4 calories per gram, carbs have 4 calories per gram, and fat has 9 calories per gram. Alcohol has 7 calories per gram."
+      },
+      {
+        question: "Do I need to track macros to lose weight?",
+        answer:
+          "Not always. Calories and consistency matter most for many people. Macro tracking can help if you want to improve protein intake, manage hunger, or understand your meals better."
+      },
+      {
+        question: "What is the best macro balance?",
+        answer:
+          "There is no single best macro balance for everyone. A practical approach is to include protein, choose carbs that fit your day, and track calorie-dense fats honestly."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A clean macro guide showing protein, carbs, and fat with calories per gram and a balanced plate.",
+        alt: "Macro balance guide with calories per gram"
+      }
+    ]
+  },
+  {
+    slug: "how-much-protein-do-you-need-when-tracking-calories",
+    title: "How Much Protein Do You Need When Tracking Calories?",
+    seoTitle: "How Much Protein Do You Need?",
+    description:
+      "Learn why protein matters when tracking calories, how it supports fullness, and how to estimate protein without overcomplicating meals.",
+    date: "2026-05-12",
+    readTime: "7 min read",
+    category: "Macros",
+    heroImage: "/blog/protein-tracking-guide.webp",
+    heroAlt:
+      "Vegetarian and non-vegetarian protein sources shown side by side",
+    primaryKeyword: "how much protein do you need",
+    excerpt:
+      "A practical guide to protein, fullness, calorie tracking, and simple ways to include protein in normal meals.",
+    intentSummary:
+      "Readers want to understand protein needs in a practical calorie-tracking context without strict personalized targets.",
+    sections: [
+      {
+        id: "why-protein-matters",
+        heading: "Why Protein Matters When Tracking Calories",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Protein matters because it can help meals feel more satisfying and supports muscle maintenance, especially if you are losing weight or exercising. Protein also has 4 calories per gram."
+          },
+          {
+            type: "paragraph",
+            text: "You do not need to turn every meal into a protein project. The goal is to include enough protein often enough that your meals feel balanced."
+          }
+        ]
+      },
+      {
+        id: "how-much-protein",
+        heading: "So How Much Protein Do You Need?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Protein needs vary by body size, activity, age, health, and goals. Instead of guessing one perfect number, start by noticing whether each meal includes a clear protein source."
+          },
+          {
+            type: "list",
+            items: [
+              "Easy protein sources include eggs, yoghurt, tofu, beans, fish, chicken, lean meat, cottage cheese, lentils, and protein-rich dairy or alternatives.",
+              "A practical log should mention the protein source and rough portion.",
+              "If you train hard, have specific goals, or have a medical condition, get personalized guidance."
+            ]
+          }
+        ]
+      },
+      {
+        id: "protein-and-calories",
+        heading: "Protein and Calories",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Protein has 4 calories per gram. That means 25g of protein contributes about 100 calories before you count the rest of the meal."
+          },
+          {
+            type: "paragraph",
+            text: "To understand how protein fits with carbs and fat, read the macro balance guide.",
+            links: [
+              {
+                text: "macro balance guide",
+                href: "/blog/how-to-calculate-and-balance-macros/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "simple-protein-examples",
+        heading: "Simple Protein Examples",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Breakfast: yoghurt with oats and fruit.",
+              "Lunch: rice bowl with tofu, beans, chicken, fish, or lean meat.",
+              "Snack: cottage cheese, yoghurt, edamame, or a protein-rich smoothie.",
+              "Dinner: pasta, potatoes, or grains with a clear protein source and vegetables."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "When logging, be specific. \"Large salad with chicken and two spoons dressing\" is more useful than \"salad\"."
+          }
+        ]
+      },
+      {
+        id: "how-logcal-ai-can-help",
+        heading: "How LogCal AI Can Help",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "LogCal AI can estimate protein along with calories when you describe your meal. Mention the protein source and portion, and the estimate becomes more useful."
+          },
+          {
+            type: "paragraph",
+            text: "If you are using tracking for weight loss, protein is one part of the bigger picture. Consistency still matters most.",
+            links: [
+              {
+                text: "Consistency still matters",
+                href: "/blog/best-way-to-track-calories-for-weight-loss/"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Does protein have calories?",
+        answer:
+          "Yes. Protein has 4 calories per gram."
+      },
+      {
+        question: "Is more protein always better?",
+        answer:
+          "Not necessarily. Protein is useful, but needs vary. Balance protein with carbs, fats, fiber, and foods you can enjoy consistently."
+      },
+      {
+        question: "Can LogCal AI estimate protein?",
+        answer:
+          "LogCal AI can estimate calories and macros from meal details. The estimate is more useful when you mention the protein source and rough portion."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A clean protein guide with common protein sources and a simple phone macro estimate.",
+        alt: "Protein tracking guide for calorie tracking"
+      }
+    ]
+  },
+  {
+    slug: "are-carbs-bad-for-weight-loss",
+    title: "Carbs and Weight Loss: Are They Really Bad?",
+    seoTitle: "Carbs and Weight Loss: Are They Bad?",
+    description:
+      "Carbs are not automatically bad for weight loss. Learn how carbs work, why portions matter, and how to track them without fear.",
+    date: "2026-05-12",
+    readTime: "7 min read",
+    category: "Macros",
+    heroImage: "/blog/carbs-weight-loss-guide.webp",
+    heroAlt:
+      "Carb foods connected to everyday energy and activity",
+    primaryKeyword: "are carbs bad for weight loss",
+    excerpt:
+      "A simple, non-fearful guide to carbs, calories, portions, energy, and weight-loss tracking.",
+    intentSummary:
+      "Readers want to know whether carbs prevent weight loss and how to include them sensibly.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "Are Carbs Really Bad for Weight Loss?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Carbs are not automatically bad for weight loss. Carbs have 4 calories per gram, and they can fit into a weight-loss plan when portions, total calories, and food choices make sense for you."
+          },
+          {
+            type: "paragraph",
+            text: "The problem is usually not carbs as a category. It is easy-to-overeat portions, sugary drinks, snacks that do not keep you full, or meals where carbs are paired with lots of hidden fats."
+          }
+        ]
+      },
+      {
+        id: "what-carbs-do",
+        heading: "What Carbs Do",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Carbs help fuel daily movement, workouts, and normal meals. Foods like oats, potatoes, fruit, beans, rice, bread, pasta, and cereal all contain carbs, but they can feel very different depending on fiber, protein, fat, and portion size."
+          },
+          {
+            type: "paragraph",
+            text: "If you want the bigger macro picture, start with this guide on how to calculate and balance macros.",
+            links: [
+              {
+                text: "how to calculate and balance macros",
+                href: "/blog/how-to-calculate-and-balance-macros/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "why-carbs-get-blamed",
+        heading: "Why Carbs Get Blamed",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Carbs often get blamed because many high-calorie snack foods are carb-heavy and easy to eat quickly. But those foods may also include fat, sugar, salt, and low fiber, which can make portions harder to manage."
+          },
+          {
+            type: "paragraph",
+            text: "Cutting carbs can also reduce water weight quickly for some people, which can make it seem like carbs were the only issue. Long-term progress still depends on the overall pattern."
+          }
+        ]
+      },
+      {
+        id: "how-to-track-carbs",
+        heading: "How to Track Carbs Without Fear",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Use portion words like cup, bowl, slice, piece, or plate.",
+              "Notice whether the carb comes with protein, fiber, or fat.",
+              "Log sugary drinks, desserts, and snacks honestly.",
+              "Do not label a whole meal as bad because it includes carbs.",
+              "Look at weekly consistency instead of one high-carb meal."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "If you are estimating instead of weighing, the portion size guide can help you describe carbs more clearly.",
+            links: [
+              {
+                text: "portion size guide",
+                href: "/blog/how-to-estimate-portion-sizes/"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "How many calories are in carbs?",
+        answer:
+          "Carbs have 4 calories per gram."
+      },
+      {
+        question: "Do I need to cut carbs to lose weight?",
+        answer:
+          "Not necessarily. Some people prefer lower-carb eating, but many people can lose weight while eating carbs if overall calories and consistency are managed."
+      },
+      {
+        question: "Which carbs are best for fullness?",
+        answer:
+          "Higher-fiber carbs like fruit, oats, potatoes, beans, and whole grains may feel more filling than sugary drinks or low-fiber snacks."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A calm carb guide with bread, fruit, oats, potatoes, and a balanced meal note.",
+        alt: "Carbs for weight loss guide"
+      }
+    ]
+  },
+  {
+    slug: "good-fats-vs-bad-fats-for-weight-loss",
+    title: "Good Fats vs Bad Fats for Weight Loss",
+    seoTitle: "Good Fats vs Bad Fats for Weight Loss",
+    description:
+      "Learn the difference between helpful fats and less helpful fats, why portions matter, and how to track fats without fear.",
+    date: "2026-05-12",
+    readTime: "7 min read",
+    category: "Macros",
+    heroImage: "/blog/fats-weight-loss-guide.webp",
+    heroAlt:
+      "Good fats and bad fats shown in a side by side comparison",
+    primaryKeyword: "good fats vs bad fats",
+    excerpt:
+      "A practical guide to helpful fats, less helpful fats, portions, and why fat is not the enemy when you track it honestly.",
+    intentSummary:
+      "Readers want to understand which fats are more helpful, which fats to limit more often, and how fat fits into weight-loss tracking.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "Good Fats vs Bad Fats: What Matters?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Fats are not bad for weight loss. The better question is which fats help your meals feel satisfying and which fats are easier to overeat. Fat has 9 calories per gram, so portions matter, but avoidance is not the goal."
+          },
+          {
+            type: "paragraph",
+            text: "Fats help meals taste good and can support satisfaction. The main tracking issue is that oils, nuts, cheese, avocado, butter, dressing, and creamy sauces are easy to forget or underestimate."
+          }
+        ]
+      },
+      {
+        id: "why-fat-is-calorie-dense",
+        heading: "Why Fat Is Calorie-Dense",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Protein and carbs have 4 calories per gram. Fat has 9. That is why a small spoon of oil or a handful of nuts can change a meal estimate more than people expect."
+          },
+          {
+            type: "paragraph",
+            text: "To see how fat fits with protein and carbs, read the macro balance guide.",
+            links: [
+              {
+                text: "macro balance guide",
+                href: "/blog/how-to-calculate-and-balance-macros/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "healthy-fats-still-count",
+        heading: "Healthy Fats Still Count",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Foods like olive oil, nuts, seeds, avocado, and fatty fish can be part of a healthy eating pattern. But healthy does not mean calorie-free."
+          },
+          {
+            type: "paragraph",
+            text: "A useful approach is not to fear fats. It is to log them honestly and choose portions that fit your goal."
+          }
+        ]
+      },
+      {
+        id: "how-to-track-fats",
+        heading: "How to Track Fats Without Overthinking",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Use spoon for oil, dressing, mayo, butter, nut butter, and sauces.",
+              "Use small handful for nuts and seeds.",
+              "Mention cheese, avocado, creamy sauces, and fried cooking methods.",
+              "Do not forget fats added during cooking.",
+              "Keep the log honest rather than perfect."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "The portion size guide is especially helpful for fats because small portions can matter.",
+            links: [
+              {
+                text: "portion size guide",
+                href: "/blog/how-to-estimate-portion-sizes/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "how-logcal-ai-can-help",
+        heading: "How LogCal AI Can Help",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "When logging with LogCal AI, mention fats in normal language: two spoons dressing, cooked in oil, small handful of nuts, or avocado on toast. Those details make the calorie and macro estimate more useful."
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "How many calories are in fat?",
+        answer:
+          "Fat has 9 calories per gram."
+      },
+      {
+        question: "Do I need to avoid fat to lose weight?",
+        answer:
+          "No. You do not need to avoid fat, but portions matter because fat is calorie-dense."
+      },
+      {
+        question: "What fats are easy to forget when tracking?",
+        answer:
+          "Cooking oil, dressing, butter, mayo, cheese, nuts, avocado, fried foods, and creamy sauces are common examples."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A simple fat tracking guide showing oil, dressing, nuts, avocado, and spoon portions.",
+        alt: "Fats for weight loss guide"
+      }
+    ]
   }
 ];
 

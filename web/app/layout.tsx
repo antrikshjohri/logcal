@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: "%s | LogCal: AI Calorie Tracker"
   },
   description:
-    "AI-assisted calorie logging for people who want a faster, calmer way to track meals.",
+    "The least-effort way to track calories and macros. Speak, type, or snap your meal and get instant AI-powered estimates.",
   icons: {
     icon: [
       {
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "LogCal: AI Calorie Tracker",
     description:
-      "Track meals quickly with AI-assisted calorie logging built for everyday life.",
+      "The least-effort way to track calories and macros. Speak, type, or snap your meal and get instant AI-powered estimates.",
     url: "https://logcalai.com",
     siteName: "LogCal: AI Calorie Tracker",
     type: "website"

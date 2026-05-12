@@ -1,0 +1,15 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#FFFDF8"/>
+  <rect x="82" y="72" width="1036" height="616" rx="44" fill="#EAF4F0" stroke="#CAD8CE"/>
+  <text x="150" y="158" fill="#003E33" font-family="Arial, sans-serif" font-size="54" font-weight="800">Protein helps meals feel steady</text>
+  <text x="152" y="208" fill="#53615E" font-family="Arial, sans-serif" font-size="24">4 calories per gram, plus useful fullness context.</text>
+  <rect x="180" y="304" width="320" height="250" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <rect x="560" y="304" width="320" height="250" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <circle cx="340" cy="405" r="72" fill="#B9CFAA"/>
+  <path d="M285 430c36-55 73-55 110 0" stroke="#007A4D" stroke-width="18" stroke-linecap="round"/>
+  <rect x="620" y="374" width="190" height="24" rx="12" fill="#007A4D"/>
+  <rect x="620" y="424" width="150" height="18" rx="9" fill="#D8DECF"/>
+  <rect x="620" y="466" width="120" height="18" rx="9" fill="#D8DECF"/>
+  <text x="248" y="608" fill="#003E33" font-family="Arial, sans-serif" font-size="30" font-weight="800">Protein source</text>
+  <text x="610" y="608" fill="#003E33" font-family="Arial, sans-serif" font-size="30" font-weight="800">Macro estimate</text>
+</svg>

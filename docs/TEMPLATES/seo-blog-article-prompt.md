@@ -78,5 +78,8 @@ Writing rules:
 Image prompt requirements:
 - Provide ChatGPT image-generation prompts for the blog cover image, at least one supporting article image, and one optional product/app image or screenshot direction.
 - Each prompt should include intended placement, 1200x760 landscape unless another size is better, scene description, style direction, composition guidance, text guidance, avoid list, and suggested alt text.
+- For blog cover images, do not include LogCal AI branding, logo, branded phone screens, or app mockups unless explicitly requested. Covers should feel like normal editorial blog visuals, not product ads.
+- The cover visual must explain the article's main idea at thumbnail size. Do not make one supporting fact the entire image.
+- Use text only when it helps comprehension; keep it large, short, and readable on mobile/blog-card previews.
 - Visual style should feel premium, modern, clean, friendly, consumer health app, with soft off-white backgrounds, deep green accents, warm natural food colors, and no diet-culture/body-transformation imagery.
 ```

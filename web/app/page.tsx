@@ -257,8 +257,7 @@ export default function HomePage() {
         <div className="hero-copy">
           <h1>Log meals in seconds with AI</h1>
           <p>
-            Tell LogCal what you ate. It estimates calories and keeps your day
-            on track.
+          Track calories effortlessly. Speak, type, or snap your meal — LogCal estimates it in seconds. 
           </p>
           <div className="hero-actions">
             <DownloadButton />
@@ -320,7 +319,7 @@ export default function HomePage() {
         </div>
         <p>
           Explore portions, photo logging, weight-loss consistency, and small
-          habits that make food tracking easier to keep up with.
+          habits, plus simple macro guides for protein, carbs, and fats.
         </p>
         <a href="/blog/">Browse all posts</a>
       </section>
