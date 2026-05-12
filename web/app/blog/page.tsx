@@ -71,12 +71,20 @@ export default function BlogIndexPage() {
         </Link>
 
         <aside className="blog-topic-panel">
-          <h2>Upcoming topics</h2>
+          <h2>Start with these guides</h2>
           <div className="blog-topic-list">
-            <span>How to estimate calories in homemade food</span>
-            <span>Best calorie tracker app for easy food logging</span>
-            <span>Calorie tracking for weight loss: beginner guide</span>
-            <span>How to log Indian food calories easily</span>
+            <Link href="/blog/how-to-estimate-portion-sizes/">
+              Estimate portions without weighing food
+            </Link>
+            <Link href="/blog/best-way-to-track-calories-for-weight-loss/">
+              Track calories for weight loss without perfection
+            </Link>
+            <Link href="/blog/photo-calorie-tracking/">
+              Use meal photos for clearer food logs
+            </Link>
+            <Link href="/blog/calorie-tracking-habit/">
+              Build a calorie tracking habit that sticks
+            </Link>
           </div>
         </aside>
       </section>

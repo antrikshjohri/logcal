@@ -1,0 +1,17 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#FFFDF8"/>
+  <rect x="80" y="70" width="1040" height="620" rx="44" fill="#EAF4F0" stroke="#CAD8CE"/>
+  <text x="148" y="158" fill="#003E33" font-family="Arial, sans-serif" font-size="56" font-weight="800">Track what matters</text>
+  <text x="150" y="210" fill="#53615E" font-family="Arial, sans-serif" font-size="25">Simple logs, realistic portions, steady progress.</text>
+  <rect x="150" y="286" width="395" height="284" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <text x="196" y="354" fill="#003E33" font-family="Arial, sans-serif" font-size="32" font-weight="800">Today</text>
+  <rect x="196" y="392" width="250" height="22" rx="11" fill="#007A4D"/>
+  <rect x="196" y="438" width="300" height="18" rx="9" fill="#D8DECF"/>
+  <rect x="196" y="480" width="220" height="18" rx="9" fill="#D8DECF"/>
+  <text x="196" y="527" fill="#53615E" font-family="Arial, sans-serif" font-size="22">Meals logged: 3</text>
+  <rect x="645" y="288" width="360" height="282" rx="34" fill="#FFFEFA" stroke="#D8DECF"/>
+  <path d="M700 496c55-116 111-44 160-116 35-51 65-55 102-74" stroke="#007A4D" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="700" cy="496" r="12" fill="#003E33"/>
+  <circle cx="860" cy="380" r="12" fill="#003E33"/>
+  <circle cx="962" cy="306" r="12" fill="#003E33"/>
+</svg>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
 import type { BlogBlock } from "../../../lib/blog";
 import { blogPosts, getBlogPost } from "../../../lib/blog";
@@ -50,9 +51,51 @@ export async function generateMetadata({
   };
 }
 
+function renderLinkedText(
+  text: string,
+  links: Array<{ text: string; href: string }> = []
+): ReactNode {
+  if (links.length === 0) {
+    return text;
+  }
+
+  const firstMatch = links.reduce<
+    { link: { text: string; href: string }; index: number } | undefined
+  >((match, link) => {
+    const index = text.indexOf(link.text);
+
+    if (index === -1) {
+      return match;
+    }
+
+    if (!match || index < match.index) {
+      return { link, index };
+    }
+
+    return match;
+  }, undefined);
+
+  if (!firstMatch) {
+    return text;
+  }
+
+  const { link, index } = firstMatch;
+  const before = text.slice(0, index);
+  const after = text.slice(index + link.text.length);
+  const remainingLinks = links.filter((item) => item !== link);
+
+  return (
+    <>
+      {before}
+      <Link href={link.href}>{link.text}</Link>
+      {renderLinkedText(after, remainingLinks)}
+    </>
+  );
+}
+
 function renderBlock(block: BlogBlock, index: number) {
   if (block.type === "paragraph") {
-    return <p key={index}>{block.text}</p>;
+    return <p key={index}>{renderLinkedText(block.text, block.links)}</p>;
   }
 
   if (block.type === "list") {
@@ -163,11 +206,15 @@ export default async function BlogArticlePage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
 
+      <nav className="article-nav" aria-label="Back to blog index">
+        <Link className="article-back-link" href="/blog/">
+          <span aria-hidden="true">←</span>
+          All Posts
+        </Link>
+      </nav>
+
       <header className="article-hero">
         <div className="article-hero-copy">
-          <Link className="article-back-link" href="/blog/">
-            Blogs
-          </Link>
           <span className="blog-meta">
             {post.category} · {post.readTime}
           </span>

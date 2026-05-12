@@ -1,5 +1,9 @@
 export type BlogBlock =
-  | { type: "paragraph"; text: string }
+  | {
+      type: "paragraph";
+      text: string;
+      links?: Array<{ text: string; href: string }>;
+    }
   | { type: "list"; items: string[] }
   | { type: "quote"; text: string }
   | { type: "callout"; title: string; text: string }
@@ -105,7 +109,13 @@ export const blogPosts: BlogPost[] = [
           },
           {
             type: "paragraph",
-            text: "Think of your plate like a simple map, not a strict rule. For a balanced meal, roughly half the plate is lighter foods like vegetables or salad, one smaller section is protein, one smaller section is carbs, and any oil, dressing, cheese, nuts, or creamy sauce is counted separately."
+            text: "Think of your plate like a simple map, not a strict rule. For a balanced meal, roughly half the plate is lighter foods like vegetables or salad, one smaller section is protein, one smaller section is carbs, and any oil, dressing, cheese, nuts, or creamy sauce is counted separately. If you want a deeper guide, start with these simple portion size estimates.",
+            links: [
+              {
+                text: "simple portion size estimates",
+                href: "/blog/how-to-estimate-portion-sizes/"
+              }
+            ]
           },
           {
             type: "paragraph",
@@ -153,7 +163,13 @@ export const blogPosts: BlogPost[] = [
           },
           {
             type: "paragraph",
-            text: "A quick meal photo can help you remember portions later, especially when you are eating out, travelling, or too busy to log immediately."
+            text: "A quick meal photo can help you remember portions later, especially when you are eating out, travelling, or too busy to log immediately. Photo calorie tracking works best when the picture shows the full plate and you add a few details.",
+            links: [
+              {
+                text: "Photo calorie tracking",
+                href: "/blog/photo-calorie-tracking/"
+              }
+            ]
           },
           {
             type: "subheading",
@@ -270,11 +286,23 @@ export const blogPosts: BlogPost[] = [
         blocks: [
           {
             type: "paragraph",
-            text: "You can track calories without weighing food if you use a consistent system. Start with portion estimates, include sauces and oils, take meal photos when useful, and log meals before you forget the details."
+            text: "You can track calories without weighing food if you use a consistent system. Start with portion estimates, include sauces and oils, take meal photos when useful, and log meals before you forget the details. For weight loss, the best way to track calories is usually the method you can repeat on normal busy days.",
+            links: [
+              {
+                text: "best way to track calories",
+                href: "/blog/best-way-to-track-calories-for-weight-loss/"
+              }
+            ]
           },
           {
             type: "paragraph",
-            text: "The goal is not to create perfect numbers. The goal is to understand your eating habits well enough to make better choices."
+            text: "The goal is not to create perfect numbers. The goal is to understand your eating habits well enough to make better choices, then turn calorie tracking into a habit that feels easy to keep.",
+            links: [
+              {
+                text: "calorie tracking into a habit",
+                href: "/blog/calorie-tracking-habit/"
+              }
+            ]
           },
           {
             type: "callout",
@@ -323,6 +351,563 @@ export const blogPosts: BlogPost[] = [
       {
         idea: "Side-by-side example of a vague food log and a detailed food log.",
         alt: "Example of a better meal description for calorie tracking"
+      }
+    ]
+  },
+  {
+    slug: "how-to-estimate-portion-sizes",
+    title: "How to Estimate Portion Sizes Without a Food Scale",
+    seoTitle: "How to Estimate Portion Sizes",
+    description:
+      "Learn simple portion size estimates using plates, bowls, cups, spoons, and handfuls so calorie tracking feels easier.",
+    date: "2026-05-11",
+    readTime: "7 min read",
+    category: "Portion Guides",
+    heroImage: "/blog/portion-size-guide.webp",
+    heroAlt:
+      "Portion size guide showing a bowl, cup, spoon, handful, full plate, and quarter plate",
+    primaryKeyword: "estimate portion sizes",
+    excerpt:
+      "A practical guide to estimating food portions with everyday measures when you do not want to weigh every meal.",
+    intentSummary:
+      "Readers want a simple way to estimate portions without grams or kitchen scales.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "The Simple Way to Estimate Portion Sizes",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "To estimate portion sizes without a food scale, use everyday measures: plate, bowl, cup, spoon, and small handful. These will not be perfect, but they give you enough detail to track calories more consistently."
+          },
+          {
+            type: "paragraph",
+            text: "This method works especially well if you are learning how to track calories without weighing food and want a system that fits normal meals.",
+            links: [
+              {
+                text: "track calories without weighing food",
+                href: "/blog/how-to-track-calories-without-weighing-food/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "portion-size-cheat-sheet",
+        heading: "Portion Size Cheat Sheet",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Regular plate: useful for full meals with a protein, carb, and vegetables.",
+              "Small plate: useful for snacks, desserts, or lighter meals.",
+              "Bowl: useful for soups, pasta, rice bowls, oats, yoghurt, and mixed meals.",
+              "Cup: useful for cooked grains, cereal, fruit, milk, or yoghurt.",
+              "Spoon: useful for oils, dressings, sauces, butter, nut butter, and dips.",
+              "Small handful: useful for nuts, chips, crackers, berries, and snack foods."
+            ]
+          },
+          {
+            type: "callout",
+            title: "Use words you would actually say",
+            text: "A useful food log can sound natural: regular bowl of pasta, small handful of nuts, two spoons of dressing, or large plate of salad with chicken."
+          }
+        ]
+      },
+      {
+        id: "how-to-use-the-plate-method",
+        heading: "How to Use the Plate Method",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "The plate method is a quick visual check. For many balanced meals, about half the plate is lighter foods like vegetables or salad, one smaller section is protein, and one smaller section is carbs. Oils, dressings, cheese, creamy sauces, and nuts should be logged separately because small amounts can matter."
+          },
+          {
+            type: "paragraph",
+            text: "For example: regular plate with grilled fish, potatoes, vegetables, and one spoon of olive oil. That is much more useful than logging \"dinner\"."
+          }
+        ]
+      },
+      {
+        id: "examples",
+        heading: "Examples of Better Portion Logs",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Instead of \"breakfast\": one bowl of oats, one cup milk, one banana, one spoon peanut butter.",
+              "Instead of \"salad\": large plate salad, one serving chicken, half cup grains, two spoons dressing.",
+              "Instead of \"snack\": small handful nuts and one piece of fruit.",
+              "Instead of \"pasta\": regular bowl pasta with vegetables, protein, and two spoons creamy sauce."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "If you log with LogCal AI, these everyday portion words are enough to make the estimate more useful. You can type them, say them by voice, or add them after uploading a meal photo."
+          }
+        ]
+      },
+      {
+        id: "when-to-be-more-exact",
+        heading: "When to Be More Exact",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Portion estimates are useful for everyday tracking, but they are still estimates. If you have a medical condition, strict nutrition target, or detailed sports goal, a food scale or professional guidance may be better."
+          },
+          {
+            type: "paragraph",
+            text: "For weight loss, consistency often matters more than perfect numbers. The best way to track calories is the one you can repeat for weeks, not just for one perfect day.",
+            links: [
+              {
+                text: "best way to track calories",
+                href: "/blog/best-way-to-track-calories-for-weight-loss/"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Can I estimate portion sizes accurately?",
+        answer:
+          "You can estimate portions well enough for everyday awareness, but it will not be as precise as weighing food. Use the same portion words consistently so your logs are easier to compare."
+      },
+      {
+        question: "What portion words should I use?",
+        answer:
+          "Use simple words like regular plate, small bowl, one cup, one spoon, or small handful. Add food details and calorie-dense extras such as oil, dressing, sauces, cheese, or nuts."
+      },
+      {
+        question: "Should I use a plate method for every meal?",
+        answer:
+          "No. The plate method is a quick guide for mixed meals. Bowls, sandwiches, snacks, and desserts may need different portion descriptions."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A clean illustrated guide showing plate, bowl, cup, spoon, and handful portion examples.",
+        alt: "Portion size guide for calorie tracking"
+      }
+    ]
+  },
+  {
+    slug: "best-way-to-track-calories-for-weight-loss",
+    title: "Best Way to Track Calories for Weight Loss",
+    seoTitle: "Best Way to Track Calories for Weight Loss",
+    description:
+      "Learn the best way to track calories for weight loss with simple logging, realistic estimates, and habits you can repeat.",
+    date: "2026-05-11",
+    readTime: "7 min read",
+    category: "Weight Loss",
+    heroImage: "/blog/weight-loss-calorie-tracking.webp",
+    heroAlt:
+      "Consistent calorie tracking routine shown with meal logs, weekly checks, and a progress chart",
+    primaryKeyword: "best way to track calories for weight loss",
+    excerpt:
+      "A simple, realistic calorie tracking approach for weight loss that focuses on consistency instead of perfection.",
+    intentSummary:
+      "Readers want to know how to track calories for weight loss without making the process overwhelming.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "The Best Way to Track Calories for Weight Loss",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "The best way to track calories for weight loss is to log meals consistently, use realistic portions, include calorie-dense extras, and review patterns over time. You do not need perfect numbers every day, but you do need an honest system you can keep using."
+          },
+          {
+            type: "paragraph",
+            text: "If weighing every meal makes you stop tracking, use a simpler method. You can still track calories without weighing food by using portions, repeat meals, photos, and quick meal notes.",
+            links: [
+              {
+                text: "track calories without weighing food",
+                href: "/blog/how-to-track-calories-without-weighing-food/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "what-to-log",
+        heading: "What You Should Actually Log",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "The main foods in your meal.",
+              "Rough portions, such as one bowl, regular plate, one cup, or two spoons.",
+              "Cooking oils, sauces, dressing, cheese, nuts, and creamy extras.",
+              "Snacks, drinks, alcohol, and small bites while cooking.",
+              "The meal time if it helps you spot patterns."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "The goal is to make your log specific enough to be useful. \"Large salad with chicken, half cup grains, avocado, and two spoons dressing\" is better than \"healthy lunch\"."
+          }
+        ]
+      },
+      {
+        id: "make-it-repeatable",
+        heading: "Make Calorie Tracking Repeatable",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Weight loss tracking gets easier when you reduce the number of decisions. Keep a few regular breakfasts, lunches, snacks, or dinners that you can log quickly."
+          },
+          {
+            type: "paragraph",
+            text: "You can also save effort by learning common portion sizes. Once you know what a regular bowl, cup, spoon, or plate looks like for your meals, logging becomes much faster.",
+            links: [
+              {
+                text: "common portion sizes",
+                href: "/blog/how-to-estimate-portion-sizes/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "avoid-common-traps",
+        heading: "Avoid Common Tracking Traps",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Do not only log weekdays and skip weekends.",
+              "Do not forget drinks, dressings, dips, oils, and desserts.",
+              "Do not turn one missed meal into a missed week.",
+              "Do not use tiny portions in the log if the real portion was large.",
+              "Do not expect exact calorie estimates from vague meal descriptions."
+            ]
+          },
+          {
+            type: "callout",
+            title: "A quick health note",
+            text: "Weight loss needs vary by person. Calorie estimates are useful for awareness, but they are not medical advice. If you have a health condition or history of disordered eating, speak with a qualified professional."
+          }
+        ]
+      },
+      {
+        id: "how-logcal-ai-can-help",
+        heading: "How LogCal AI Can Help",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "LogCal AI helps reduce the friction of logging. You can describe a meal in plain language, speak it out loud, or use a photo, then get a calorie estimate without searching through long food lists."
+          },
+          {
+            type: "paragraph",
+            text: "That matters because the best calorie tracker is the one you actually use. If logging feels quick, you are more likely to build a calorie tracking habit that lasts.",
+            links: [
+              {
+                text: "calorie tracking habit",
+                href: "/blog/calorie-tracking-habit/"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Do I need to track calories every day to lose weight?",
+        answer:
+          "Daily tracking can help you see patterns, but the most important thing is consistency over time. If you miss a meal or day, restart with the next meal."
+      },
+      {
+        question: "Is calorie tracking enough for weight loss?",
+        answer:
+          "Calorie tracking can improve awareness, but sleep, activity, hunger, food choices, stress, and health needs also matter. Use tracking as one tool, not the whole plan."
+      },
+      {
+        question: "Can I track calories without weighing food?",
+        answer:
+          "Yes. It is less precise, but portion estimates, repeat meals, photos, and detailed meal descriptions can still make tracking useful."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A simple calorie tracking dashboard beside a balanced meal and weekly progress line.",
+        alt: "Best way to track calories for weight loss"
+      }
+    ]
+  },
+  {
+    slug: "photo-calorie-tracking",
+    title: "Photo Calorie Tracking: Can a Picture Estimate Calories?",
+    seoTitle: "Photo Calorie Tracking Guide",
+    description:
+      "Learn how photo calorie tracking works, what it can estimate, where it needs detail, and how to get better meal logs.",
+    date: "2026-05-11",
+    readTime: "6 min read",
+    category: "Food Logging",
+    heroImage: "/blog/photo-calorie-tracking.webp",
+    heroAlt:
+      "Phone camera scanning a balanced meal plate for photo calorie tracking",
+    primaryKeyword: "photo calorie tracking",
+    excerpt:
+      "A clear guide to using meal photos for calorie estimates, including what photos can and cannot tell you.",
+    intentSummary:
+      "Readers want to know whether a calorie tracker can estimate calories from a food photo.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "Can You Estimate Calories From a Picture?",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Photo calorie tracking can help estimate calories from a meal picture, especially when the full plate is visible. But a photo alone cannot always know ingredients, cooking oil, sauces, portion depth, or hidden items. The best results come from a photo plus a short description."
+          },
+          {
+            type: "paragraph",
+            text: "For example, a photo of a sandwich is useful. A note like \"turkey sandwich with avocado and a side of fruit\" makes the estimate more useful."
+          }
+        ]
+      },
+      {
+        id: "what-photos-help-with",
+        heading: "What Meal Photos Help With",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Remembering what you ate later in the day.",
+              "Showing rough portion size compared with the plate or bowl.",
+              "Capturing mixed meals that are hard to describe from memory.",
+              "Making calorie tracking faster when you are busy.",
+              "Reducing missed logs when typing feels annoying."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "Photos are especially useful if you are trying to track calories without weighing food because they give extra context for portions.",
+            links: [
+              {
+                text: "track calories without weighing food",
+                href: "/blog/how-to-track-calories-without-weighing-food/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "what-photos-miss",
+        heading: "What Photos Can Miss",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "A photo may not show how much oil was used, whether a sauce is creamy, how much sugar is in a drink, or what is inside a wrap, sandwich, soup, or casserole."
+          },
+          {
+            type: "paragraph",
+            text: "That is why the strongest photo calorie tracking logs include a few words about the meal. Add details like \"two spoons dressing\", \"fried\", \"with cheese\", \"large bowl\", or \"half portion\"."
+          }
+        ]
+      },
+      {
+        id: "how-to-take-better-meal-photos",
+        heading: "How to Take Better Meal Photos",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Take the photo before you start eating.",
+              "Show the full plate, bowl, or container.",
+              "Avoid extreme close-ups that hide portion size.",
+              "Add a short note for sauces, oils, drinks, and hidden ingredients.",
+              "Use simple portion words like regular plate, small bowl, cup, or spoon."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "If you are unsure how to describe the amount, use this portion size guide to choose words that are easy to repeat.",
+            links: [
+              {
+                text: "portion size guide",
+                href: "/blog/how-to-estimate-portion-sizes/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "how-logcal-ai-can-help",
+        heading: "How LogCal AI Can Help",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "With LogCal AI, you can upload a meal photo and add a quick note by text or voice. That combination keeps tracking fast while still giving the app useful context."
+          },
+          {
+            type: "paragraph",
+            text: "Photo calorie tracking is not about pretending every estimate is exact. It is about making food logging easier, more consistent, and more realistic for normal life."
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Can a photo calorie tracker be accurate?",
+        answer:
+          "It can be useful, but it is still an estimate. Accuracy depends on photo quality, visible portions, ingredients, cooking method, and any details you add."
+      },
+      {
+        question: "What should I add with a meal photo?",
+        answer:
+          "Add hidden details like oil, dressing, sauces, cheese, drinks, portion size, and cooking method. A short note can improve the usefulness of the estimate."
+      },
+      {
+        question: "Is photo tracking better than typing?",
+        answer:
+          "It depends on the meal. Photos are fast and helpful for portions, while text is better for hidden ingredients. Using both together usually works best."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A phone camera view over a balanced meal plate with subtle estimate labels.",
+        alt: "Photo calorie tracking meal estimate"
+      }
+    ]
+  },
+  {
+    slug: "calorie-tracking-habit",
+    title: "How to Build a Calorie Tracking Habit That Sticks",
+    seoTitle: "Build a Calorie Tracking Habit",
+    description:
+      "Build a calorie tracking habit with simple meal logs, realistic portions, low-friction routines, and fewer missed days.",
+    date: "2026-05-11",
+    readTime: "6 min read",
+    category: "Healthy Habits",
+    heroImage: "/blog/calorie-tracking-habit.webp",
+    heroAlt:
+      "Phone meal log beside a weekly consistency calendar and logged meal cards",
+    primaryKeyword: "calorie tracking habit",
+    excerpt:
+      "A friendly guide to making calorie tracking feel like a small daily habit instead of a strict chore.",
+    intentSummary:
+      "Readers want calorie tracking to feel easier and more sustainable.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "Start With a Tiny Tracking Habit",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "To build a calorie tracking habit, make the first version small: log one meal right after you eat. Once that feels easy, add more meals. A habit that takes 20 seconds is more likely to stick than a perfect routine that takes 20 minutes."
+          },
+          {
+            type: "paragraph",
+            text: "This is why the best way to track calories for weight loss is usually simple, repeatable, and honest.",
+            links: [
+              {
+                text: "best way to track calories for weight loss",
+                href: "/blog/best-way-to-track-calories-for-weight-loss/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "make-logging-easy",
+        heading: "Make Logging Easy",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Log meals as soon as possible, not at the end of the day.",
+              "Use simple portion words instead of forcing grams for every food.",
+              "Repeat a few meals so you learn their usual calorie range.",
+              "Take a meal photo when you cannot log immediately.",
+              "Restart with the next meal after a missed log."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "If food scales slow you down, you can track calories without weighing food by using portions, photos, and quick meal descriptions.",
+            links: [
+              {
+                text: "track calories without weighing food",
+                href: "/blog/how-to-track-calories-without-weighing-food/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "use-default-meals",
+        heading: "Use Default Meals",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Default meals reduce decision fatigue. You might keep two easy breakfasts, three lunches, and a few snacks that you already know how to log."
+          },
+          {
+            type: "paragraph",
+            text: "You do not need to eat the same food forever. You just need enough familiar meals that tracking does not feel new every day."
+          }
+        ]
+      },
+      {
+        id: "remove-friction",
+        heading: "Remove Friction From the Moment",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Most people do not stop tracking because they forget what calories are. They stop because logging feels annoying when they are hungry, busy, tired, or eating with other people."
+          },
+          {
+            type: "paragraph",
+            text: "Voice logging and photo calorie tracking can help because they let you capture the meal while it is still fresh.",
+            links: [
+              {
+                text: "photo calorie tracking",
+                href: "/blog/photo-calorie-tracking/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "how-logcal-ai-can-help",
+        heading: "How LogCal AI Can Help",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "LogCal AI is designed for low-friction logging. You can type a normal sentence, speak your meal out loud, or upload a photo. The easier the log, the easier the habit."
+          },
+          {
+            type: "callout",
+            title: "Try the two-meal rule",
+            text: "For the next week, log breakfast and dinner every day. Keep it simple. Once that feels automatic, add lunch or snacks."
+          }
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "How long does it take to build a calorie tracking habit?",
+        answer:
+          "It varies. Focus less on a fixed number of days and more on making the behavior easy enough to repeat, even on busy days."
+      },
+      {
+        question: "What should I do if I miss a day?",
+        answer:
+          "Do not try to perfectly reconstruct everything. Restart with the next meal. The habit is built by returning, not by being perfect."
+      },
+      {
+        question: "Can calorie tracking become unhealthy?",
+        answer:
+          "For some people, tracking can become stressful or obsessive. If it affects your wellbeing or you have a history of disordered eating, speak with a qualified professional."
+      }
+    ],
+    imageIdeas: [
+      {
+        idea: "A friendly habit calendar with checked meal logs, a phone, and simple food cards.",
+        alt: "Calorie tracking habit calendar"
       }
     ]
   }
