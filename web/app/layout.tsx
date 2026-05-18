@@ -9,6 +9,14 @@ const appFont = Manrope({
   variable: "--font-body"
 });
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "LogCal AI",
+  url: "https://logcalai.com",
+  logo: "https://logcalai.com/images/logcal-transparent-logo.png"
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://logcalai.com"),
   title: {
@@ -50,6 +58,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+      </head>
       <body className={appFont.variable}>
         <div className="page-chrome">
           <SiteHeader />
