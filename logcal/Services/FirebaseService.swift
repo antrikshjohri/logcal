@@ -10,7 +10,7 @@ import FirebaseFunctions
 import FirebaseAuth
 
 struct FirebaseService {
-    private let functions = Functions.functions()
+    private let functions = Functions.functions(region: "asia-southeast1")
 
     private func makeNetworkStyleError(_ message: String) -> AppError {
         AppError.networkError(NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet, userInfo: [
@@ -64,16 +64,47 @@ struct FirebaseService {
             return speechStyle ? .speechRecognitionError(msg) : .unknown(NSError(domain: "FirebaseFunctions", code: error.code, userInfo: [NSLocalizedDescriptionKey: msg]))
         }
     }
+
+    private func logBackendPerf(_ value: Any?, fallbackLabel: String) {
+        guard let perf = value as? [String: Any] else { return }
+        let label = perf["label"] as? String ?? fallbackLabel
+        if let totalMs = perf["totalMs"] {
+            print("PERF [backend_\(label)] returned totalMs=\(totalMs)")
+        }
+        guard let marks = perf["marks"] as? [[String: Any]] else { return }
+        for mark in marks {
+            let stage = mark["stage"] as? String ?? "unknown"
+            let deltaMs = mark["deltaMs"] ?? "?"
+            let totalMs = mark["totalMs"] ?? "?"
+            var message = "PERF [backend_\(label)] \(stage) +\(deltaMs)ms total=\(totalMs)ms"
+            if let metadata = mark["metadata"] as? [String: Any], !metadata.isEmpty {
+                let details = metadata
+                    .map { "\($0.key)=\($0.value)" }
+                    .sorted()
+                    .joined(separator: " ")
+                message += " \(details)"
+            }
+            print(message)
+        }
+    }
     
     /// Transcribe meal dictation audio via Whisper (Firebase callable `transcribeAudio`).
     /// Pass `language` as ISO 639-1 (e.g. `en`, `hi`) or `nil` to use `Constants.Dictation` / auto.
     func transcribeAudio(audioData: Data, mimeType: String = "audio/m4a", language: String? = nil) async throws -> String {
+        var perf = PerfLogger("firebase_transcribe_audio")
         if !isAuthenticated {
             print("DEBUG: [FirebaseService] transcribeAudio: signing in anonymously")
             try await signInAnonymously()
+            perf.mark("anonymous_sign_in")
+        } else {
+            perf.mark("already_authenticated")
         }
 
         let base64String = audioData.base64EncodedString()
+        perf.mark("audio_base64_encoded", metadata: [
+            "base64Chars": base64String.count,
+            "bytes": audioData.count,
+        ])
         var requestData: [String: Any] = [
             "audioBase64": base64String,
             "mimeType": mimeType,
@@ -90,15 +121,25 @@ struct FirebaseService {
 
         do {
             let result = try await function.call(requestData)
+            perf.mark("callable_response")
             guard let dict = result.data as? [String: Any],
                   let text = dict["text"] as? String else {
                 print("DEBUG: [FirebaseService] transcribeAudio unexpected response: \(String(describing: result.data))")
+                perf.end("parse_failed")
                 throw AppError.parseError
             }
+            logBackendPerf(dict["_perf"], fallbackLabel: "transcribeAudio")
+            perf.end("success", metadata: [
+                "chars": text.count,
+            ])
             return text
         } catch {
             let ns = error as NSError
             print("DEBUG: [FirebaseService] transcribeAudio catch type=\(type(of: error)) domain=\(ns.domain) code=\(ns.code) desc=\(error.localizedDescription) userInfo=\(ns.userInfo)")
+            perf.end("failure", metadata: [
+                "code": ns.code,
+                "domain": ns.domain,
+            ])
             throw mapCallableError(ns, speechStyle: true)
         }
     }
@@ -131,16 +172,23 @@ struct FirebaseService {
     
     /// Log a meal using Firebase Functions (requires authentication)
     func logMeal(foodText: String, mealType: String, imageData: Data?) async throws -> MealLogResponse {
+        var perf = PerfLogger("firebase_log_meal")
         // Ensure user is authenticated (Firebase Functions onCall handles auth automatically)
         if !isAuthenticated {
             print("DEBUG: User not authenticated, attempting anonymous sign-in...")
             try await signInAnonymously()
+            perf.mark("anonymous_sign_in")
             print("DEBUG: Anonymous sign-in successful")
+        } else {
+            perf.mark("already_authenticated")
         }
         
         // Get user's country from AppStorage
         let userCountry = UserDefaults.standard.string(forKey: "userCountry") ?? ""
         let countryName = getCountryName(for: userCountry)
+        perf.mark("country_loaded", metadata: [
+            "country": countryName.isEmpty ? "none" : countryName,
+        ])
         
         // Prepare request data
         var requestData: [String: Any] = [
@@ -152,6 +200,10 @@ struct FirebaseService {
         if let imageData = imageData {
             let base64String = imageData.base64EncodedString()
             requestData["imageBase64"] = base64String
+            perf.mark("image_base64_encoded", metadata: [
+                "base64Chars": base64String.count,
+                "bytes": imageData.count,
+            ])
             print("DEBUG: [FirebaseService] Image added to request, base64 length: \(base64String.count)")
         }
         
@@ -174,6 +226,7 @@ struct FirebaseService {
             }
             
             let result = try await function.call(requestData)
+            perf.mark("callable_response")
             
             // Log the response from Firebase Function
             print("DEBUG: [OpenAI Response] Received from Firebase Function:")
@@ -197,21 +250,66 @@ struct FirebaseService {
             // The function returns a MealLogResponse object, which gets serialized
             guard let dataDict = result.data as? [String: Any] else {
                 print("DEBUG: Response is not a dictionary. Type: \(type(of: result.data)), Value: \(result.data)")
+                perf.end("parse_failed")
                 throw AppError.parseError
             }
+            logBackendPerf(dataDict["_perf"], fallbackLabel: "logMeal")
             
             let decoded = try decodeMealLogResponse(from: dataDict)
+            perf.mark("response_decoded", metadata: [
+                "calories": decoded.totalCalories,
+                "items": decoded.items.count,
+            ])
             print("DEBUG: Successfully decoded MealLogResponse: \(decoded.totalCalories) calories (meal macros aligned to items when possible)")
             // #region agent log
             if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "FirebaseService.swift:108", "message": "Decoded MealLogResponse macros", "data": ["protein": decoded.protein as Any, "carbs": decoded.carbs as Any, "fat": decoded.fat as Any, "totalCalories": decoded.totalCalories], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"]), let logString = String(data: debugLogData, encoding: .utf8) {
                 try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
             }
             // #endregion
+            perf.end("success")
             return decoded
         } catch {
             let ns = error as NSError
             print("DEBUG: [FirebaseService] logMeal catch domain=\(ns.domain) code=\(ns.code) desc=\(error.localizedDescription) userInfo=\(ns.userInfo)")
+            perf.end("failure", metadata: [
+                "code": ns.code,
+                "domain": ns.domain,
+            ])
             throw mapCallableError(ns, speechStyle: false)
+        }
+    }
+
+    /// Records non-critical analytics after the meal result is already visible to the user.
+    func recordMealLogAnalytics(foodText: String, mealType: String, totalCalories: Double, hasImage: Bool) async {
+        var perf = PerfLogger("firebase_record_meal_analytics")
+        guard isAuthenticated else {
+            print("DEBUG: [FirebaseService] recordMealLogAnalytics skipped: not authenticated")
+            perf.end("not_authenticated")
+            return
+        }
+
+        let requestData: [String: Any] = [
+            "foodText": foodText,
+            "mealType": mealType,
+            "totalCalories": totalCalories,
+            "hasImage": hasImage,
+        ]
+
+        let function = functions.httpsCallable("recordMealLogAnalytics")
+        do {
+            let result = try await function.call(requestData)
+            perf.mark("callable_response")
+            if let dict = result.data as? [String: Any] {
+                logBackendPerf(dict["_perf"], fallbackLabel: "recordMealLogAnalytics")
+            }
+            perf.end("success")
+        } catch {
+            let ns = error as NSError
+            print("DEBUG: [FirebaseService] recordMealLogAnalytics failed domain=\(ns.domain) code=\(ns.code) desc=\(error.localizedDescription)")
+            perf.end("failure", metadata: [
+                "code": ns.code,
+                "domain": ns.domain,
+            ])
         }
     }
 

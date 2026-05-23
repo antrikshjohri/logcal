@@ -58,6 +58,7 @@ class AppConfigService: ObservableObject {
     
     /// Fetch app config from Firestore
     func fetchConfig() async {
+        var perf = PerfLogger("app_config_fetch")
         isLoading = true
         
         // Check cache first (but only if app version hasn't changed)
@@ -67,11 +68,15 @@ class AppConfigService: ObservableObject {
             print("DEBUG: Using cached app config")
             appConfig = cachedConfig
             isLoading = false
+            perf.end("cache_hit", metadata: [
+                "minimumVersion": cachedConfig.minimumAppVersion,
+            ])
             return
         }
         
         do {
             let document = try await db.collection("app").document("config").getDocument()
+            perf.mark("firestore_response")
             
             if document.exists, let data = document.data() {
                 let lastUpdatedTimestamp = (data["lastUpdated"] as? Timestamp)?.dateValue().timeIntervalSince1970
@@ -87,17 +92,27 @@ class AppConfigService: ObservableObject {
                 // Store current app version with cache
                 UserDefaults.standard.set(Self.currentMarketingVersion, forKey: cachedAppVersionKey)
                 print("DEBUG: Fetched app config from Firestore: minimumVersion=\(config.minimumAppVersion)")
+                perf.end("firestore_success", metadata: [
+                    "minimumVersion": config.minimumAppVersion,
+                ])
             } else {
                 print("DEBUG: App config document does not exist, using default")
                 appConfig = .default
+                perf.end("default_missing_document")
             }
         } catch {
             print("DEBUG: Error fetching app config: \(error)")
             // Use cached config if available, otherwise use default
             if let cachedConfig = getCachedConfig() {
                 appConfig = cachedConfig
+                perf.end("fallback_cached", metadata: [
+                    "minimumVersion": cachedConfig.minimumAppVersion,
+                ])
             } else {
                 appConfig = .default
+                perf.end("fallback_default", metadata: [
+                    "error": error.localizedDescription,
+                ])
             }
         }
         
@@ -195,4 +210,3 @@ class AppConfigService: ObservableObject {
         UserDefaults.standard.removeObject(forKey: cachedAppVersionKey)
     }
 }
-

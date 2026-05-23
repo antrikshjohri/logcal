@@ -131,8 +131,10 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     }
 
     func stopListening() async {
+        var perf = PerfLogger("speech_stop")
         guard isListening else {
             print("DEBUG: [SpeechRecognitionService] stopListening no-op (not listening)")
+            perf.end("not_listening")
             return
         }
 
@@ -140,13 +142,16 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         stopMetering(resetToIdle: false)
         audioRecorder?.stop()
         audioRecorder = nil
+        perf.mark("recorder_stopped")
 
         let audioSession = AVAudioSession.sharedInstance()
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+        perf.mark("audio_session_deactivated")
 
         guard let url = recordingURL else {
             print("DEBUG: [SpeechRecognitionService] stopListening: missing recording URL")
             recordingURL = nil
+            perf.end("missing_recording_url")
             return
         }
         recordingURL = nil
@@ -154,20 +159,26 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         guard FileManager.default.fileExists(atPath: url.path) else {
             print("DEBUG: [SpeechRecognitionService] Recording file missing at \(url.path)")
             try? FileManager.default.removeItem(at: url)
+            perf.end("missing_recording_file")
             return
         }
 
         let data: Data
         do {
             data = try Data(contentsOf: url)
+            perf.mark("recording_read", metadata: [
+                "bytes": data.count,
+            ])
         } catch {
             errorMessage = AppError.audioConfigurationError("Could not read recording").errorDescription
             try? FileManager.default.removeItem(at: url)
             print("DEBUG: [SpeechRecognitionService] Read recording failed: \(error)")
+            perf.end("recording_read_failed")
             return
         }
 
         try? FileManager.default.removeItem(at: url)
+        perf.mark("recording_removed")
 
         // Very small files are usually silence or a failed tap — avoid a slow network round-trip
         let minBytes = 1_500
@@ -176,6 +187,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             errorMessage = AppError.speechRecognitionError(msg).errorDescription
             log.warning("Audio too small (\(data.count) B) — need at least ~\(minBytes) B")
             print("DEBUG: [SpeechRecognitionService] Audio too small (\(data.count) B), skip transcription")
+            perf.end("audio_too_small", metadata: [
+                "bytes": data.count,
+            ])
             return
         }
 
@@ -185,10 +199,16 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             errorMessage = AppError.speechRecognitionError(msg).errorDescription
             log.notice("Skipping transcription due to low speech evidence voiced=\(self.voicedSampleCount) total=\(self.totalMeterSamples) maxLevel=\(self.maxObservedLevel)")
             print("DEBUG: [SpeechRecognitionService] Low speech evidence, skip transcription voiced=\(voicedSampleCount) total=\(totalMeterSamples) maxLevel=\(maxObservedLevel)")
+            perf.end("low_speech_evidence", metadata: [
+                "maxLevel": maxObservedLevel,
+                "totalSamples": totalMeterSamples,
+                "voicedSamples": voicedSampleCount,
+            ])
             return
         }
 
         isTranscribing = true
+        perf.mark("transcription_started")
         defer {
             isTranscribing = false
             stopMetering(resetToIdle: true)
@@ -199,6 +219,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             print("DEBUG: [SpeechRecognitionService] Sending audio to transcribeAudio bytes=\(data.count)")
             log.debug("Sending \(data.count) bytes to transcribeAudio")
             let text = try await firebaseService.transcribeAudio(audioData: data, mimeType: "audio/m4a")
+            perf.mark("transcription_response", metadata: [
+                "chars": text.count,
+            ])
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             recognizedText = trimmed
             let elapsed = CFAbsoluteTimeGetCurrent() - t0
@@ -208,8 +231,14 @@ class SpeechRecognitionService: NSObject, ObservableObject {
                 let msg = "Couldn’t detect clear speech. Try again."
                 errorMessage = AppError.speechRecognitionError(msg).errorDescription
                 log.notice("Rejecting transcript as unclear speech")
+                perf.end("transcript_rejected", metadata: [
+                    "chars": trimmed.count,
+                ])
             } else {
                 onTranscriptionResult?(trimmed)
+                perf.end("success", metadata: [
+                    "chars": trimmed.count,
+                ])
             }
         } catch {
             let elapsed = CFAbsoluteTimeGetCurrent() - t0
@@ -223,6 +252,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
                 print("DEBUG: [SpeechRecognitionService] Transcription failed after \(String(format: "%.2f", elapsed))s: \(message)")
                 log.error("Transcription failed after \(String(format: "%.2f", elapsed))s: \(message)")
             }
+            perf.end("failure", metadata: [
+                "error": errorMessage ?? error.localizedDescription,
+            ])
         }
     }
 

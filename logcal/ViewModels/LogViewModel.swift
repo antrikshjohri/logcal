@@ -143,6 +143,7 @@ class LogViewModel: ObservableObject {
     }
     
     func logMeal() async {
+        var perf = PerfLogger("meal_log")
         print("DEBUG: logMeal() called")
         print("DEBUG: foodText: '\(foodText)'")
         print("DEBUG: selectedMealType: \(selectedMealType.rawValue)")
@@ -152,8 +153,16 @@ class LogViewModel: ObservableObject {
         if speechService.isListening {
             AnalyticsService.trackSpeechRecognitionStopped()
             await speechService.stopListening()
+            perf.mark("stop_listening_and_transcribe", metadata: [
+                "foodTextChars": foodText.count,
+                "speechError": speechErrorMessage ?? "none",
+            ])
         }
         await speechService.waitUntilIdle()
+        perf.mark("speech_idle", metadata: [
+            "foodTextChars": foodText.count,
+            "hadSpeechError": speechErrorMessage != nil,
+        ])
 
         // Allow logging if either text or image is present after any in-flight dictation is merged in.
         let hasText = !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -161,6 +170,7 @@ class LogViewModel: ObservableObject {
         
         guard hasText || hasImage else {
             print("DEBUG: Both food text and image are empty after dictation/transcription, returning")
+            perf.end("empty_input")
             return
         }
         
@@ -168,9 +178,13 @@ class LogViewModel: ObservableObject {
         
         // Check app version before proceeding
         await appConfigService.fetchConfig()
+        perf.mark("app_config_checked", metadata: [
+            "minimumVersion": appConfigService.appConfig.minimumAppVersion,
+        ])
         if !appConfigService.isAppVersionValid() {
             print("DEBUG: App version is outdated. Current: \(AppConfigService.currentMarketingVersion), Required: \(appConfigService.appConfig.minimumAppVersion)")
             showUpdateRequiredAlert = true
+            perf.end("blocked_update_required")
             return
         }
         
@@ -178,6 +192,7 @@ class LogViewModel: ObservableObject {
         guard let openAIService = openAIService else {
             print("DEBUG: OpenAI service is nil, error: \(openAIServiceError?.errorDescription ?? "unknown")")
             errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
+            perf.end("openai_service_unavailable")
             return
         }
         
@@ -189,8 +204,14 @@ class LogViewModel: ObservableObject {
         
         do {
             let mealTypeString = selectedMealType.rawValue
+            let originalFoodText = foodText
+            let originalHadImage = selectedImage != nil
             print("DEBUG: Calling openAIService.logMeal()...")
             let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString, image: selectedImage)
+            perf.mark("ai_meal_response", metadata: [
+                "calories": response.totalCalories,
+                "itemCount": response.items.count,
+            ])
             print("DEBUG: Received response from openAIService: \(response.totalCalories) calories")
             
             // Save to SwiftData
@@ -230,6 +251,10 @@ class LogViewModel: ObservableObject {
                 context.insert(entry)
                 try context.save()
                 lastLoggedMealId = entry.id
+                perf.mark("swiftdata_saved", metadata: [
+                    "entryId": entry.id.uuidString,
+                    "jsonChars": jsonString.count,
+                ])
                 print("DEBUG: [LogViewModel] lastLoggedMealId=\(entry.id)")
                 
                 // Sync to Firestore if user is signed in
@@ -244,6 +269,16 @@ class LogViewModel: ObservableObject {
             }
             
             latestResult = response
+            perf.mark("result_published")
+
+            Task {
+                await openAIService.recordMealLogAnalytics(
+                    foodText: originalFoodText,
+                    mealType: response.mealType,
+                    totalCalories: response.totalCalories,
+                    hasImage: originalHadImage
+                )
+            }
             
             // Track analytics - successful meal log (check image before clearing)
             let hadImage = selectedImage != nil
@@ -268,6 +303,10 @@ class LogViewModel: ObservableObject {
             selectedImage = nil // Clear image after successful log
             isMealTypeManuallySet = false // Reset manual selection
             selectedDate = Date() // Reset to today
+            perf.end("success", metadata: [
+                "hadImage": hadImage,
+                "mealType": response.mealType,
+            ])
             
         } catch {
             print("DEBUG: Error caught in logMeal(): \(error)")
@@ -285,6 +324,9 @@ class LogViewModel: ObservableObject {
                 print("DEBUG: It's an unknown error, wrapping in AppError")
                 errorMessage = AppError.unknown(error).errorDescription
             }
+            perf.end("failure", metadata: [
+                "error": errorMessage ?? error.localizedDescription,
+            ])
         }
         
         isLoading = false

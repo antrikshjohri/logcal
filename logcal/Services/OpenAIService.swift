@@ -22,6 +22,7 @@ struct OpenAIService {
     }
     
     func logMeal(foodText: String, mealType: String, image: UIImage?) async throws -> MealLogResponse {
+        var perf = PerfLogger("openai_service_log_meal")
         print("DEBUG: OpenAIService.logMeal() called")
         print("DEBUG: useFirebase = \(Constants.API.useFirebase)")
         print("DEBUG: hasImage = \(image != nil)")
@@ -34,9 +35,11 @@ struct OpenAIService {
                 print("DEBUG: User not authenticated, signing in anonymously...")
                 // Try anonymous sign-in (fallback if user skipped auth)
                 try await firebaseService.signInAnonymously()
+                perf.mark("anonymous_sign_in")
                 print("DEBUG: Anonymous sign-in completed")
             } else {
                 print("DEBUG: User already authenticated")
+                perf.mark("already_authenticated")
             }
             print("DEBUG: Calling firebaseService.logMeal()...")
             
@@ -44,10 +47,18 @@ struct OpenAIService {
             var imageData: Data? = nil
             if let image = image {
                 imageData = image.jpegData(compressionQuality: 0.8)
+                perf.mark("image_jpeg_encoded", metadata: [
+                    "bytes": imageData?.count ?? 0,
+                ])
                 print("DEBUG: Image converted to Data: \(imageData?.count ?? 0) bytes")
             }
             
-            return try await firebaseService.logMeal(foodText: foodText, mealType: mealType, imageData: imageData)
+            let response = try await firebaseService.logMeal(foodText: foodText, mealType: mealType, imageData: imageData)
+            perf.end("firebase_log_meal_complete", metadata: [
+                "calories": response.totalCalories,
+                "items": response.items.count,
+            ])
+            return response
         }
         
         // Fallback to direct OpenAI API (for development)
@@ -55,7 +66,22 @@ struct OpenAIService {
             throw AppError.apiKeyNotFound
         }
         
-        return try await logMealDirect(foodText: foodText, mealType: mealType, image: image, apiKey: apiKey)
+        let response = try await logMealDirect(foodText: foodText, mealType: mealType, image: image, apiKey: apiKey)
+        perf.end("direct_log_meal_complete", metadata: [
+            "calories": response.totalCalories,
+            "items": response.items.count,
+        ])
+        return response
+    }
+
+    func recordMealLogAnalytics(foodText: String, mealType: String, totalCalories: Double, hasImage: Bool) async {
+        guard Constants.API.useFirebase else { return }
+        await firebaseService.recordMealLogAnalytics(
+            foodText: foodText,
+            mealType: mealType,
+            totalCalories: totalCalories,
+            hasImage: hasImage
+        )
     }
 
     /// Re-estimate from user correction (uses `refineMealLog` when Firebase is enabled).
@@ -370,4 +396,3 @@ struct OpenAIService {
         return parsed.withMealMacrosAlignedToItems()
     }
 }
-
