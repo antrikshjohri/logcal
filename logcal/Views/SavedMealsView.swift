@@ -10,6 +10,7 @@ struct SavedMealsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     @State private var mealBeingRenamed: SavedMeal?
+    @State private var mealPendingDeletion: SavedMeal?
     @State private var renameText = ""
 
     var body: some View {
@@ -47,7 +48,7 @@ struct SavedMealsView: View {
                                 .foregroundColor(.secondary)
 
                             Button(role: .destructive) {
-                                delete(savedMeal)
+                                mealPendingDeletion = savedMeal
                             } label: {
                                 Image(systemName: "trash")
                                     .font(.subheadline.weight(.semibold))
@@ -72,7 +73,7 @@ struct SavedMealsView: View {
                     .padding(.vertical, Constants.Spacing.small)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            delete(savedMeal)
+                            mealPendingDeletion = savedMeal
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -101,6 +102,19 @@ struct SavedMealsView: View {
                 renameSelectedMeal()
             }
         }
+        .alert("Delete Saved Meal", isPresented: Binding(
+            get: { mealPendingDeletion != nil },
+            set: { if !$0 { mealPendingDeletion = nil } }
+        )) {
+            Button("Cancel", role: .cancel) {
+                mealPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                deletePendingMeal()
+            }
+        } message: {
+            Text("Are you sure you want to delete this saved meal? This action cannot be undone.")
+        }
     }
 
     private func renameSelectedMeal() {
@@ -120,6 +134,12 @@ struct SavedMealsView: View {
     private func delete(_ savedMeal: SavedMeal) {
         modelContext.delete(savedMeal)
         try? modelContext.save()
+    }
+
+    private func deletePendingMeal() {
+        guard let savedMeal = mealPendingDeletion else { return }
+        delete(savedMeal)
+        mealPendingDeletion = nil
     }
 }
 
