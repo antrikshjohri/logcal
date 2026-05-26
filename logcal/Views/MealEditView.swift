@@ -28,6 +28,8 @@ struct MealEditView: View {
     @State private var originalResponseJson: String?
     @State private var modifiedResponse: MealLogResponse?
     @State private var didSaveToFavorites: Bool = false
+    @State private var savedMealCreatedInSession: SavedMeal?
+    @State private var savedMealPendingDeletion: SavedMeal?
     @FocusState private var isCaloriesFieldFocused: Bool
     
     // Meal type options
@@ -37,8 +39,12 @@ struct MealEditView: View {
         savedMeals.first { SavedMealMatcher.matches($0, meal: meal) }
     }
 
+    private var currentSavedMeal: SavedMeal? {
+        matchingSavedMeal ?? savedMealCreatedInSession
+    }
+
     private var isSavedToFavorites: Bool {
-        didSaveToFavorites || matchingSavedMeal != nil
+        didSaveToFavorites || currentSavedMeal != nil
     }
     
     init(meal: MealEntry) {
@@ -360,11 +366,15 @@ struct MealEditView: View {
                 
                 HStack(spacing: Constants.Spacing.regular) {
                     Button(action: {
-                        saveAsFavorite()
+                        if let savedMeal = currentSavedMeal {
+                            savedMealPendingDeletion = savedMeal
+                        } else {
+                            saveAsFavorite()
+                        }
                     }) {
                         HStack {
                             Image(systemName: isSavedToFavorites ? "bookmark.fill" : "bookmark")
-                            Text(isSavedToFavorites ? "Saved" : "Save")
+                            Text(isSavedToFavorites ? "Meal saved" : "Save meal")
                         }
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(Constants.Colors.primaryBlue)
@@ -373,7 +383,6 @@ struct MealEditView: View {
                         .background(Constants.Colors.primaryBackground)
                         .cornerRadius(Constants.Sizes.cornerRadius)
                     }
-                    .disabled(isSavedToFavorites)
 
                     Button(action: {
                         showDeleteConfirmation = true
@@ -451,6 +460,19 @@ struct MealEditView: View {
             }
         } message: {
             Text("Are you sure you want to delete this meal? This action cannot be undone.")
+        }
+        .alert("Delete Saved Meal", isPresented: Binding(
+            get: { savedMealPendingDeletion != nil },
+            set: { if !$0 { savedMealPendingDeletion = nil } }
+        )) {
+            Button("Cancel", role: .cancel) {
+                savedMealPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                deleteSavedMeal()
+            }
+        } message: {
+            Text("Are you sure you want to delete this saved meal? This action cannot be undone.")
         }
         .onChange(of: isEditingCalories) { oldValue, newValue in
             if newValue && !oldValue {
@@ -629,8 +651,25 @@ struct MealEditView: View {
         do {
             try modelContext.save()
             didSaveToFavorites = true
+            savedMealCreatedInSession = savedMeal
         } catch {
             print("DEBUG: Error saving favorite meal: \(error)")
+        }
+    }
+
+    private func deleteSavedMeal() {
+        guard let savedMeal = savedMealPendingDeletion else { return }
+
+        modelContext.delete(savedMeal)
+        do {
+            try modelContext.save()
+            if savedMealCreatedInSession?.id == savedMeal.id {
+                savedMealCreatedInSession = nil
+            }
+            didSaveToFavorites = false
+            savedMealPendingDeletion = nil
+        } catch {
+            print("DEBUG: Error deleting saved meal: \(error)")
         }
     }
     
