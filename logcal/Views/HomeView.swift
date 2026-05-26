@@ -15,12 +15,14 @@ struct HomeView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var toastManager: ToastManager
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isTextFieldFocused: Bool
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var showConfetti = false
     @State private var mealPreviewAutoDismissWork: DispatchWorkItem?
     @State private var quickEditPrompt = ""
+    @State private var selectedSavedMeal: SavedMeal?
     
     var body: some View {
         NavigationStack {
@@ -73,6 +75,20 @@ struct HomeView: View {
                         set: { viewModel.showUpdateRequiredAlert = $0 }
                     )
                 ))
+                .sheet(item: $selectedSavedMeal) { savedMeal in
+                    SavedMealLogSheet(
+                        savedMeal: savedMeal,
+                        onLog: { servingMultiplier in
+                            viewModel.logSavedMealAsIs(savedMeal, servingMultiplier: servingMultiplier)
+                            selectedSavedMeal = nil
+                        },
+                        onEdit: {
+                            viewModel.prepareSavedMealForEditing(savedMeal)
+                            selectedSavedMeal = nil
+                            isTextFieldFocused = true
+                        }
+                    )
+                }
         }
     }
     
@@ -395,6 +411,10 @@ struct HomeView: View {
                     }
                     .disabled(!canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech)
                     .padding(.horizontal)
+
+                    if !savedMeals.isEmpty {
+                        savedMealsSection
+                    }
                     
                     // Result card
                     if let result = viewModel.latestResult {
@@ -411,6 +431,22 @@ struct HomeView: View {
                                         .cornerRadius(Constants.Spacing.small)
                                 }
                                 Spacer(minLength: 12)
+                                Button(action: {
+                                    viewModel.saveLatestMealAsFavorite()
+                                    toastManager.show(ToastMessage(
+                                        title: "Saved",
+                                        message: "Meal added to saved meals.",
+                                        type: .success
+                                    ))
+                                }) {
+                                    Image(systemName: "bookmark")
+                                        .font(.title3)
+                                        .foregroundStyle(Constants.Colors.primaryBlue)
+                                        .accessibilityLabel("Save meal")
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, Constants.Spacing.regular)
+
                                 Button(action: {
                                     print("DEBUG: [HomeView] User dismissed meal preview (close)")
                                     mealPreviewAutoDismissWork?.cancel()
@@ -532,6 +568,55 @@ struct HomeView: View {
                 .padding(.vertical)
             }
     }
+
+    private var savedMealsSection: some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+            HStack {
+                Text("Saved Meals")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            VStack(spacing: Constants.Spacing.small) {
+                ForEach(savedMeals.prefix(8)) { savedMeal in
+                    Button {
+                        selectedSavedMeal = savedMeal
+                    } label: {
+                        HStack(spacing: Constants.Spacing.regular) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.subheadline)
+                                .foregroundColor(Constants.Colors.primaryBlue)
+                                .frame(width: 22)
+
+                            Text(savedMeal.title)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+
+                            Spacer(minLength: Constants.Spacing.small)
+
+                            Text("\(Int(savedMeal.totalCalories)) cal")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, Constants.Spacing.regular)
+                        .frame(height: 48)
+                        .background(Constants.Colors.secondaryBackground)
+                        .cornerRadius(Constants.Sizes.cornerRadius)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
     
     
 }
@@ -577,6 +662,143 @@ private struct LogDatePickerSheet: View {
                 }
             }
         }
+    }
+}
+
+private struct SavedMealLogSheet: View {
+    let savedMeal: SavedMeal
+    let onLog: (Double) -> Void
+    let onEdit: () -> Void
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @State private var servingMultiplier = 1.0
+    @State private var isRenaming = false
+    @State private var renameText = ""
+
+    private var scaledResponse: MealLogResponse? {
+        savedMeal.response?.scaled(by: servingMultiplier)
+    }
+
+    private var displayedCalories: Double {
+        scaledResponse?.totalCalories ?? savedMeal.totalCalories * servingMultiplier
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
+                    HStack(alignment: .firstTextBaseline, spacing: Constants.Spacing.small) {
+                        Text(savedMeal.title)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Button {
+                            renameText = savedMeal.title
+                            isRenaming = true
+                        } label: {
+                            Image(systemName: "pencil")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(Constants.Colors.primaryBlue)
+                                .frame(width: 32, height: 32)
+                        }
+                        .accessibilityLabel("Rename saved meal")
+                    }
+
+                    Text("\(Int(displayedCalories)) cal · \(savedMeal.mealType.capitalized)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
+                    Text("Serving")
+                        .font(.headline)
+
+                    Picker("Serving", selection: $servingMultiplier) {
+                        ForEach(SavedMealServing.commonMultipliers, id: \.self) { multiplier in
+                            Text(SavedMealServing.label(for: multiplier)).tag(multiplier)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                if let response = scaledResponse ?? savedMeal.response {
+                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                        Text("Items")
+                            .font(.headline)
+
+                        ForEach(Array(response.items.enumerated()), id: \.offset) { _, item in
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name)
+                                        .fontWeight(.medium)
+                                    Text(item.quantity)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text("\(Int(item.calories)) cal")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    onLog(servingMultiplier)
+                    dismiss()
+                } label: {
+                    Text("Log")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Constants.Colors.primaryBlue)
+                        .foregroundColor(.white)
+                        .cornerRadius(Constants.Sizes.cornerRadius)
+                }
+
+                Button {
+                    onEdit()
+                    dismiss()
+                } label: {
+                    Text("Edit before logging")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Constants.Colors.primaryBackground)
+                        .foregroundColor(Constants.Colors.primaryBlue)
+                        .cornerRadius(Constants.Sizes.cornerRadius)
+                }
+            }
+            .padding()
+            .navigationTitle("Saved Meal")
+            .navigationBarTitleDisplayMode(.inline)
+            .alert("Rename Saved Meal", isPresented: $isRenaming) {
+                TextField("Name", text: $renameText)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") {
+                    renameSavedMeal()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func renameSavedMeal() {
+        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        savedMeal.title = String(trimmed.prefix(140))
+        savedMeal.updatedAt = Date()
+        try? modelContext.save()
     }
 }
 
@@ -760,5 +982,5 @@ struct HomeViewOverlayModifier: ViewModifier {
 
 #Preview {
     HomeView()
-        .modelContainer(for: MealEntry.self)
+        .modelContainer(for: [MealEntry.self, SavedMeal.self])
 }

@@ -515,6 +515,5 @@ struct DayCardView: View {
 
 #Preview {
     HistoryView(selectedTab: .constant(2))
-        .modelContainer(for: MealEntry.self)
+        .modelContainer(for: [MealEntry.self, SavedMeal.self])
 }
-

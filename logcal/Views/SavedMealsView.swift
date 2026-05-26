@@ -1,0 +1,131 @@
+//
+//  SavedMealsView.swift
+//  logcal
+//
+
+import SwiftUI
+import SwiftData
+
+struct SavedMealsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
+    @State private var mealBeingRenamed: SavedMeal?
+    @State private var renameText = ""
+
+    var body: some View {
+        List {
+            if savedMeals.isEmpty {
+                ContentUnavailableView(
+                    "No Saved Meals",
+                    systemImage: "bookmark",
+                    description: Text("Save meals after logging them to make repeat logging faster.")
+                )
+            } else {
+                ForEach(savedMeals) { savedMeal in
+                    VStack(alignment: .leading, spacing: Constants.Spacing.small) {
+                        HStack(alignment: .firstTextBaseline, spacing: Constants.Spacing.small) {
+                            Text(savedMeal.title)
+                                .font(.headline)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button {
+                                renameText = savedMeal.title
+                                mealBeingRenamed = savedMeal
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(Constants.Colors.primaryBlue)
+                                    .frame(width: 32, height: 32)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Rename saved meal")
+
+                            Spacer()
+
+                            Text("\(Int(savedMeal.totalCalories)) cal")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            Button(role: .destructive) {
+                                delete(savedMeal)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(.red)
+                                    .frame(width: 32, height: 32)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Delete saved meal")
+                        }
+
+                        Text(savedMeal.mealType.capitalized)
+                            .font(.caption)
+                            .foregroundColor(Constants.Colors.primaryBlue)
+
+                        if let response = savedMeal.response {
+                            Text(response.items.prefix(3).map(\.name).joined(separator: ", "))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .padding(.vertical, Constants.Spacing.small)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            delete(savedMeal)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+
+                        Button {
+                            renameText = savedMeal.title
+                            mealBeingRenamed = savedMeal
+                        } label: {
+                            Label("Rename", systemImage: "pencil")
+                        }
+                        .tint(Constants.Colors.primaryBlue)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Saved Meals")
+        .alert("Rename Saved Meal", isPresented: Binding(
+            get: { mealBeingRenamed != nil },
+            set: { if !$0 { mealBeingRenamed = nil } }
+        )) {
+            TextField("Name", text: $renameText)
+            Button("Cancel", role: .cancel) {
+                mealBeingRenamed = nil
+            }
+            Button("Save") {
+                renameSelectedMeal()
+            }
+        }
+    }
+
+    private func renameSelectedMeal() {
+        guard let savedMeal = mealBeingRenamed else { return }
+        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            mealBeingRenamed = nil
+            return
+        }
+
+        savedMeal.title = String(trimmed.prefix(140))
+        savedMeal.updatedAt = Date()
+        try? modelContext.save()
+        mealBeingRenamed = nil
+    }
+
+    private func delete(_ savedMeal: SavedMeal) {
+        modelContext.delete(savedMeal)
+        try? modelContext.save()
+    }
+}
+
+#Preview {
+    NavigationStack {
+        SavedMealsView()
+    }
+    .modelContainer(for: [MealEntry.self, SavedMeal.self])
+}

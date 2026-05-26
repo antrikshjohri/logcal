@@ -95,6 +95,24 @@ struct ProfileView: View {
                         .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
+
+                    // Meals Section
+                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                        Text("Meals")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Theme.secondaryText)
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+
+                        NavigationLink(destination: SavedMealsView()) {
+                            SettingsRowContent(
+                                icon: "bookmark.fill",
+                                iconColor: Theme.accentBlue,
+                                title: "Saved Meals"
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                    }
                     
                     // Appearance Section
                     VStack(alignment: .leading, spacing: Constants.Spacing.regular) {

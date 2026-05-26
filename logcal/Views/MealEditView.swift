@@ -14,6 +14,7 @@ struct MealEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var cloudSyncService: CloudSyncService
+    @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     
     let meal: MealEntry
     @State private var editedDate: Date
@@ -26,10 +27,19 @@ struct MealEditView: View {
     @State private var caloriesManuallyOverridden: Bool = false
     @State private var originalResponseJson: String?
     @State private var modifiedResponse: MealLogResponse?
+    @State private var didSaveToFavorites: Bool = false
     @FocusState private var isCaloriesFieldFocused: Bool
     
     // Meal type options
     private let mealTypes = ["breakfast", "lunch", "dinner", "snack"]
+
+    private var matchingSavedMeal: SavedMeal? {
+        savedMeals.first { SavedMealMatcher.matches($0, meal: meal) }
+    }
+
+    private var isSavedToFavorites: Bool {
+        didSaveToFavorites || matchingSavedMeal != nil
+    }
     
     init(meal: MealEntry) {
         self.meal = meal
@@ -348,17 +358,37 @@ struct MealEditView: View {
                     }
                 }
                 
-                // Delete Meal Button
-                Button(action: {
-                    showDeleteConfirmation = true
-                }) {
-                    Text("Delete Meal")
+                HStack(spacing: Constants.Spacing.regular) {
+                    Button(action: {
+                        saveAsFavorite()
+                    }) {
+                        HStack {
+                            Image(systemName: isSavedToFavorites ? "bookmark.fill" : "bookmark")
+                            Text(isSavedToFavorites ? "Saved" : "Save")
+                        }
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Constants.Colors.primaryBlue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Constants.Colors.primaryBackground)
+                        .cornerRadius(Constants.Sizes.cornerRadius)
+                    }
+                    .disabled(isSavedToFavorites)
+
+                    Button(action: {
+                        showDeleteConfirmation = true
+                    }) {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Delete")
+                        }
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(Color.red)
-                        .cornerRadius(25)
+                        .cornerRadius(Constants.Sizes.cornerRadius)
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.top, Constants.Spacing.extraLarge)
@@ -553,6 +583,56 @@ struct MealEditView: View {
             print("DEBUG: Error saving meal: \(error)")
         }
     }
+
+    private func saveAsFavorite() {
+        guard matchingSavedMeal == nil else {
+            didSaveToFavorites = true
+            return
+        }
+
+        let response: MealLogResponse
+        if let modifiedResponse {
+            response = modifiedResponse
+        } else if let mealResponse = meal.response {
+            response = mealResponse
+        } else {
+            response = MealLogResponse(
+                mealType: editedMealType,
+                totalCalories: editedCalories,
+                protein: nil,
+                carbs: nil,
+                fat: nil,
+                items: [],
+                needsClarification: false,
+                clarifyingQuestion: nil
+            )
+        }
+
+        let rawJson: String
+        if let jsonData = try? JSONEncoder().encode(response),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            rawJson = jsonString
+        } else {
+            rawJson = meal.rawResponseJson
+        }
+
+        let savedMeal = SavedMeal(
+            title: SavedMealTitle.suggestedTitle(foodText: meal.foodText, response: response),
+            foodText: meal.foodText,
+            mealType: editedMealType,
+            totalCalories: editedCalories,
+            rawResponseJson: rawJson,
+            sourceMealId: meal.id
+        )
+
+        modelContext.insert(savedMeal)
+        do {
+            try modelContext.save()
+            didSaveToFavorites = true
+        } catch {
+            print("DEBUG: Error saving favorite meal: \(error)")
+        }
+    }
     
     private func deleteMeal() {
         // Track analytics
@@ -657,6 +737,5 @@ struct FocusableTextField: UIViewRepresentable {
             rawResponseJson: "{}"
         ))
     }
-    .modelContainer(for: MealEntry.self)
+    .modelContainer(for: [MealEntry.self, SavedMeal.self])
 }
-

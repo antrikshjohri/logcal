@@ -513,5 +513,5 @@ struct NotificationsSettingsView: View {
 
 #Preview {
     NotificationsSettingsView()
-        .modelContainer(for: MealEntry.self)
+        .modelContainer(for: [MealEntry.self, SavedMeal.self])
 }

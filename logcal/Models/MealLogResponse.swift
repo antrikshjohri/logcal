@@ -41,6 +41,30 @@ struct MealItem: Codable, Equatable {
 }
 
 extension MealLogResponse {
+    func scaled(by multiplier: Double) -> MealLogResponse {
+        MealLogResponse(
+            mealType: mealType,
+            totalCalories: totalCalories * multiplier,
+            protein: protein.map { $0 * multiplier },
+            carbs: carbs.map { $0 * multiplier },
+            fat: fat.map { $0 * multiplier },
+            items: items.map { item in
+                MealItem(
+                    name: item.name,
+                    quantity: item.quantity,
+                    calories: item.calories * multiplier,
+                    protein: item.protein.map { $0 * multiplier },
+                    carbs: item.carbs.map { $0 * multiplier },
+                    fat: item.fat.map { $0 * multiplier },
+                    assumptions: item.assumptions,
+                    confidence: item.confidence
+                )
+            },
+            needsClarification: needsClarification,
+            clarifyingQuestion: clarifyingQuestion
+        )
+    }
+
     /// When every item includes protein, carbs, and fat, set top-level meal macros to their sum so stored JSON matches the breakdown.
     func withMealMacrosAlignedToItems() -> MealLogResponse {
         let items = self.items
@@ -83,4 +107,3 @@ extension MealLogResponse {
         return (protein: sp, carbs: sc, fat: sf)
     }
 }
-

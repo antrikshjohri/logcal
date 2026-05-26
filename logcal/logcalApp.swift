@@ -118,7 +118,7 @@ struct logcalApp: App {
                             .background(Color(.systemBackground).opacity(0.9))
                         }
                     }
-                    .modelContainer(for: MealEntry.self)
+                    .modelContainer(for: [MealEntry.self, SavedMeal.self])
                     .environmentObject(cloudSyncService)
                     .environmentObject(authViewModel)
                     .toastNotification(toastManager: toastManager)

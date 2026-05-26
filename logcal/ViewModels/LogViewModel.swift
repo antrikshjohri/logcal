@@ -113,6 +113,114 @@ class LogViewModel: ObservableObject {
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
     }
+
+    func saveLatestMealAsFavorite() {
+        guard let result = latestResult,
+              let id = lastLoggedMealId,
+              let context = modelContext else {
+            errorMessage = "Could not save this meal yet."
+            return
+        }
+
+        let descriptor = FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == id })
+        guard let entry = try? context.fetch(descriptor).first else {
+            errorMessage = "Could not find the logged meal to save."
+            return
+        }
+
+        saveMealEntryAsFavorite(entry, response: result, context: context)
+    }
+
+    func logSavedMealAsIs(_ savedMeal: SavedMeal, servingMultiplier: Double = 1.0) {
+        guard let context = modelContext else {
+            errorMessage = "Could not log saved meal."
+            return
+        }
+
+        let response = savedMeal.response?.scaled(by: servingMultiplier)
+        let rawResponseJson: String
+        if let response,
+           let jsonData = try? JSONEncoder().encode(response),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            rawResponseJson = jsonString
+        } else {
+            rawResponseJson = savedMeal.rawResponseJson
+        }
+
+        let totalCalories = response?.totalCalories ?? (savedMeal.totalCalories * servingMultiplier)
+        let foodText = servingMultiplier == 1.0
+            ? savedMeal.foodText
+            : "\(savedMeal.foodText) (\(SavedMealServing.label(for: servingMultiplier)) serving)"
+
+        let entry = MealEntry(
+            id: UUID(),
+            timestamp: selectedDate,
+            createdAt: Date(),
+            foodText: foodText,
+            mealType: savedMeal.mealType,
+            totalCalories: totalCalories,
+            rawResponseJson: rawResponseJson,
+            hasImage: false
+        )
+
+        context.insert(entry)
+        do {
+            try context.save()
+            lastLoggedMealId = entry.id
+            latestResult = response ?? savedMeal.response
+
+            Task {
+                await cloudSyncService.syncMealToCloud(entry)
+            }
+            Task {
+                await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
+            }
+
+            AnalyticsService.trackMealLogged(
+                mealType: entry.mealType,
+                totalCalories: entry.totalCalories,
+                itemCount: response?.items.count ?? savedMeal.response?.items.count ?? 0,
+                hasImage: false
+            )
+            RatingService.shared.incrementMealLogCount()
+
+            self.foodText = ""
+            selectedImage = nil
+            isMealTypeManuallySet = false
+            selectedDate = Date()
+        } catch {
+            errorMessage = AppError.unknown(error).errorDescription
+        }
+    }
+
+    func prepareSavedMealForEditing(_ savedMeal: SavedMeal) {
+        foodText = savedMeal.foodText
+        if let mealType = MealType(rawValue: savedMeal.mealType) {
+            setMealType(mealType, isManual: true)
+        }
+        selectedImage = nil
+        latestResult = nil
+        lastLoggedMealId = nil
+    }
+
+    private func saveMealEntryAsFavorite(_ entry: MealEntry, response: MealLogResponse, context: ModelContext) {
+        let title = SavedMealTitle.suggestedTitle(foodText: entry.foodText, response: response)
+        let savedMeal = SavedMeal(
+            title: title,
+            foodText: entry.foodText,
+            mealType: entry.mealType,
+            totalCalories: entry.totalCalories,
+            rawResponseJson: entry.rawResponseJson,
+            sourceMealId: entry.id
+        )
+
+        context.insert(savedMeal)
+        do {
+            try context.save()
+        } catch {
+            errorMessage = AppError.unknown(error).errorDescription
+        }
+    }
     
     private func updateInferredMealType() {
         let newType = MealTypeInference.determineMealType(text: foodText)

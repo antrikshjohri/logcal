@@ -230,5 +230,5 @@ struct Theme {
 
 #Preview {
     DashboardView()
-        .modelContainer(for: MealEntry.self)
+        .modelContainer(for: [MealEntry.self, SavedMeal.self])
 }
