@@ -54,7 +54,7 @@ struct HistoryView: View {
         Calendar.current.isDate(date, inSameDayAs: Date())
     }
     
-    // Initialize expanded dates - expand Today by default on first launch
+    // Initialize expanded dates - expand the two most recent day cards by default.
     private func initializeExpandedDates() {
         guard !hasInitialized else {
             return
@@ -62,8 +62,7 @@ struct HistoryView: View {
         
         hasInitialized = true  // Mark as initialized regardless of whether there are meals
         
-        // Expand Today by default on first launch
-        expandedDates.insert(todayDate)
+        expandedDates.formUnion(allDates.prefix(2).map(\.date))
     }
     
     // All dates including Today (even if Today has no meals)
@@ -86,19 +85,19 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: Constants.Spacing.large) {
-                ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
+                LazyVStack(spacing: Constants.Spacing.large) {
+                    ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
                         DayCardView(
                             dayGroup: dayGroup,
                             isExpanded: Binding(
-                        get: { expandedDates.contains(dayGroup.date) },
-                        set: { isExpanded in
-                            if isExpanded {
-                                expandedDates.insert(dayGroup.date)
-                            } else {
-                                expandedDates.remove(dayGroup.date)
-                            }
-                        }
+                                get: { expandedDates.contains(dayGroup.date) },
+                                set: { isExpanded in
+                                    if isExpanded {
+                                        expandedDates.insert(dayGroup.date)
+                                    } else {
+                                        expandedDates.remove(dayGroup.date)
+                                    }
+                                }
                             ),
                             editMode: $editMode,
                             selectedMeals: $selectedMeals,
@@ -121,23 +120,17 @@ struct HistoryView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if editMode == .active {
                         Button("Cancel") {
-                            withAnimation {
-                                // Restore previous expanded state
-                                expandedDates = savedExpandedDates
-                                editMode = .inactive
-                                selectedMeals.removeAll()
-                            }
+                            // Restore previous expanded state without animating every day card.
+                            expandedDates = savedExpandedDates
+                            editMode = .inactive
+                            selectedMeals.removeAll()
                         }
                     } else {
                         if !meals.isEmpty {
                             Button("Edit") {
-                                withAnimation {
-                                    // Save current expanded state
-                                    savedExpandedDates = expandedDates
-                                    // Expand all sections for editing
-                                    expandedDates = Set(groupedMeals.map { $0.date })
-                                    editMode = .active
-                                }
+                                // Save current expanded state and only show checkboxes in visible sections.
+                                savedExpandedDates = expandedDates
+                                editMode = .active
                             }
                         }
                     }
@@ -269,11 +262,9 @@ struct HistoryView: View {
         
         do {
             try modelContext.save()
-            withAnimation {
-                // Restore previous expanded state
-                expandedDates = savedExpandedDates
-                editMode = .inactive
-            }
+            // Restore previous expanded state without animating every day card.
+            expandedDates = savedExpandedDates
+            editMode = .inactive
         } catch {
             // Error saving - SwiftData will handle persistence
         }
