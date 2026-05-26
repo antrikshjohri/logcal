@@ -9,6 +9,24 @@ import Foundation
 import AVFoundation
 import Combine
 import OSLog
+import UIKit
+
+@MainActor
+private enum ScreenIdleTimerHold {
+    private static var activeHolders = Set<ObjectIdentifier>()
+
+    static func acquire(for owner: AnyObject) {
+        activeHolders.insert(ObjectIdentifier(owner))
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+
+    static func release(for owner: AnyObject) {
+        activeHolders.remove(ObjectIdentifier(owner))
+        if activeHolders.isEmpty {
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+    }
+}
 
 @MainActor
 class SpeechRecognitionService: NSObject, ObservableObject {
@@ -21,8 +39,12 @@ class SpeechRecognitionService: NSObject, ObservableObject {
     private var totalMeterSamples = 0
     private var maxObservedLevel: CGFloat = 0.08
 
-    @Published var isListening = false
-    @Published var isTranscribing = false
+    @Published var isListening = false {
+        didSet { updateScreenAwakeHold() }
+    }
+    @Published var isTranscribing = false {
+        didSet { updateScreenAwakeHold() }
+    }
     @Published var recognizedText = ""
     @Published var errorMessage: String?
     @Published var waveformSamples: [CGFloat] = Array(repeating: 0.08, count: 64)
@@ -32,6 +54,12 @@ class SpeechRecognitionService: NSObject, ObservableObject {
 
     override init() {
         super.init()
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            ScreenIdleTimerHold.release(for: self)
+        }
     }
 
     /// Wait until any in-flight transcription finishes (e.g. before logging a meal).
@@ -304,6 +332,14 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         meteringTask = nil
         if resetToIdle {
             waveformSamples = Array(repeating: 0.08, count: waveformSamples.count)
+        }
+    }
+
+    private func updateScreenAwakeHold() {
+        if isListening || isTranscribing {
+            ScreenIdleTimerHold.acquire(for: self)
+        } else {
+            ScreenIdleTimerHold.release(for: self)
         }
     }
 

@@ -108,6 +108,7 @@ struct HomeView: View {
         ScrollView {
                 let isComposerBusy = viewModel.isListening || viewModel.isTranscribingSpeech
                 let canSubmitMeal = viewModel.canSubmitMeal
+                let imageLimitReached = viewModel.selectedImages.count >= Constants.Images.maxMealImages
                 let stopButtonBackground = colorScheme == .dark
                     ? Color(white: 0.22)
                     : Constants.Colors.primaryBlue.opacity(0.18)
@@ -186,27 +187,31 @@ struct HomeView: View {
                         Text("What did you eat?")
                             .font(.headline)
                         
-                        // Image preview (if image is selected)
-                        if let image = viewModel.selectedImage {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ZStack(alignment: .topTrailing) {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 80, height: 80)
-                                        .clipShape(RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius))
-                                    
-                                    Button(action: {
-                                        AnalyticsService.trackImageRemoved()
-                                        viewModel.removeImage()
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(.white)
-                                            .background(Color.black.opacity(0.6))
-                                            .clipShape(Circle())
+                        // Image preview (if images are selected)
+                        if !viewModel.selectedImages.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: Constants.Spacing.regular) {
+                                    ForEach(Array(viewModel.selectedImages.enumerated()), id: \.offset) { index, image in
+                                        ZStack(alignment: .topTrailing) {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 80, height: 80)
+                                                .clipShape(RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius))
+
+                                            Button(action: {
+                                                AnalyticsService.trackImageRemoved()
+                                                viewModel.removeImage(at: index)
+                                            }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.system(size: 20))
+                                                    .foregroundColor(.white)
+                                                    .background(Color.black.opacity(0.6))
+                                                    .clipShape(Circle())
+                                            }
+                                            .offset(x: 4, y: -4)
+                                        }
                                     }
-                                    .offset(x: 4, y: -4)
                                 }
                             }
                             .padding(.bottom, Constants.Spacing.small)
@@ -229,7 +234,7 @@ struct HomeView: View {
                                 )
 
                             let isTextEmpty = viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            let showPlaceholder = isTextEmpty && viewModel.selectedImage == nil
+                            let showPlaceholder = isTextEmpty && viewModel.selectedImages.isEmpty
                                 && !viewModel.isListening && !viewModel.isTranscribingSpeech
 
                             if showPlaceholder {
@@ -283,8 +288,8 @@ struct HomeView: View {
                                                     .background(Constants.Colors.micInactiveBackground)
                                                     .clipShape(Circle())
                                             }
-                                            .disabled(isComposerBusy)
-                                            .opacity(isComposerBusy ? 0.45 : 1)
+                                            .disabled(isComposerBusy || imageLimitReached)
+                                            .opacity((isComposerBusy || imageLimitReached) ? 0.45 : 1)
                                             .padding(.trailing, Constants.Spacing.small)
                                         }
 
@@ -293,15 +298,15 @@ struct HomeView: View {
                                             AnalyticsService.trackImagePickerOpened()
                                             viewModel.showImagePicker = true
                                         }) {
-                                            Image(systemName: viewModel.selectedImage != nil ? "photo.fill" : "photo")
+                                            Image(systemName: !viewModel.selectedImages.isEmpty ? "photo.fill" : "photo")
                                                 .font(.system(size: Constants.Sizes.micIcon))
                                                 .foregroundColor(Constants.Colors.primaryBlue)
                                                 .padding(Constants.Spacing.medium)
                                                 .background(Constants.Colors.micInactiveBackground)
                                                 .clipShape(Circle())
                                         }
-                                        .disabled(isComposerBusy)
-                                        .opacity(isComposerBusy ? 0.45 : 1)
+                                        .disabled(isComposerBusy || imageLimitReached)
+                                        .opacity((isComposerBusy || imageLimitReached) ? 0.45 : 1)
                                         .padding(.trailing, Constants.Spacing.small)
                                     }
 
@@ -367,15 +372,15 @@ struct HomeView: View {
                         }
                     }
                     .sheet(isPresented: $viewModel.showImagePicker) {
-                        ImagePickerView(selectedImage: Binding(
-                            get: { viewModel.selectedImage },
-                            set: { viewModel.selectImage($0) }
+                        ImagePickerView(selectedImages: Binding(
+                            get: { viewModel.selectedImages },
+                            set: { viewModel.setImages($0) }
                         ))
                     }
                     .sheet(isPresented: $viewModel.showCameraPicker) {
                         CameraPickerView(selectedImage: Binding(
-                            get: { viewModel.selectedImage },
-                            set: { viewModel.selectImage($0) }
+                            get: { nil },
+                            set: { viewModel.appendImage($0) }
                         ))
                     }
                     

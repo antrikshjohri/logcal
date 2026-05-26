@@ -34,6 +34,7 @@ interface LogMealRequest {
   foodText: string;
   mealType: string;
   imageBase64?: string; // Optional base64-encoded image
+  imageBase64s?: string[]; // Optional base64-encoded images
   country?: string; // Optional country name (e.g., "India", "United States")
 }
 
@@ -394,11 +395,13 @@ async function callOpenAI(
   foodText: string,
   mealType: string,
   imageBase64?: string,
+  imageBase64s?: string[],
   country?: string,
   perf?: BackendPerf
 ): Promise<MealLogResponse> {
   console.log("DEBUG: callOpenAI function called");
-  console.log("DEBUG: hasImage =", imageBase64 ? "yes" : "no");
+  const images = imageBase64s && imageBase64s.length > 0 ? imageBase64s : imageBase64 ? [imageBase64] : [];
+  console.log("DEBUG: imageCount =", images.length);
   console.log("DEBUG: country =", country || "not provided");
   
   // Get API key from Firebase Secrets (set via functions:secrets:set)
@@ -432,8 +435,8 @@ async function callOpenAI(
   // Add text if provided (same user message will also include image below when present — one multimodal request)
   if (foodText && foodText.trim().length > 0) {
     let text = `Food description: ${foodText}\nMeal type: ${mealType}`;
-    if (imageBase64) {
-      text += `\nA photo of this meal is attached in this message; combine it with the description above for estimates and assumptions.`;
+    if (images.length > 0) {
+      text += `\n${images.length} photo(s) of this meal are attached in this message; combine them with the description above for estimates and assumptions.`;
     }
     userContent.push({
       type: "text",
@@ -447,17 +450,17 @@ async function callOpenAI(
     });
   }
   
-  // Add image if provided
-  if (imageBase64) {
+  // Add images if provided
+  for (const image of images) {
     // Ensure it has the data URI prefix
-    const imageUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    const imageUrl = image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`;
     userContent.push({
       type: "image_url",
       image_url: {
         url: imageUrl
       }
     });
-    console.log("DEBUG: Image added to request, base64 length:", imageBase64.length);
+    console.log("DEBUG: Image added to request, base64 length:", image.length);
   }
 
   const requestBody = {
@@ -479,6 +482,7 @@ async function callOpenAI(
   try {
     perf?.mark("openai_chat_request_start", {
       hasImage: !!imageBase64,
+      imageCount: images.length,
       model: OPENAI_MODEL,
       textChars: foodText.length,
     });
@@ -664,12 +668,15 @@ export const logMeal = functions.region(FUNCTIONS_REGION).runWith({
 
     const uid = context.auth.uid;
     console.log("DEBUG: Authenticated user UID:", uid);
-    const { foodText, mealType, imageBase64, country } = data;
-    console.log("DEBUG: Request data - foodText:", foodText, "mealType:", mealType, "hasImage:", !!imageBase64, "country:", country || "not provided");
+    const { foodText, mealType, imageBase64, imageBase64s, country } = data;
+    const requestImages = Array.isArray(imageBase64s) && imageBase64s.length > 0
+      ? imageBase64s.filter((image) => typeof image === "string" && image.length > 0).slice(0, 4)
+      : (typeof imageBase64 === "string" && imageBase64.length > 0 ? [imageBase64] : []);
+    console.log("DEBUG: Request data - foodText:", foodText, "mealType:", mealType, "imageCount:", requestImages.length, "country:", country || "not provided");
 
     // Validate input - either foodText or imageBase64 must be provided
     const hasText = typeof foodText === "string" && foodText.trim().length > 0;
-    const hasImage = typeof imageBase64 === "string" && imageBase64.length > 0;
+    const hasImage = requestImages.length > 0;
     
     if (!hasText && !hasImage) {
       console.error("Invalid argument: Both foodText and imageBase64 are missing or empty for UID:", uid);
@@ -719,6 +726,7 @@ export const logMeal = functions.region(FUNCTIONS_REGION).runWith({
         hasText ? foodText.trim() : "",
         mealType,
         hasImage ? imageBase64 : undefined,
+        hasImage ? requestImages : undefined,
         country,
         perf
       );

@@ -37,7 +37,7 @@ class LogViewModel: ObservableObject {
     @Published var isTranscribingSpeech: Bool = false
     @Published var speechErrorMessage: String?
     @Published var waveformSamples: [CGFloat] = Array(repeating: 0.08, count: 64)
-    @Published var selectedImage: UIImage?
+    @Published var selectedImages: [UIImage] = []
     @Published var showImagePicker: Bool = false
     @Published var showCameraPicker: Bool = false
     
@@ -107,7 +107,7 @@ class LogViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     var canSubmitMeal: Bool {
-        isListening || !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedImage != nil
+        isListening || !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty
     }
     
     func setModelContext(_ context: ModelContext) {
@@ -185,9 +185,8 @@ class LogViewModel: ObservableObject {
             RatingService.shared.incrementMealLogCount()
 
             self.foodText = ""
-            selectedImage = nil
+            selectedImages = []
             isMealTypeManuallySet = false
-            selectedDate = Date()
         } catch {
             errorMessage = AppError.unknown(error).errorDescription
         }
@@ -198,7 +197,7 @@ class LogViewModel: ObservableObject {
         if let mealType = MealType(rawValue: savedMeal.mealType) {
             setMealType(mealType, isManual: true)
         }
-        selectedImage = nil
+        selectedImages = []
         latestResult = nil
         lastLoggedMealId = nil
     }
@@ -274,7 +273,7 @@ class LogViewModel: ObservableObject {
 
         // Allow logging if either text or image is present after any in-flight dictation is merged in.
         let hasText = !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let hasImage = selectedImage != nil
+        let hasImage = !selectedImages.isEmpty
         
         guard hasText || hasImage else {
             print("DEBUG: Both food text and image are empty after dictation/transcription, returning")
@@ -313,9 +312,9 @@ class LogViewModel: ObservableObject {
         do {
             let mealTypeString = selectedMealType.rawValue
             let originalFoodText = foodText
-            let originalHadImage = selectedImage != nil
+            let originalHadImage = !selectedImages.isEmpty
             print("DEBUG: Calling openAIService.logMeal()...")
-            let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString, image: selectedImage)
+            let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString, images: selectedImages)
             perf.mark("ai_meal_response", metadata: [
                 "calories": response.totalCalories,
                 "itemCount": response.items.count,
@@ -334,7 +333,7 @@ class LogViewModel: ObservableObject {
                 // #endregion
                 
                 // Determine if image was used and set appropriate foodText
-                let hadImage = selectedImage != nil
+                let hadImage = !selectedImages.isEmpty
                 let displayText: String
                 if foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hadImage {
                     // Image only - use placeholder text
@@ -389,7 +388,7 @@ class LogViewModel: ObservableObject {
             }
             
             // Track analytics - successful meal log (check image before clearing)
-            let hadImage = selectedImage != nil
+            let hadImage = !selectedImages.isEmpty
             AnalyticsService.trackMealLogged(
                 mealType: response.mealType,
                 totalCalories: response.totalCalories,
@@ -408,9 +407,8 @@ class LogViewModel: ObservableObject {
             }
             
             foodText = "" // Clear input after successful log
-            selectedImage = nil // Clear image after successful log
+            selectedImages = [] // Clear images after successful log
             isMealTypeManuallySet = false // Reset manual selection
-            selectedDate = Date() // Reset to today
             perf.end("success", metadata: [
                 "hadImage": hadImage,
                 "mealType": response.mealType,
@@ -472,17 +470,29 @@ class LogViewModel: ObservableObject {
         speechService.cancelListening()
     }
     
-    func selectImage(_ image: UIImage?) {
-        selectedImage = image
-        print("DEBUG: [LogViewModel] Image selected: \(image != nil ? "yes" : "no")")
-        if image != nil {
+    func setImages(_ images: [UIImage]) {
+        selectedImages = Array(images.prefix(Constants.Images.maxMealImages))
+        print("DEBUG: [LogViewModel] Images selected: \(selectedImages.count)")
+        if !selectedImages.isEmpty {
             AnalyticsService.trackImageSelected()
         }
     }
+
+    func appendImage(_ image: UIImage?) {
+        guard let image else { return }
+        guard selectedImages.count < Constants.Images.maxMealImages else {
+            errorMessage = "You can add up to \(Constants.Images.maxMealImages) images."
+            return
+        }
+        selectedImages.append(image)
+        print("DEBUG: [LogViewModel] Image appended, count=\(selectedImages.count)")
+        AnalyticsService.trackImageSelected()
+    }
     
-    func removeImage() {
-        selectedImage = nil
-        print("DEBUG: [LogViewModel] Image removed")
+    func removeImage(at index: Int) {
+        guard selectedImages.indices.contains(index) else { return }
+        selectedImages.remove(at: index)
+        print("DEBUG: [LogViewModel] Image removed, count=\(selectedImages.count)")
     }
 
     /// Quick-edit the meal shown in the success preview (same row as `latestResult`).

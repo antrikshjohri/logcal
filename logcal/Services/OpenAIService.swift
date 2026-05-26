@@ -22,10 +22,14 @@ struct OpenAIService {
     }
     
     func logMeal(foodText: String, mealType: String, image: UIImage?) async throws -> MealLogResponse {
+        try await logMeal(foodText: foodText, mealType: mealType, images: image.map { [$0] } ?? [])
+    }
+
+    func logMeal(foodText: String, mealType: String, images: [UIImage]) async throws -> MealLogResponse {
         var perf = PerfLogger("openai_service_log_meal")
         print("DEBUG: OpenAIService.logMeal() called")
         print("DEBUG: useFirebase = \(Constants.API.useFirebase)")
-        print("DEBUG: hasImage = \(image != nil)")
+        print("DEBUG: imageCount = \(images.count)")
         
         // Use Firebase Functions if enabled
         if Constants.API.useFirebase {
@@ -43,17 +47,17 @@ struct OpenAIService {
             }
             print("DEBUG: Calling firebaseService.logMeal()...")
             
-            // Convert image to Data for Firebase Function
-            var imageData: Data? = nil
-            if let image = image {
-                imageData = image.jpegData(compressionQuality: 0.8)
-                perf.mark("image_jpeg_encoded", metadata: [
-                    "bytes": imageData?.count ?? 0,
+            // Convert images to Data for Firebase Function
+            let imageData = images.compactMap { $0.jpegData(compressionQuality: 0.8) }
+            if !imageData.isEmpty {
+                perf.mark("images_jpeg_encoded", metadata: [
+                    "count": imageData.count,
+                    "bytes": imageData.reduce(0) { $0 + $1.count },
                 ])
-                print("DEBUG: Image converted to Data: \(imageData?.count ?? 0) bytes")
+                print("DEBUG: Images converted to Data: count=\(imageData.count)")
             }
             
-            let response = try await firebaseService.logMeal(foodText: foodText, mealType: mealType, imageData: imageData)
+            let response = try await firebaseService.logMeal(foodText: foodText, mealType: mealType, imageData: imageData.first, imageDatas: imageData)
             perf.end("firebase_log_meal_complete", metadata: [
                 "calories": response.totalCalories,
                 "items": response.items.count,
@@ -66,7 +70,7 @@ struct OpenAIService {
             throw AppError.apiKeyNotFound
         }
         
-        let response = try await logMealDirect(foodText: foodText, mealType: mealType, image: image, apiKey: apiKey)
+        let response = try await logMealDirect(foodText: foodText, mealType: mealType, images: images, apiKey: apiKey)
         perf.end("direct_log_meal_complete", metadata: [
             "calories": response.totalCalories,
             "items": response.items.count,
@@ -111,6 +115,10 @@ struct OpenAIService {
     }
     
     private func logMealDirect(foodText: String, mealType: String, image: UIImage?, apiKey: String) async throws -> MealLogResponse {
+        try await logMealDirect(foodText: foodText, mealType: mealType, images: image.map { [$0] } ?? [], apiKey: apiKey)
+    }
+
+    private func logMealDirect(foodText: String, mealType: String, images: [UIImage], apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
         You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, use both together: identify foods and portions from the photo and use the text for context; if they disagree on something visible in the image, trust the image. When a photo is present, each item's assumptions should mention what you inferred from the photo (e.g. visible portion, condiments), not only text-based guesses.
         """
@@ -124,8 +132,8 @@ struct OpenAIService {
         Food description: \(foodText)
         Meal type: \(mealType)
         """
-            if image != nil {
-                textMessage += "\nA photo of this meal is attached in this message; combine it with the description above for estimates and assumptions."
+            if !images.isEmpty {
+                textMessage += "\n\(images.count) photo(s) of this meal are attached in this message; combine them with the description above for estimates and assumptions."
             }
             userContent.append([
                 "type": "text",
@@ -139,8 +147,8 @@ struct OpenAIService {
             ])
         }
         
-        // Add image if provided
-        if let image = image {
+        // Add images if provided
+        for image in images {
             guard let base64Image = ImageUtils.convertToBase64(image) else {
                 throw AppError.unknown(NSError(domain: "ImageUtils", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to base64"]))
             }

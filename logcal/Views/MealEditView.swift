@@ -30,6 +30,12 @@ struct MealEditView: View {
     @State private var didSaveToFavorites: Bool = false
     @State private var savedMealCreatedInSession: SavedMeal?
     @State private var savedMealPendingDeletion: SavedMeal?
+    @State private var quickEditPrompt: String = ""
+    @State private var showQuickEdit: Bool = false
+    @State private var isQuickEditLoading: Bool = false
+    @State private var quickEditErrorMessage: String?
+    @State private var openAIService: OpenAIService?
+    @State private var openAIServiceError: AppError?
     @FocusState private var isCaloriesFieldFocused: Bool
     
     // Meal type options
@@ -52,6 +58,17 @@ struct MealEditView: View {
         _editedDate = State(initialValue: meal.timestamp)
         _editedMealType = State(initialValue: meal.mealType)
         _editedCalories = State(initialValue: meal.totalCalories)
+        do {
+            _openAIService = State(initialValue: try OpenAIService())
+            _openAIServiceError = State(initialValue: nil)
+        } catch {
+            _openAIService = State(initialValue: nil)
+            if let appError = error as? AppError {
+                _openAIServiceError = State(initialValue: appError)
+            } else {
+                _openAIServiceError = State(initialValue: AppError.unknown(error))
+            }
+        }
         
         // Check if calories were manually overridden
         // This would be stored in a separate field, but for now we'll infer from response
@@ -153,9 +170,25 @@ struct MealEditView: View {
                 
                 // What you ate Field (Read-only)
                 VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    Text("What you ate")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                    HStack {
+                        Text("What you ate")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showQuickEdit.toggle()
+                            }
+                        } label: {
+                            Image(systemName: showQuickEdit ? "xmark" : "pencil")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Constants.Colors.primaryBlue)
+                                .frame(width: 32, height: 32)
+                                .background(Constants.Colors.primaryBackground)
+                                .clipShape(Circle())
+                        }
+                        .accessibilityLabel(showQuickEdit ? "Close description editor" : "Edit food description")
+                    }
                     
                     HStack {
                         Text(meal.foodText)
@@ -169,6 +202,19 @@ struct MealEditView: View {
                         RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
                             .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
                     )
+
+                    if showQuickEdit {
+                        QuickEditMealSection(
+                            prompt: $quickEditPrompt,
+                            isLoading: isQuickEditLoading,
+                            errorMessage: quickEditErrorMessage
+                        ) {
+                            Task {
+                                await quickRefineMeal()
+                            }
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
                 
                 // Total Calories Field (Editable)
@@ -363,7 +409,7 @@ struct MealEditView: View {
                         }
                     }
                 }
-                
+
                 HStack(spacing: Constants.Spacing.regular) {
                     Button(action: {
                         if let savedMeal = currentSavedMeal {
@@ -689,6 +735,43 @@ struct MealEditView: View {
             dismiss()
         } catch {
             print("DEBUG: Error deleting meal: \(error)")
+        }
+    }
+
+    private func quickRefineMeal() async {
+        let trimmed = quickEditPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let openAIService else {
+            quickEditErrorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
+            return
+        }
+
+        isQuickEditLoading = true
+        quickEditErrorMessage = nil
+        defer { isQuickEditLoading = false }
+
+        do {
+            let refined = try await MealQuickRefine.apply(
+                entry: meal,
+                correctionPrompt: trimmed,
+                modelContext: modelContext,
+                openAIService: openAIService,
+                cloudSyncService: cloudSyncService
+            )
+            editedMealType = refined.mealType
+            editedCalories = refined.totalCalories
+            modifiedResponse = refined
+            caloriesManuallyOverridden = false
+            quickEditPrompt = ""
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showQuickEdit = false
+            }
+        } catch {
+            if let appError = error as? AppError {
+                quickEditErrorMessage = appError.errorDescription
+            } else {
+                quickEditErrorMessage = error.localizedDescription
+            }
         }
     }
     

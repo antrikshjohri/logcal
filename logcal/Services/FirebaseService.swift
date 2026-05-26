@@ -172,6 +172,10 @@ struct FirebaseService {
     
     /// Log a meal using Firebase Functions (requires authentication)
     func logMeal(foodText: String, mealType: String, imageData: Data?) async throws -> MealLogResponse {
+        try await logMeal(foodText: foodText, mealType: mealType, imageData: imageData, imageDatas: imageData.map { [$0] } ?? [])
+    }
+
+    func logMeal(foodText: String, mealType: String, imageData: Data?, imageDatas: [Data]) async throws -> MealLogResponse {
         var perf = PerfLogger("firebase_log_meal")
         // Ensure user is authenticated (Firebase Functions onCall handles auth automatically)
         if !isAuthenticated {
@@ -196,15 +200,17 @@ struct FirebaseService {
             "mealType": mealType
         ]
         
-        // Add image if provided (convert to base64)
-        if let imageData = imageData {
-            let base64String = imageData.base64EncodedString()
-            requestData["imageBase64"] = base64String
-            perf.mark("image_base64_encoded", metadata: [
-                "base64Chars": base64String.count,
-                "bytes": imageData.count,
+        // Add images if provided (convert to base64)
+        if !imageDatas.isEmpty {
+            let base64Strings = imageDatas.map { $0.base64EncodedString() }
+            requestData["imageBase64s"] = base64Strings
+            requestData["imageBase64"] = base64Strings.first
+            perf.mark("images_base64_encoded", metadata: [
+                "count": base64Strings.count,
+                "base64Chars": base64Strings.reduce(0) { $0 + $1.count },
+                "bytes": imageDatas.reduce(0) { $0 + $1.count },
             ])
-            print("DEBUG: [FirebaseService] Image added to request, base64 length: \(base64String.count)")
+            print("DEBUG: [FirebaseService] Images added to request, count: \(base64Strings.count)")
         }
         
         // Add country if available

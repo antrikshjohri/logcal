@@ -58,6 +58,10 @@ enum Constants {
         static let largeCornerRadius: CGFloat = 12
         static let borderWidth: CGFloat = 1
     }
+
+    enum Images {
+        static let maxMealImages = 4
+    }
     
     // MARK: - Date Formats
     enum DateFormats {
@@ -114,4 +118,3 @@ enum Constants {
         static let bufferSize: AVAudioFrameCount = 1024
     }
 }
-
