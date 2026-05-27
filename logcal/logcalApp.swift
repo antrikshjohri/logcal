@@ -49,7 +49,7 @@ struct logcalApp: App {
                 } else {
                     ZStack {
                         TabView(selection: $selectedTab) {
-                            DashboardView()
+                            DashboardView(selectedTab: $selectedTab)
                                 .tabItem {
                                     Label("Home", systemImage: "house.fill")
                                 }

@@ -12,82 +12,88 @@ struct WeeklyBarChartView: View {
     let data: [(day: String, calories: Double, isToday: Bool)]
     let dailyGoal: Double
     
-    // Calculate max calories with 20% padding above
     private var chartMax: Double {
-        let max = data.map { $0.calories }.max() ?? 1
-        return max > 0 ? max * 1.2 : 1 // Add 20% padding above max
+        let maxVal = data.map { $0.calories }.max() ?? 0
+        return max(maxVal, dailyGoal) * 1.25
     }
     
     private func barColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
-        if dayData.calories <= dailyGoal {
-            return dayData.isToday ? Theme.primaryGreen : Theme.mintGreen.opacity(colorScheme == .dark ? 0.78 : 0.9)
-        } else {
-            return Theme.warningAmber.opacity(colorScheme == .dark ? 0.82 : 0.9)
+        let baseColor = dayData.calories > dailyGoal ? Theme.dangerRed : Theme.primaryGreen
+        if dayData.isToday {
+            return baseColor
         }
-    }
-    
-    private func todayBorderColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
-        dayData.calories <= dailyGoal ? Theme.primaryGreen : Theme.warningAmber
-    }
-    
-    // Format calories in compact form (e.g., 2.5k, 1.2k, 500)
-    private func formatCalories(_ calories: Double) -> String {
-        if calories >= 1000 {
-            let kValue = calories / 1000
-            if kValue.truncatingRemainder(dividingBy: 1) == 0 {
-                return "\(Int(kValue))k"
-            } else {
-                return String(format: "%.1fk", kValue)
-            }
-        } else {
-            return "\(Int(calories))"
-        }
+        return baseColor.opacity(colorScheme == .dark ? 0.7 : 0.55)
     }
     
     var body: some View {
-        HStack(alignment: .bottom, spacing: Constants.Spacing.regular) {
-            ForEach(Array(data.enumerated()), id: \.offset) { index, dayData in
-                VStack(spacing: 0) {
-                    if dayData.calories > 0 {
-                        Text(formatCalories(dayData.calories))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(Theme.quietText(colorScheme: colorScheme))
-                            .frame(height: 16)
-                            .padding(.bottom, 4)
-                    } else {
-                        Spacer()
-                            .frame(height: 20)
+        ZStack(alignment: .bottom) {
+            // Dotted Goal Line
+            GeometryReader { chartGeo in
+                let chartHeight = chartGeo.size.height
+                let yPos = chartHeight * (1.0 - CGFloat(dailyGoal / chartMax))
+                
+                ZStack(alignment: .leading) {
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: yPos))
+                        path.addLine(to: CGPoint(x: chartGeo.size.width - 45, y: yPos))
                     }
+                    .stroke(
+                        Theme.mutedText(colorScheme: colorScheme).opacity(0.35),
+                        style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [4, 4])
+                    )
                     
-                    // Bar container - separate from label
-                    GeometryReader { geometry in
-                        VStack {
-                            Spacer()
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(barColor(for: dayData))
-                                .frame(height: max(geometry.size.height * (dayData.calories / chartMax), 4))
-                                .shadow(color: barColor(for: dayData).opacity(0.18), radius: 7, x: 0, y: 4)
-                                .overlay(
-                                    Group {
-                                        if dayData.isToday {
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .stroke(todayBorderColor(for: dayData), lineWidth: 2.5)
-                                        }
-                                    }
-                                )
-                        }
-                    }
-                    .frame(height: 80)
-                    .padding(.bottom, 8)
-                    
-                    Text(dayData.day)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(dayData.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
-                        .frame(height: 20)
-                        .padding(.top, 4)
+                    Text(formatNumber(dailyGoal))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        .frame(width: 40, alignment: .trailing)
+                        .position(x: chartGeo.size.width - 20, y: yPos)
                 }
             }
+            .frame(height: 80)
+            .padding(.bottom, 24)
+            
+            // HStack of bars
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(Array(data.enumerated()), id: \.offset) { index, dayData in
+                    VStack(spacing: 0) {
+                        Text(dayData.calories > 0 ? formatNumber(dayData.calories) : "0")
+                            .font(.system(size: 10, weight: dayData.isToday ? .bold : .medium))
+                            .foregroundColor(dayData.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
+                            .frame(height: 14)
+                            .padding(.bottom, 4)
+                        
+                        GeometryReader { barGeo in
+                            VStack {
+                                Spacer()
+                                
+                                Capsule()
+                                    .fill(barColor(for: dayData))
+                                    .frame(width: 16, height: max(CGFloat(dayData.calories / chartMax) * barGeo.size.height, 6))
+                            }
+                            .frame(width: barGeo.size.width, height: barGeo.size.height)
+                        }
+                        .frame(height: 80)
+                        
+                        Text(dayData.day)
+                            .font(.system(size: 12, weight: dayData.isToday ? .bold : .medium))
+                            .foregroundColor(dayData.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
+                            .frame(height: 16)
+                            .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                
+                // Trailing margin to offset Sunday from the dotted line label
+                Spacer()
+                    .frame(width: 35)
+            }
         }
+    }
+    
+    private func formatNumber(_ number: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: Int(number))) ?? "\(Int(number))"
     }
 }
 

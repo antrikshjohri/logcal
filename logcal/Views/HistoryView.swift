@@ -184,6 +184,15 @@ struct HistoryView: View {
                     initializeExpandedDates()
                 }
                 
+                // Expand date if navigateToDateTimestamp is set
+                if navigateToDateTimestamp > 0 {
+                    let dateToNavigate = Date(timeIntervalSince1970: navigateToDateTimestamp)
+                    let calendar = Calendar.current
+                    let targetDate = calendar.startOfDay(for: dateToNavigate)
+                    expandedDates.insert(targetDate)
+                    navigateToDateTimestamp = 0
+                }
+                
                 // Auto-refresh when History tab appears if:
                 // 1. We have no meals, AND
                 // 2. User is signed in (not anonymous), AND
@@ -199,6 +208,15 @@ struct HistoryView: View {
                             await refreshFromCloud()
                         }
                     }
+                }
+            }
+            .onChange(of: navigateToDateTimestamp) { oldValue, newValue in
+                if newValue > 0 {
+                    let dateToNavigate = Date(timeIntervalSince1970: newValue)
+                    let calendar = Calendar.current
+                    let targetDate = calendar.startOfDay(for: dateToNavigate)
+                    expandedDates.insert(targetDate)
+                    navigateToDateTimestamp = 0
                 }
             }
             .onChange(of: cloudSyncService.lastSyncTime) { oldValue, newValue in

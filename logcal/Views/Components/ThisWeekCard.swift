@@ -18,34 +18,19 @@ struct ThisWeekCard: View {
             VStack(spacing: Constants.Spacing.large) {
                 // Header
                 HStack {
-                    Text("This Week")
-                        .font(.system(size: 17, weight: .semibold))
+                    Text("Weekly trend")
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                     
                     Spacer()
                     
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 18))
-                        .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+                    Text("Total Calories")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                 }
                 
                 WeeklyBarChartView(data: weeklyData, dailyGoal: dailyGoal)
-                    .frame(height: 130)
-                
-                Divider()
-                    .background(Theme.cardBorder(colorScheme: colorScheme))
-                
-                HStack {
-                    Text("Weekly Average")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                    
-                    Spacer()
-                    
-                    Text("\(Int(weeklyAverage)) cal")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                }
+                    .frame(height: 140)
             }
         }
     }

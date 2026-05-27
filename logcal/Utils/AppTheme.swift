@@ -81,7 +81,7 @@ struct Theme {
     static let dangerRed = Color(red: 0.78, green: 0.20, blue: 0.18)
     static let proteinColor = Color(red: 0.11, green: 0.45, blue: 0.28)
     static let carbsColor = Color(red: 0.79, green: 0.55, blue: 0.18)
-    static let fatColor = Color(red: 0.60, green: 0.38, blue: 0.72)
+    static let fatColor = Color(red: 0.85, green: 0.60, blue: 0.10)
 
     // Compatibility aliases while the rest of the app is migrated screen by screen.
     static let accentBlue = primaryGreen

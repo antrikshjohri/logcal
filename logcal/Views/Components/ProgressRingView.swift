@@ -9,35 +9,29 @@ import SwiftUI
 
 struct ProgressRingView: View {
     @Environment(\.colorScheme) private var colorScheme
-    /// Progress ratio (e.g. 0.75 = 75%, 1.25 = 125%). Ring caps at 100%; label shows actual %.
     let progress: Double
     var size: CGFloat = 80
-    /// Ring color. If nil, uses Theme.accentBlue.
+    var strokeWidth: CGFloat = 8
     var ringColor: Color? = nil
     
-    private var ringProgress: Double { min(progress, 1.0) }
-    private var displayPercent: Int { Int(round(progress * 100)) }
+    private var ringProgress: Double { min(max(progress, 0), 1.0) }
     private var color: Color { ringColor ?? Theme.accentBlue }
     
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Theme.cardBorder(colorScheme: colorScheme).opacity(0.8), lineWidth: 8)
+                .stroke(Theme.primaryGreen.opacity(colorScheme == .dark ? 0.15 : 0.1), lineWidth: strokeWidth)
                 .frame(width: size, height: size)
             
             Circle()
                 .trim(from: 0, to: ringProgress)
                 .stroke(
                     color,
-                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
                 )
                 .frame(width: size, height: size)
                 .rotationEffect(.degrees(-90))
                 .animation(.easeInOut(duration: 0.5), value: ringProgress)
-            
-            Text("\(displayPercent)%")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
         }
     }
 }

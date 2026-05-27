@@ -13,31 +13,38 @@ struct StreakCard: View {
     
     var body: some View {
         DashboardCard {
-            VStack(alignment: .leading, spacing: Constants.Spacing.large) {
-                HStack {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(Theme.mintGreen)
-                        .frame(width: 34, height: 34)
-                        .background(Theme.mintGreen.opacity(colorScheme == .dark ? 0.18 : 0.14))
-                        .clipShape(Circle())
-
-                    Spacer()
+            HStack(spacing: 12) {
+                // Flame Icon Circle
+                ZStack {
+                    Circle()
+                        .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(Theme.warningAmber)
                 }
-
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
+                
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Streak")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-
-                    Text("\(streak)")
-                        .font(.system(size: 34, weight: .bold))
+                        .lineLimit(1)
+                    
+                    Text("\(streak) days")
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-
-                    Text("days")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+                        .lineLimit(1)
+                    
+                    Text("Keep it going!")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Theme.warningAmber)
+                        .padding(.top, 2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+                
+                Spacer()
             }
             .frame(maxWidth: .infinity)
         }
