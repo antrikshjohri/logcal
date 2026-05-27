@@ -32,7 +32,7 @@ struct TodaysCaloriesCard: View {
                 // Eaten amount
                 VStack(alignment: .leading, spacing: 4) {
                     Text(formatNumber(calories))
-                        .font(.system(size: 56, weight: .bold, design: .serif))
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                     
                     Text("of \(formatNumber(goal)) cal eaten")
