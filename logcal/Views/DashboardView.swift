@@ -134,26 +134,60 @@ struct DashboardView: View {
         
         return streak
     }
+
+    private var todayDateText: String {
+        Date().formatted(.dateTime.weekday(.wide).month(.wide).day())
+    }
+
+    private var dailyStatusText: String {
+        guard dailyGoal > 0 else { return "Set a daily goal to track progress" }
+        if todayCalories > dailyGoal {
+            return "\(Int(todayCalories - dailyGoal)) cal over target"
+        }
+        return "\(Int(dailyGoal - todayCalories)) cal remaining today"
+    }
+
+    private var dailyStatusColor: Color {
+        todayCalories > dailyGoal ? Theme.warningAmber : Theme.primaryGreen
+    }
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: Constants.Spacing.large) {
-                    // Header
-                    VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                        Text("Dashboard")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text("Track your daily progress")
-                            .font(.system(size: 17, weight: .regular))
-                            .foregroundColor(Constants.Colors.secondaryGray)
+                VStack(spacing: Constants.Spacing.extraLarge) {
+                    HStack(alignment: .center, spacing: Constants.Spacing.regular) {
+                        VStack(alignment: .leading, spacing: Constants.Spacing.small) {
+                            Text("Today")
+                                .font(.system(size: 34, weight: .bold))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+
+                            Text(todayDateText)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        }
+
+                        Spacer()
+
+                        HStack(spacing: Constants.Spacing.small) {
+                            Circle()
+                                .fill(dailyStatusColor)
+                                .frame(width: 8, height: 8)
+
+                            Text(dailyStatusText)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(dailyStatusColor)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                        }
+                        .padding(.horizontal, Constants.Spacing.regular)
+                        .padding(.vertical, Constants.Spacing.medium)
+                        .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                        .clipShape(Capsule())
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Constants.Spacing.extraLarge)
-                    .padding(.top, Constants.Spacing.regular)
+                    .padding(.top, Constants.Spacing.large)
                     
-                    // Today's Calories Card
                     TodaysCaloriesCard(
                         calories: todayCalories,
                         goal: dailyGoal,
@@ -187,7 +221,7 @@ struct DashboardView: View {
                     }
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                 }
-                .padding(.vertical, Constants.Spacing.large)
+                .padding(.bottom, Constants.Spacing.extraLarge)
             }
             .navigationTitle("")
             .navigationBarHidden(true)
@@ -204,28 +238,6 @@ struct DashboardView: View {
             }
         }
     }
-}
-
-// MARK: - Theme Colors
-struct Theme {
-    static func backgroundColor(colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color.black : Color(.systemGroupedBackground)
-    }
-    
-    static func cardBackground(colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark 
-            ? Color(white: 0.15) // Dark gray for dark mode
-            : Color.white // White for light mode
-    }
-    
-    static func cardBorder(colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.1) // Subtle white border in dark mode
-            : Color.gray.opacity(0.2) // Subtle gray border in light mode
-    }
-    
-    static let accentBlue = Constants.Colors.primaryBlue
-    static let secondaryText = Constants.Colors.secondaryGray
 }
 
 #Preview {

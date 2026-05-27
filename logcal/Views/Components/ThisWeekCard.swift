@@ -20,37 +20,33 @@ struct ThisWeekCard: View {
                 HStack {
                     Text("This Week")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                     
                     Spacer()
                     
                     Image(systemName: "chart.line.uptrend.xyaxis")
                         .font(.system(size: 18))
-                        .foregroundColor(Theme.secondaryText)
+                        .foregroundColor(Theme.quietText(colorScheme: colorScheme))
                 }
                 
-                // Bar chart
                 WeeklyBarChartView(data: weeklyData, dailyGoal: dailyGoal)
-                    .frame(height: 130) // Increased to accommodate calorie labels
+                    .frame(height: 130)
                 
-                // Divider
                 Divider()
                     .background(Theme.cardBorder(colorScheme: colorScheme))
                 
-                // Bottom: Weekly average
                 HStack {
                     Text("Weekly Average")
                         .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(Theme.secondaryText)
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                     
                     Spacer()
                     
                     Text("\(Int(weeklyAverage)) cal")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                 }
             }
         }
     }
 }
-

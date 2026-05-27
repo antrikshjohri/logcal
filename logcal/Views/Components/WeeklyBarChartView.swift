@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct WeeklyBarChartView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let data: [(day: String, calories: Double, isToday: Bool)]
     let dailyGoal: Double
     
@@ -17,26 +18,16 @@ struct WeeklyBarChartView: View {
         return max > 0 ? max * 1.2 : 1 // Add 20% padding above max
     }
     
-    // Determine bar color based on calories and goal
     private func barColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
         if dayData.calories <= dailyGoal {
-            // Green if calories are less than or equal to goal (or zero)
-            return Color.green
+            return dayData.isToday ? Theme.primaryGreen : Theme.mintGreen.opacity(colorScheme == .dark ? 0.78 : 0.9)
         } else {
-            // Red if calories are more than goal
-            return Color.red
+            return Theme.warningAmber.opacity(colorScheme == .dark ? 0.82 : 0.9)
         }
     }
     
-    // Determine border color for today's bar (darker version of bar color)
     private func todayBorderColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
-        if dayData.calories <= dailyGoal {
-            // Darker green for under/at goal
-            return Color(red: 0, green: 0.6, blue: 0)
-        } else {
-            // Darker red for over goal
-            return Color(red: 0.7, green: 0, blue: 0)
-        }
+        dayData.calories <= dailyGoal ? Theme.primaryGreen : Theme.warningAmber
     }
     
     // Format calories in compact form (e.g., 2.5k, 1.2k, 500)
@@ -57,11 +48,10 @@ struct WeeklyBarChartView: View {
         HStack(alignment: .bottom, spacing: Constants.Spacing.regular) {
             ForEach(Array(data.enumerated()), id: \.offset) { index, dayData in
                 VStack(spacing: 0) {
-                    // Calorie label above bar (only show if > 0)
                     if dayData.calories > 0 {
                         Text(formatCalories(dayData.calories))
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
+                            .foregroundColor(Theme.quietText(colorScheme: colorScheme))
                             .frame(height: 16)
                             .padding(.bottom, 4)
                     } else {
@@ -76,8 +66,8 @@ struct WeeklyBarChartView: View {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(barColor(for: dayData))
                                 .frame(height: max(geometry.size.height * (dayData.calories / chartMax), 4))
+                                .shadow(color: barColor(for: dayData).opacity(0.18), radius: 7, x: 0, y: 4)
                                 .overlay(
-                                    // Add border for today (darker version of bar color)
                                     Group {
                                         if dayData.isToday {
                                             RoundedRectangle(cornerRadius: 4)
@@ -87,15 +77,14 @@ struct WeeklyBarChartView: View {
                                 )
                         }
                     }
-                    .frame(height: 80) // Fixed height for bar area
-                    .padding(.bottom, 8) // Extra padding to prevent overlap with day label
+                    .frame(height: 80)
+                    .padding(.bottom, 8)
                     
-                    // Day label - fixed space below bar with clear separation
                     Text(dayData.day)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Theme.secondaryText)
-                        .frame(height: 20) // Fixed height for text
-                        .padding(.top, 4) // Additional top padding for separation
+                        .foregroundColor(dayData.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
+                        .frame(height: 20)
+                        .padding(.top, 4)
                 }
             }
         }
@@ -115,4 +104,3 @@ struct WeeklyBarChartView: View {
     .frame(height: 120)
     .padding()
 }
-

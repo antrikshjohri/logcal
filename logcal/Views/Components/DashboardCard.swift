@@ -20,10 +20,10 @@ struct DashboardCard<Content: View>: View {
             .padding(Constants.Spacing.extraLarge)
             .background(Theme.cardBackground(colorScheme: colorScheme))
             .overlay(
-                RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
+                RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
                     .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
             )
-            .cornerRadius(Constants.Sizes.largeCornerRadius)
+            .cornerRadius(Constants.Sizes.cornerRadius)
+            .shadow(color: Theme.shadowColor(colorScheme: colorScheme), radius: 18, x: 0, y: 10)
     }
 }
-

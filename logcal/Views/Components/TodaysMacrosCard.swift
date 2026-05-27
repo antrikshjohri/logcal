@@ -29,72 +29,105 @@ struct TodaysMacrosCard: View {
         fatGoal > 0 ? fat / fatGoal : 0
     }
     
-    /// Protein: over goal = green. Carbs/Fat: over goal = red.
-    private func ringColor(macro: String, progress: Double) -> Color {
-        let exceeded = progress >= 1.0
-        switch macro {
-        case "protein": return exceeded ? .green : Theme.accentBlue
-        case "carbs", "fat": return exceeded ? .red : Theme.accentBlue
-        default: return Theme.accentBlue
-        }
-    }
-    
     var body: some View {
         DashboardCard {
             VStack(spacing: Constants.Spacing.large) {
-                // Header
                 HStack {
-                    Text("Today's Macros")
+                    Text("Macro Balance")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                     
                     Spacer()
                     
                     Image(systemName: "chart.pie.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(Theme.secondaryText)
+                        .foregroundColor(Theme.quietText(colorScheme: colorScheme))
                 }
                 
-                // Macros content
                 HStack(spacing: Constants.Spacing.regular) {
-                    // Protein
-                    VStack(spacing: Constants.Spacing.small) {
-                        Text("\(Int(protein))g")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text("Protein")
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(Theme.secondaryText)
-                        ProgressRingView(progress: proteinProgress, size: 60, ringColor: ringColor(macro: "protein", progress: proteinProgress))
-                    }
-                    .frame(maxWidth: .infinity)
-                    
-                    // Carbs
-                    VStack(spacing: Constants.Spacing.small) {
-                        Text("\(Int(carbs))g")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text("Carbs")
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(Theme.secondaryText)
-                        ProgressRingView(progress: carbsProgress, size: 60, ringColor: ringColor(macro: "carbs", progress: carbsProgress))
-                    }
-                    .frame(maxWidth: .infinity)
-                    
-                    // Fat
-                    VStack(spacing: Constants.Spacing.small) {
-                        Text("\(Int(fat))g")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text("Fat")
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(Theme.secondaryText)
-                        ProgressRingView(progress: fatProgress, size: 60, ringColor: ringColor(macro: "fat", progress: fatProgress))
-                    }
-                    .frame(maxWidth: .infinity)
+                    MacroProgressTile(
+                        title: "Protein",
+                        current: protein,
+                        goal: proteinGoal,
+                        progress: proteinProgress,
+                        color: Theme.proteinColor
+                    )
+
+                    MacroProgressTile(
+                        title: "Carbs",
+                        current: carbs,
+                        goal: carbsGoal,
+                        progress: carbsProgress,
+                        color: Theme.carbsColor
+                    )
+
+                    MacroProgressTile(
+                        title: "Fat",
+                        current: fat,
+                        goal: fatGoal,
+                        progress: fatProgress,
+                        color: Theme.fatColor
+                    )
                 }
             }
         }
+    }
+}
+
+private struct MacroProgressTile: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let title: String
+    let current: Double
+    let goal: Double
+    let progress: Double
+    let color: Color
+
+    private var cappedProgress: Double {
+        min(max(progress, 0), 1)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.medium) {
+            HStack {
+                Circle()
+                    .fill(color)
+                    .frame(width: 8, height: 8)
+
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(Int(current))g")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text("of \(Int(goal))g")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+            }
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Theme.cardBorder(colorScheme: colorScheme).opacity(0.65))
+
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color)
+                        .frame(width: geometry.size.width * cappedProgress)
+                }
+            }
+            .frame(height: 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Constants.Spacing.regular)
+        .background(Theme.insetBackground(colorScheme: colorScheme).opacity(0.64))
+        .clipShape(RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius))
     }
 }
 

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ProgressRingView: View {
+    @Environment(\.colorScheme) private var colorScheme
     /// Progress ratio (e.g. 0.75 = 75%, 1.25 = 125%). Ring caps at 100%; label shows actual %.
     let progress: Double
     var size: CGFloat = 80
@@ -20,12 +21,10 @@ struct ProgressRingView: View {
     
     var body: some View {
         ZStack {
-            // Background ring
             Circle()
-                .stroke(Theme.secondaryText.opacity(0.2), lineWidth: 8)
+                .stroke(Theme.cardBorder(colorScheme: colorScheme).opacity(0.8), lineWidth: 8)
                 .frame(width: size, height: size)
             
-            // Progress ring (cap at 1.0 so ring doesn't overflow)
             Circle()
                 .trim(from: 0, to: ringProgress)
                 .stroke(
@@ -33,13 +32,12 @@ struct ProgressRingView: View {
                     style: StrokeStyle(lineWidth: 8, lineCap: .round)
                 )
                 .frame(width: size, height: size)
-                .rotationEffect(.degrees(-90)) // Start from top
+                .rotationEffect(.degrees(-90))
                 .animation(.easeInOut(duration: 0.5), value: ringProgress)
             
-            // Percentage label (can exceed 100%)
             Text("\(displayPercent)%")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.primary)
+                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
         }
     }
 }
@@ -48,4 +46,3 @@ struct ProgressRingView: View {
     ProgressRingView(progress: 0.75)
         .padding()
 }
-
