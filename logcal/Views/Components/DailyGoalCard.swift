@@ -70,11 +70,13 @@ struct DailyGoalCard: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         
                         Text("\(Int(goal)) cal")
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         
                         HStack(spacing: 2) {
                             Text("Edit goal")
@@ -86,7 +88,7 @@ struct DailyGoalCard: View {
                         }
                         .padding(.top, 2)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.6)
                     }
                     
                     Spacer()

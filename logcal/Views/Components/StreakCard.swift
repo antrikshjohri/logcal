@@ -65,18 +65,20 @@ struct StreakCard: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         
                         Text("\(streak) days")
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         
                         Text("Keep it going!")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(Theme.warningAmber)
                             .padding(.top, 2)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.6)
                     }
                     
                     Spacer()
