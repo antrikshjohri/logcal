@@ -90,327 +90,334 @@ struct MealEditView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: Constants.Spacing.large) {
-                // Date and Meal Type in same row
-                HStack(spacing: Constants.Spacing.regular) {
-                    // Date Field
-                    VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                        Text("Date")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+            VStack(spacing: 24) {
+                // Success Header / Title Card
+                VStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(Theme.primaryGreen)
+                        .padding(.top, 16)
+                    
+                    Text("Meal Logged!")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 8)
+                
+                // Estimated Calories Card (Interactive)
+                ZStack(alignment: .topTrailing) {
+                    VStack(spacing: 6) {
+                        if isEditingCalories {
+                            HStack(spacing: 4) {
+                                TextField("Calories", value: $editedCalories, format: .number)
+                                    .keyboardType(.decimalPad)
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: 44, weight: .black, design: .rounded))
+                                    .foregroundColor(Theme.primaryGreen)
+                                    .focused($isCaloriesFieldFocused)
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: 180)
+                                
+                                Text("kcal")
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                        } else {
+                            Text("\(Int(editedCalories)) kcal")
+                                .font(.system(size: 44, weight: .black, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
                         
+                        Text("ESTIMATED CALORIES")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    }
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.cardBackground(colorScheme: colorScheme))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                    )
+                    .shadow(color: Theme.shadowColor(colorScheme: colorScheme), radius: 6, x: 0, y: 3)
+                    
+                    if !isEditingCalories {
+                        Button(action: {
+                            isEditingCalories = true
+                        }) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(Theme.primaryGreen)
+                                .padding(8)
+                                .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                .clipShape(Circle())
+                        }
+                        .padding(12)
+                    }
+                }
+                
+                // Save and Cancel buttons below calorie input field in edit mode
+                if isEditingCalories {
+                    HStack(spacing: 12) {
+                        Button("Cancel") {
+                            cancelCalorieEdit()
+                        }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(22)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+                        
+                        Button("Save") {
+                            saveCalorieEdit()
+                        }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Theme.primaryGreen)
+                        .cornerRadius(22)
+                    }
+                    .transition(.opacity)
+                }
+                
+                // Macros Row
+                if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Theme.proteinColor)
+                                .frame(width: 8, height: 8)
+                            Text("\(Int(protein))g Protein")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.proteinColor.opacity(0.12))
+                        .cornerRadius(12)
+                        
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Theme.carbsColor)
+                                .frame(width: 8, height: 8)
+                            Text("\(Int(carbs))g Carbs")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.carbsColor.opacity(0.12))
+                        .cornerRadius(12)
+                        
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Theme.fatColor)
+                                .frame(width: 8, height: 8)
+                            Text("\(Int(fat))g Fat")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.fatColor.opacity(0.12))
+                        .cornerRadius(12)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+                
+                // Manual Override Notice
+                if caloriesManuallyOverridden {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Calories manually overridden")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(.orange)
+                            Spacer()
+                            Button("Reset") {
+                                resetToDefault()
+                            }
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.primaryGreen)
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                
+                // Details Card (Date, Meal Type, Time, Description/What you ate)
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Date")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        Spacer()
                         Button(action: {
                             showDatePicker = true
                         }) {
-                            HStack {
+                            HStack(spacing: 6) {
                                 Text(DateFormatterCache.formatDate(editedDate))
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                Spacer()
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 Image(systemName: "calendar")
-                                    .foregroundColor(Constants.Colors.primaryBlue)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(Theme.primaryGreen)
                             }
-                            .padding()
-                            .frame(height: 44)
-                            .frame(maxWidth: .infinity)
-                            .background(Theme.cardBackground(colorScheme: colorScheme))
-                            .cornerRadius(Constants.Sizes.cornerRadius)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                            )
                         }
                     }
-                    .frame(maxWidth: .infinity)
                     
-                    // Meal Type Field
-                    VStack(alignment: .leading, spacing: Constants.Spacing.small) {
+                    Divider()
+                        .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                    
+                    HStack {
                         Text("Meal Type")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        Spacer()
                         Picker("Meal Type", selection: $editedMealType) {
                             ForEach(mealTypes, id: \.self) { type in
                                 Text(type.capitalized).tag(type)
                             }
                         }
                         .pickerStyle(.menu)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .frame(height: 44)
-                        .background(Theme.cardBackground(colorScheme: colorScheme))
-                        .cornerRadius(Constants.Sizes.cornerRadius)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                        )
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .accentColor(Theme.primaryGreen)
                     }
-                    .frame(maxWidth: .infinity)
-                }
-                
-                // Time Field (Read-only)
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    Text("Time")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                    
+                    Divider()
+                        .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
                     
                     HStack {
+                        Text("Logged At")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        Spacer()
                         Text(meal.timestamp, style: .time)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Theme.cardBackground(colorScheme: colorScheme).opacity(0.5))
-                    .cornerRadius(Constants.Sizes.cornerRadius)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                            .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                    )
-                }
-                
-                // What you ate Field (Read-only)
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    HStack {
-                        Text("What you ate")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showQuickEdit.toggle()
-                            }
-                        } label: {
-                            Image(systemName: showQuickEdit ? "xmark" : "pencil")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(Constants.Colors.primaryBlue)
-                                .frame(width: 32, height: 32)
-                                .background(Constants.Colors.primaryBackground)
-                                .clipShape(Circle())
-                        }
-                        .accessibilityLabel(showQuickEdit ? "Close description editor" : "Edit food description")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                     }
                     
-                    HStack {
-                        Text(meal.foodText)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Theme.cardBackground(colorScheme: colorScheme).opacity(0.5))
-                    .cornerRadius(Constants.Sizes.cornerRadius)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                            .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                    )
-
-                    if showQuickEdit {
-                        QuickEditMealSection(
-                            prompt: $quickEditPrompt,
-                            isLoading: isQuickEditLoading,
-                            errorMessage: quickEditErrorMessage
-                        ) {
-                            Task {
-                                await quickRefineMeal()
-                            }
-                        }
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                }
-                
-                // Total Calories Field (Editable)
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    Text("Total Calories")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                    Divider()
+                        .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
                     
-                    VStack(spacing: Constants.Spacing.regular) {
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            ZStack(alignment: .leading) {
-                                // Always render TextField but hide when not editing
-                                TextField("Calories", value: $editedCalories, format: .number)
-                                    .keyboardType(.decimalPad)
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(Constants.Colors.primaryBlue)
-                                    .focused($isCaloriesFieldFocused)
-                                    .opacity(isEditingCalories ? 1 : 0)
-                                    .allowsHitTesting(isEditingCalories)
-                                    .multilineTextAlignment(.leading)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color.clear)
-                                
-                                // Show text when not editing
-                                if !isEditingCalories {
-                                    HStack {
-                                        Text("\(Int(editedCalories)) cal")
-                                            .font(.system(size: 24, weight: .bold))
-                                            .foregroundColor(Constants.Colors.primaryBlue)
-                                        Spacer()
-                                    }
-                                    .allowsHitTesting(false)
-                                }
-                            }
-                            
-                            if !isEditingCalories {
-                                Button(action: {
-                                    isEditingCalories = true
-                                }) {
-                                    Image(systemName: "pencil")
-                                        .foregroundColor(Constants.Colors.primaryBlue)
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Theme.cardBackground(colorScheme: colorScheme))
-                        .cornerRadius(Constants.Sizes.cornerRadius)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                        )
-                        
-                        // Macros row
-                        if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
-                            HStack(spacing: 20) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(Int(protein))g")
-                                        .font(.system(size: 18, weight: .semibold))
-                                    Text("Protein")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(Int(carbs))g")
-                                        .font(.system(size: 18, weight: .semibold))
-                                    Text("Carbs")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(Int(fat))g")
-                                        .font(.system(size: 18, weight: .semibold))
-                                    Text("Fat")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, 8)
-                        }
-                        
-                        // Save and Cancel buttons below input field
-                        if isEditingCalories {
-                            HStack(spacing: Constants.Spacing.regular) {
-                                Button("Cancel") {
-                                    cancelCalorieEdit()
-                                }
-                                .foregroundColor(.secondary)
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(Theme.cardBackground(colorScheme: colorScheme))
-                                .cornerRadius(Constants.Sizes.cornerRadius)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                                )
-                                
-                                Button("Save") {
-                                    saveCalorieEdit()
-                                }
-                                .foregroundColor(.white)
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(Constants.Colors.primaryBlue)
-                                .cornerRadius(Constants.Sizes.cornerRadius)
-                            }
-                        }
-                    }
-                }
-                .onChange(of: isEditingCalories) { oldValue, newValue in
-                    if !newValue {
-                        // When editing ends, remove focus
-                        isCaloriesFieldFocused = false
-                    }
-                }
-                
-                // Manual Override Notice
-                if caloriesManuallyOverridden {
-                    VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle")
-                                .foregroundColor(.orange)
-                            Text("Calories manually overridden")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            Text("What you ate")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                             Spacer()
-                            Button("Reset to default") {
-                                resetToDefault()
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showQuickEdit.toggle()
+                                }
+                            } label: {
+                                Image(systemName: showQuickEdit ? "xmark" : "pencil")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Theme.primaryGreen)
+                                    .frame(width: 26, height: 26)
+                                    .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                    .clipShape(Circle())
                             }
-                            .font(.subheadline)
-                            .foregroundColor(Constants.Colors.primaryBlue)
                         }
-                        .padding()
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(Constants.Sizes.cornerRadius)
+                        
+                        Text(meal.foodText)
+                            .font(.system(size: 15, design: .rounded))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(Theme.insetBackground(colorScheme: colorScheme))
+                            .cornerRadius(10)
+                        
+                        if showQuickEdit {
+                            QuickEditMealSection(
+                                prompt: $quickEditPrompt,
+                                isLoading: isQuickEditLoading,
+                                errorMessage: quickEditErrorMessage
+                            ) {
+                                Task {
+                                    await quickRefineMeal()
+                                }
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
                 }
+                .padding(16)
+                .background(Theme.cardBackground(colorScheme: colorScheme))
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                )
+                .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.5), radius: 4, x: 0, y: 2)
                 
-                // Items Breakdown
+                // Items Breakdown List Card
                 if let response = modifiedResponse ?? meal.response, !caloriesManuallyOverridden {
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("Items Breakdown")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .padding(.horizontal, 4)
                         
-                        ForEach(Array(response.items.enumerated()), id: \.offset) { index, item in
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text(item.name)
-                                        .font(.title3)
-                                        .fontWeight(.semibold)
-                                    Spacer()
-                                    Text("\(Int(item.calories)) cal")
-                                        .font(.title3)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(Constants.Colors.primaryBlue)
-                                }
-                                
-                                Text("Quantity: \(item.quantity)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                // Macros per item
-                                if let protein = item.protein, let carbs = item.carbs, let fat = item.fat {
-                                    MacrosCaptionLine(protein: protein, carbs: carbs, fat: fat)
-                                        .padding(.top, 4)
-                                }
-                                
-                                if let assumptions = item.assumptions, !assumptions.isEmpty {
-                                    Text("Assumptions: \(assumptions)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                        VStack(spacing: 16) {
+                            ForEach(Array(response.items.enumerated()), id: \.offset) { index, item in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text(item.name)
+                                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                        Spacer()
+                                        Text("\(Int(item.calories)) cal")
+                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                            .foregroundColor(Theme.primaryGreen)
+                                    }
+                                    
+                                    Text("Quantity: \(item.quantity)")
+                                        .font(.system(size: 13, design: .rounded))
+                                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                    
+                                    if let p = item.protein, let c = item.carbs, let f = item.fat {
+                                        MacrosCaptionLine(protein: p, carbs: c, fat: f, font: .system(size: 12, design: .rounded))
+                                            .padding(.top, 2)
+                                    }
+                                    
+                                    if let assumptions = item.assumptions, !assumptions.isEmpty {
+                                        Text("Assumptions: \(assumptions)")
+                                            .font(.system(size: 11, design: .rounded))
+                                            .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+                                            .padding(.top, 2)
+                                    }
                                 }
                                 
                                 if index < response.items.count - 1 {
                                     Divider()
-                                        .padding(.top, 8)
+                                        .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
                                 }
                             }
-                            .padding()
-                            .background(Theme.cardBackground(colorScheme: colorScheme))
-                            .cornerRadius(Constants.Sizes.cornerRadius)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                            )
                         }
+                        .padding(16)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+                        .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.5), radius: 4, x: 0, y: 2)
                     }
                 }
-
-                HStack(spacing: Constants.Spacing.regular) {
+                
+                // Favorites and Delete Row
+                HStack(spacing: 12) {
                     Button(action: {
                         if let savedMeal = currentSavedMeal {
                             savedMealPendingDeletion = savedMeal
@@ -418,89 +425,96 @@ struct MealEditView: View {
                             saveAsFavorite()
                         }
                     }) {
-                        HStack {
+                        HStack(spacing: 6) {
                             Image(systemName: isSavedToFavorites ? "bookmark.fill" : "bookmark")
-                            Text(isSavedToFavorites ? "Meal saved" : "Save meal")
+                            Text(isSavedToFavorites ? "Saved" : "Save Favorite")
                         }
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Constants.Colors.primaryBlue)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(Theme.primaryGreen)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Constants.Colors.primaryBackground)
-                        .cornerRadius(Constants.Sizes.cornerRadius)
+                        .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                        .cornerRadius(25)
                     }
 
                     Button(action: {
                         showDeleteConfirmation = true
                     }) {
-                        HStack {
-                            Image(systemName: "trash")
+                        HStack(spacing: 6) {
+                            Image(systemName: "trash.fill")
                             Text("Delete")
                         }
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Color.red)
-                        .cornerRadius(Constants.Sizes.cornerRadius)
+                        .background(Theme.dangerRed)
+                        .cornerRadius(25)
+                        .shadow(color: Theme.dangerRed.opacity(0.25), radius: 6, x: 0, y: 3)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.top, Constants.Spacing.extraLarge)
+                .padding(.top, 16)
             }
-            .padding()
+            .padding(16)
         }
+        .background(Theme.backgroundColor(colorScheme: colorScheme))
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Meal Details")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button("Cancel") {
                     dismiss()
                 }
+                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .foregroundColor(Theme.primaryGreen)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
                     saveChanges()
                 }
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Theme.primaryGreen)
             }
         }
         .sheet(isPresented: $showDatePicker) {
-                NavigationStack {
-                    VStack {
-                        DatePicker(
-                            "Select Date",
-                            selection: $editedDate,
-                            displayedComponents: [.date]
-                        )
-                        .datePickerStyle(.graphical)
-                        .padding()
-                        
-                        Spacer()
-                    }
-                    .navigationTitle("Select Date")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") {
-                                showDatePicker = false
-                            }
+            NavigationStack {
+                VStack {
+                    DatePicker(
+                        "Select Date",
+                        selection: $editedDate,
+                        displayedComponents: [.date]
+                    )
+                    .datePickerStyle(.graphical)
+                    .padding()
+                    
+                    Spacer()
+                }
+                .navigationTitle("Select Date")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showDatePicker = false
                         }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.primaryGreen)
                     }
                 }
             }
+        }
         .alert("Remove Items Breakdown?", isPresented: $showCalorieEditConfirmation) {
-                Button("Cancel", role: .cancel) {
-                    cancelCalorieEdit()
-                }
-                Button("Yes", role: .destructive) {
-                    confirmCalorieEdit()
-                }
+            Button("Cancel", role: .cancel) {
+                cancelCalorieEdit()
+            }
+            Button("Yes", role: .destructive) {
+                confirmCalorieEdit()
+            }
         } message: {
             Text("Editing calories will remove the items breakdown. You can reset to default later.")
         }
         .alert("Delete Meal", isPresented: $showDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
                 deleteMeal()
             }

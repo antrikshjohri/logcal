@@ -386,29 +386,37 @@ struct DashboardView: View {
 private struct LogDatePickerSheet: View {
     @Binding var selectedDate: Date
     @Binding var isPresented: Bool
+    @Environment(\.colorScheme) private var colorScheme
     @State private var dayBaselineForDismiss: Date?
 
     var body: some View {
         NavigationStack {
-            VStack {
-                DatePicker(
-                    "Select Date",
-                    selection: $selectedDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.graphical)
-                .padding()
-                .onAppear {
-                    dayBaselineForDismiss = selectedDate
-                }
-                .onChange(of: selectedDate) { _, newValue in
-                    guard let baseline = dayBaselineForDismiss else { return }
-                    if !Calendar.current.isDate(newValue, equalTo: baseline, toGranularity: .day) {
-                        isPresented = false
+            ZStack {
+                Theme.backgroundColor(colorScheme: colorScheme)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    VStack {
+                        DatePicker(
+                            "Select Date",
+                            selection: $selectedDate,
+                            displayedComponents: [.date]
+                        )
+                        .datePickerStyle(.graphical)
+                        .tint(Theme.primaryGreen)
+                        .padding(8)
                     }
+                    .background(Theme.cardBackground(colorScheme: colorScheme))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                    )
+                    .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.4), radius: 8, x: 0, y: 4)
+                    .padding(16)
+                    
+                    Spacer()
                 }
-
-                Spacer()
             }
             .navigationTitle("Select Date")
             .navigationBarTitleDisplayMode(.inline)
@@ -417,6 +425,17 @@ private struct LogDatePickerSheet: View {
                     Button("Close") {
                         isPresented = false
                     }
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.primaryGreen)
+                }
+            }
+            .onAppear {
+                dayBaselineForDismiss = selectedDate
+            }
+            .onChange(of: selectedDate) { _, newValue in
+                guard let baseline = dayBaselineForDismiss else { return }
+                if !Calendar.current.isDate(newValue, equalTo: baseline, toGranularity: .day) {
+                    isPresented = false
                 }
             }
         }

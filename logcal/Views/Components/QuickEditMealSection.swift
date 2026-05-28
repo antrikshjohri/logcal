@@ -80,24 +80,21 @@ struct QuickEditMealSection: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: Constants.Spacing.small) {
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    TextField("Correct the food description", text: $prompt, axis: .vertical)
+            let placeholderText: String = {
+                if dictation.isListening {
+                    return "Listening..."
+                } else if dictation.isTranscribing {
+                    return "Transcribing..."
+                } else {
+                    return "Correct the food description"
+                }
+            }()
+
+            HStack(alignment: .center, spacing: Constants.Spacing.small) {
+                VStack(alignment: .leading, spacing: 0) {
+                    TextField(placeholderText, text: $prompt, axis: .vertical)
                         .lineLimit(2...5)
                         .disabled(isLoading || dictation.isListening || dictation.isTranscribing)
-
-                    if dictation.isListening {
-                        Text("Listening...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if dictation.isTranscribing {
-                        HStack(spacing: Constants.Spacing.small) {
-                            ProgressView()
-                            Text("Transcribing...")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 

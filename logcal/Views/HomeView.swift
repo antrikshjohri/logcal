@@ -23,72 +23,89 @@ struct HomeView: View {
     @State private var mealPreviewAutoDismissWork: DispatchWorkItem?
     @State private var quickEditPrompt = ""
     @State private var selectedSavedMeal: SavedMeal?
+    @State private var showAllFavorites = false
+    @State private var showMealTypeDropdown = false
     
     var body: some View {
-        NavigationStack {
-            mainContent
-                .navigationTitle("Log Calories")
-                .onChange(of: viewModel.latestResult) { oldValue, newValue in
-                    mealPreviewAutoDismissWork?.cancel()
-                    mealPreviewAutoDismissWork = nil
-                    if newValue == nil {
-                        quickEditPrompt = ""
-                    }
-                    
-                    if oldValue == nil && newValue != nil {
-                        showConfetti = true
-                        // Auto-dismiss confetti after animation completes (3 seconds)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                            showConfetti = false
+        ZStack {
+            NavigationStack {
+                mainContent
+                    .navigationTitle("Log")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .onChange(of: viewModel.latestResult) { oldValue, newValue in
+                        mealPreviewAutoDismissWork?.cancel()
+                        mealPreviewAutoDismissWork = nil
+                        if newValue == nil {
+                            quickEditPrompt = ""
                         }
-                    }
-                    
-                    if newValue != nil {
-                        let work = DispatchWorkItem { [viewModel] in
-                            print("DEBUG: [HomeView] Meal preview auto-dismiss after 2 minutes")
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                viewModel.latestResult = nil
+                        
+                        if oldValue == nil && newValue != nil {
+                            showConfetti = true
+                            // Auto-dismiss confetti after animation completes (3 seconds)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                                showConfetti = false
                             }
                         }
-                        mealPreviewAutoDismissWork = work
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 120.0, execute: work)
-                    }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SetMealTypeFromNotification"))) { notification in
-                    // Set meal type when notification is tapped
-                    if let userInfo = notification.userInfo,
-                       let mealTypeString = userInfo["mealType"] as? String,
-                       let mealType = MealType(rawValue: mealTypeString) {
-                        print("DEBUG: [HomeView] Setting meal type from notification: \(mealTypeString)")
-                        viewModel.selectedMealType = mealType
-                        viewModel.isMealTypeManuallySet = true
-                    }
-                }
-                .modifier(HomeViewModifiers(
-                    viewModel: viewModel,
-                    modelContext: modelContext,
-                    navigateToDateTimestamp: $navigateToDateTimestamp,
-                    toastManager: toastManager,
-                    showConfetti: $showConfetti,
-                    showUpdateRequiredAlert: Binding(
-                        get: { viewModel.showUpdateRequiredAlert },
-                        set: { viewModel.showUpdateRequiredAlert = $0 }
-                    )
-                ))
-                .sheet(item: $selectedSavedMeal) { savedMeal in
-                    SavedMealLogSheet(
-                        savedMeal: savedMeal,
-                        onLog: { servingMultiplier in
-                            viewModel.logSavedMealAsIs(savedMeal, servingMultiplier: servingMultiplier)
-                            selectedSavedMeal = nil
-                        },
-                        onEdit: {
-                            viewModel.prepareSavedMealForEditing(savedMeal)
-                            selectedSavedMeal = nil
-                            isTextFieldFocused = true
+                        
+                        if newValue != nil {
+                            let work = DispatchWorkItem { [viewModel] in
+                                print("DEBUG: [HomeView] Meal preview auto-dismiss after 2 minutes")
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    viewModel.latestResult = nil
+                                }
+                            }
+                            mealPreviewAutoDismissWork = work
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 120.0, execute: work)
                         }
-                    )
-                }
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SetMealTypeFromNotification"))) { notification in
+                        // Set meal type when notification is tapped
+                        if let userInfo = notification.userInfo,
+                           let mealTypeString = userInfo["mealType"] as? String,
+                           let mealType = MealType(rawValue: mealTypeString) {
+                            print("DEBUG: [HomeView] Setting meal type from notification: \(mealTypeString)")
+                            viewModel.selectedMealType = mealType
+                            viewModel.isMealTypeManuallySet = true
+                        }
+                    }
+                    .modifier(HomeViewModifiers(
+                        viewModel: viewModel,
+                        modelContext: modelContext,
+                        navigateToDateTimestamp: $navigateToDateTimestamp,
+                        toastManager: toastManager,
+                        showConfetti: $showConfetti,
+                        showUpdateRequiredAlert: Binding(
+                            get: { viewModel.showUpdateRequiredAlert },
+                            set: { viewModel.showUpdateRequiredAlert = $0 }
+                        )
+                    ))
+                    .sheet(item: $selectedSavedMeal) { savedMeal in
+                        SavedMealLogSheet(
+                            savedMeal: savedMeal,
+                            onLog: { servingMultiplier in
+                                viewModel.logSavedMealAsIs(savedMeal, servingMultiplier: servingMultiplier)
+                                selectedSavedMeal = nil
+                            },
+                            onEdit: {
+                                viewModel.prepareSavedMealForEditing(savedMeal)
+                                selectedSavedMeal = nil
+                                isTextFieldFocused = true
+                            }
+                        )
+                    }
+                    .sheet(isPresented: $showAllFavorites) {
+                        AllFavoritesSheet(
+                            savedMeals: savedMeals,
+                            onSelectMeal: { meal in
+                                showAllFavorites = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                    selectedSavedMeal = meal
+                                }
+                            }
+                        )
+                    }
+            }
+
         }
     }
     
@@ -106,555 +123,889 @@ struct HomeView: View {
 
     private var mainContent: some View {
         ScrollView {
-                let isComposerBusy = viewModel.isListening || viewModel.isTranscribingSpeech
-                let canSubmitMeal = viewModel.canSubmitMeal
-                let imageLimitReached = viewModel.selectedImages.count >= Constants.Images.maxMealImages
-                let stopButtonBackground = colorScheme == .dark
-                    ? Color(white: 0.22)
-                    : Constants.Colors.primaryBlue.opacity(0.18)
-                VStack(spacing: 20) {
-                    // Welcome message (if signed in)
-                    if authViewModel.isSignedIn, let userName = authViewModel.userName {
-                        HStack {
-                            Text("Welcome \(userName)")
-                                .font(.headline)
-                                .foregroundColor(Constants.Colors.primaryBlue)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, Constants.Spacing.small)
-                    }
-                    // Date and Meal Type in same line
-                    HStack(spacing: 16) {
-                        // Date picker
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Date")
-                                .font(.headline)
-                            
-                            Button(action: {
-                                AnalyticsService.trackDatePickerOpened()
-                                viewModel.showDatePicker = true
-                            }) {
-                                HStack {
-                                    Text(DateFormatterCache.formatDate(viewModel.selectedDate))
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    Image(systemName: "calendar")
-                                        .foregroundColor(Constants.Colors.primaryBlue)
-                                }
-                                .frame(height: 44)
-                                .padding(.horizontal)
-                                .frame(maxWidth: .infinity)
-                                .background(Constants.Colors.primaryBackground)
-                                .cornerRadius(Constants.Sizes.cornerRadius)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        
-                        // Meal type picker
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Meal Type")
-                                .font(.headline)
-                            
-                            Picker("Meal Type", selection: $viewModel.selectedMealType) {
-                                ForEach(MealType.allCases, id: \.self) { mealType in
-                                    Text(mealType.rawValue.capitalized).tag(mealType)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .onChange(of: viewModel.selectedMealType) { oldValue, newValue in
-                                viewModel.handleMealTypeChange(newValue)
-                            }
-                            .frame(height: 44)
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal)
-                            .background(Constants.Colors.primaryBackground)
-                            .cornerRadius(Constants.Sizes.cornerRadius)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .padding(.horizontal)
-                    .sheet(isPresented: $viewModel.showDatePicker) {
-                        LogDatePickerSheet(
-                            selectedDate: $viewModel.selectedDate,
-                            isPresented: $viewModel.showDatePicker
-                        )
-                    }
-                    
-                    // Food text input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("What did you eat?")
-                            .font(.headline)
-                        
-                        // Image preview (if images are selected)
-                        if !viewModel.selectedImages.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: Constants.Spacing.regular) {
-                                    ForEach(Array(viewModel.selectedImages.enumerated()), id: \.offset) { index, image in
-                                        ZStack(alignment: .topTrailing) {
-                                            Image(uiImage: image)
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 80, height: 80)
-                                                .clipShape(RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius))
-
-                                            Button(action: {
-                                                AnalyticsService.trackImageRemoved()
-                                                viewModel.removeImage(at: index)
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .font(.system(size: 20))
-                                                    .foregroundColor(.white)
-                                                    .background(Color.black.opacity(0.6))
-                                                    .clipShape(Circle())
-                                            }
-                                            .offset(x: 4, y: -4)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.bottom, Constants.Spacing.small)
-                        }
-                        
-                        ZStack(alignment: .topLeading) {
-                            TextEditor(text: $viewModel.foodText)
-                                .frame(minHeight: Constants.Sizes.textEditorMinHeight)
-                                .padding(EdgeInsets(
-                                    top: Constants.Spacing.medium,
-                                    leading: Constants.Spacing.medium,
-                                    bottom: foodTextEditorBottomPadding,
-                                    trailing: Constants.Spacing.medium
-                                ))
-                                .focused($isTextFieldFocused)
-                                .allowsHitTesting(!viewModel.isListening && !viewModel.isTranscribingSpeech)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
-                                        .stroke(Constants.Colors.borderGray, lineWidth: Constants.Sizes.borderWidth)
-                                )
-
-                            let isTextEmpty = viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            let showPlaceholder = isTextEmpty && viewModel.selectedImages.isEmpty
-                                && !viewModel.isListening && !viewModel.isTranscribingSpeech
-
-                            if showPlaceholder {
-                                Text("Write or speak naturally about what you ate.")
-                                    .foregroundColor(Constants.Colors.primaryGray)
-                                    .font(.subheadline)
-                                    .padding(.horizontal, Constants.Spacing.regular)
-                                    .padding(.vertical, Constants.Spacing.large)
-                                    .allowsHitTesting(false)
-                            }
-
-                            if viewModel.isTranscribingSpeech {
-                                HStack(spacing: 10) {
-                                    ProgressView()
-                                    Text("Transcribing…")
-                                        .foregroundColor(Constants.Colors.primaryGray)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                }
-                                .padding(.horizontal, Constants.Spacing.regular)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isTextEmpty ? .topLeading : .bottomLeading)
-                                .padding(.top, isTextEmpty ? Constants.Spacing.large : 0)
-                                .padding(.bottom, isTextEmpty ? 0 : 52)
-                                .allowsHitTesting(false)
-                            }
-
-                            // Icon buttons row (overlaid at bottom, inside text editor boundary)
-                            VStack {
-                                Spacer()
-                                HStack(alignment: .center) {
-                                    if viewModel.isListening {
-                                        DictationWaveformView(samples: viewModel.waveformSamples)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .padding(.leading, Constants.Spacing.regular)
-                                            .padding(.trailing, Constants.Spacing.small)
-                                    } else {
-                                        Spacer()
-                                    }
-
-                                    if !viewModel.isListening {
-                                        // Camera button (only show if camera is available)
-                                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                                            Button(action: {
-                                                AnalyticsService.trackCameraPickerOpened()
-                                                viewModel.showCameraPicker = true
-                                            }) {
-                                                Image(systemName: "camera.fill")
-                                                    .font(.system(size: Constants.Sizes.micIcon))
-                                                    .foregroundColor(Constants.Colors.primaryBlue)
-                                                    .padding(Constants.Spacing.medium)
-                                                    .background(Constants.Colors.micInactiveBackground)
-                                                    .clipShape(Circle())
-                                            }
-                                            .disabled(isComposerBusy || imageLimitReached)
-                                            .opacity((isComposerBusy || imageLimitReached) ? 0.45 : 1)
-                                            .padding(.trailing, Constants.Spacing.small)
-                                        }
-
-                                        // Image picker button
-                                        Button(action: {
-                                            AnalyticsService.trackImagePickerOpened()
-                                            viewModel.showImagePicker = true
-                                        }) {
-                                            Image(systemName: !viewModel.selectedImages.isEmpty ? "photo.fill" : "photo")
-                                                .font(.system(size: Constants.Sizes.micIcon))
-                                                .foregroundColor(Constants.Colors.primaryBlue)
-                                                .padding(Constants.Spacing.medium)
-                                                .background(Constants.Colors.micInactiveBackground)
-                                                .clipShape(Circle())
-                                        }
-                                        .disabled(isComposerBusy || imageLimitReached)
-                                        .opacity((isComposerBusy || imageLimitReached) ? 0.45 : 1)
-                                        .padding(.trailing, Constants.Spacing.small)
-                                    }
-
-                                    if viewModel.isListening {
-                                        Button(action: {
-                                            viewModel.cancelSpeechRecognition()
-                                        }) {
-                                            Image(systemName: "xmark")
-                                                .font(.system(size: Constants.Sizes.micIcon - 1, weight: .semibold))
-                                                .foregroundColor(.white)
-                                                .padding(Constants.Spacing.medium)
-                                                .background(Color.red.opacity(0.9))
-                                                .clipShape(Circle())
-                                        }
-                                        .padding(.trailing, Constants.Spacing.small)
-
-                                        Button(action: {
-                                            viewModel.stopSpeechRecognition()
-                                        }) {
-                                            Image(systemName: "stop.fill")
-                                                .font(.system(size: Constants.Sizes.micIcon - 1))
-                                                .foregroundColor(Constants.Colors.primaryBlue)
-                                                .padding(Constants.Spacing.medium)
-                                                .background(stopButtonBackground)
-                                                .clipShape(Circle())
-                                        }
-                                        .padding(.trailing, Constants.Spacing.small)
-                                    }
-
-                                    // Mic/send button (record while idle, transcribe+log while listening)
-                                    Button(action: {
-                                        if viewModel.isListening {
-                                            isTextFieldFocused = false
-                                            Task {
-                                                print("DEBUG: Send tapped while dictating")
-                                                await viewModel.logMeal()
-                                                print("DEBUG: Send while dictating completed")
-                                            }
-                                        } else {
-                                            isTextFieldFocused = false
-                                            viewModel.toggleSpeechRecognition()
-                                        }
-                                    }) {
-                                        Image(systemName: viewModel.isListening ? "arrow.up" : "mic")
-                                            .font(.system(size: Constants.Sizes.micIcon))
-                                            .foregroundColor(viewModel.isListening ? .white : Constants.Colors.primaryBlue)
-                                            .padding(Constants.Spacing.medium)
-                                            .background(viewModel.isListening ? Constants.Colors.primaryBlue : Constants.Colors.micInactiveBackground)
-                                            .clipShape(Circle())
-                                    }
-                                    .disabled(viewModel.isTranscribingSpeech)
-                                    .opacity(viewModel.isTranscribingSpeech ? 0.45 : 1)
-                                    .padding(.trailing, Constants.Spacing.regular)
-                                }
-                                .padding(.bottom, Constants.Spacing.medium)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .onChange(of: viewModel.isListening) { _, isListening in
-                        if isListening {
-                            isTextFieldFocused = false
-                        }
-                    }
-                    .sheet(isPresented: $viewModel.showImagePicker) {
-                        ImagePickerView(selectedImages: Binding(
-                            get: { viewModel.selectedImages },
-                            set: { viewModel.setImages($0) }
-                        ))
-                    }
-                    .sheet(isPresented: $viewModel.showCameraPicker) {
-                        CameraPickerView(selectedImage: Binding(
-                            get: { nil },
-                            set: { viewModel.appendImage($0) }
-                        ))
-                    }
-                    
-                    // Log button
-                    Button(action: {
-                        // Dismiss keyboard
-                        isTextFieldFocused = false
-                        Task {
-                            print("DEBUG: Log Meal button tapped")
-                            await viewModel.logMeal()
-                            print("DEBUG: Log Meal button action completed")
-                        }
-                    }) {
-                        ZStack {
-                            if viewModel.isLoading {
-                                // Show Lottie animation when loading
-                                LottieView(animationName: "LoadingAnimation", loopMode: LottieLoopMode.loop, contentMode: .scaleAspectFit)
-                                    .frame(height: 24)
-                            } else {
-                                Text("Log Meal")
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            viewModel.isLoading 
-                                ? Color.gray.opacity(0.3) 
-                                : (canSubmitMeal ? Constants.Colors.primaryBlue : Constants.Colors.primaryGray)
-                        )
-                        .foregroundColor(.white)
-                        .cornerRadius(Constants.Sizes.cornerRadius + 2)
-                    }
-                    .disabled(!canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech)
-                    .padding(.horizontal)
-
-                    if !savedMeals.isEmpty {
-                        savedMealsSection
-                    }
-                    
-                    // Result card
-                    if let result = viewModel.latestResult {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .center, spacing: 0) {
-                                HStack(alignment: .center, spacing: 8) {
-                                    Text("Logged Successfully")
-                                        .font(.headline)
-                                    Text(result.mealType.capitalized)
-                                        .font(.caption)
-                                        .padding(.horizontal, Constants.Spacing.medium)
-                                        .padding(.vertical, Constants.Spacing.small)
-                                        .background(Constants.Colors.badgeBackground)
-                                        .cornerRadius(Constants.Spacing.small)
-                                }
-                                Spacer(minLength: 12)
-                                Button(action: {
-                                    viewModel.saveLatestMealAsFavorite()
-                                    toastManager.show(ToastMessage(
-                                        title: "Saved",
-                                        message: "Meal added to saved meals.",
-                                        type: .success
-                                    ))
-                                }) {
-                                    Image(systemName: "bookmark")
-                                        .font(.title3)
-                                        .foregroundStyle(Constants.Colors.primaryBlue)
-                                        .accessibilityLabel("Save meal")
-                                }
-                                .buttonStyle(.plain)
-                                .padding(.trailing, Constants.Spacing.regular)
-
-                                Button(action: {
-                                    print("DEBUG: [HomeView] User dismissed meal preview (close)")
-                                    mealPreviewAutoDismissWork?.cancel()
-                                    mealPreviewAutoDismissWork = nil
-                                    quickEditPrompt = ""
-                                    viewModel.errorMessage = nil
-                                    withAnimation(.easeOut(duration: 0.3)) {
-                                        viewModel.latestResult = nil
-                                    }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                        .accessibilityLabel("Dismiss meal summary")
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            
-                            Text("Total Calories: \(Int(result.totalCalories))")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            
-                            // Macros row (meal totals or sum of items — same data history uses from rawResponseJson)
-                            if let macros = result.resolvedMealMacrosForDisplay() {
-                                HStack(spacing: 20) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(Int(macros.protein))g")
-                                            .font(.system(size: 16, weight: .semibold))
-                                        Text("Protein")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(Int(macros.carbs))g")
-                                            .font(.system(size: 16, weight: .semibold))
-                                        Text("Carbs")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(Int(macros.fat))g")
-                                            .font(.system(size: 16, weight: .semibold))
-                                        Text("Fat")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .padding(.top, 8)
-                            }
-                            
-                            Divider()
-                            
-                            Text("Items:")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            
-                            ForEach(Array(result.items.enumerated()), id: \.offset) { index, item in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(item.name)
-                                            .fontWeight(.medium)
-                                        Spacer()
-                                        Text("\(Int(item.calories)) cal")
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Text("\(item.quantity)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    // Per-item macros (same style as History list / meal detail)
-                                    if let p = item.protein, let c = item.carbs, let f = item.fat {
-                                        MacrosCaptionLine(protein: p, carbs: c, fat: f)
-                                            .padding(.top, 2)
-                                    }
-                                    if let assumptions = item.assumptions, !assumptions.isEmpty {
-                                        Text("Assumptions: \(assumptions)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                                
-                                if index < result.items.count - 1 {
-                                    Divider()
-                                }
-                            }
-
-                            Divider()
-                            QuickEditMealSection(
-                                prompt: $quickEditPrompt,
-                                isLoading: viewModel.isRefiningMeal,
-                                errorMessage: viewModel.errorMessage
-                            ) {
-                                Task {
-                                    let text = quickEditPrompt
-                                    await viewModel.quickRefineLoggedMeal(correctionPrompt: text)
-                                    if viewModel.errorMessage == nil {
-                                        quickEditPrompt = ""
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Constants.Colors.secondaryBackground)
-                        .cornerRadius(Constants.Sizes.largeCornerRadius)
-                        .padding(.horizontal)
-                        .onAppear {
-                            // Track analytics
-                            AnalyticsService.trackMealSummaryViewed()
-                            for item in result.items {
-                                if item.protein == nil || item.carbs == nil || item.fat == nil {
-                                    print("DEBUG: [HomeView] preview item '\(item.name)' missing macros p=\(String(describing: item.protein)) c=\(String(describing: item.carbs)) f=\(String(describing: item.fat))")
-                                }
-                            }
-                        }
-                    }
-                    }
-                .padding(.vertical)
+            VStack(spacing: 16) {
+                dateAndMealTypeRow
+                
+                if !savedMeals.isEmpty {
+                    savedMealsSection
+                }
+                
+                foodTextInputCard
+                
+                logMealButton
+                
+                resultCardSection
             }
+            .padding(.vertical)
+        }
+        .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .dismissDropdownOnScroll(show: $showMealTypeDropdown)
     }
 
-    private var savedMealsSection: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-            HStack {
-                Text("Saved Meals")
-                    .font(.headline)
-                Spacer()
-            }
-            .padding(.horizontal)
-
-            VStack(spacing: Constants.Spacing.small) {
-                ForEach(savedMeals.prefix(8)) { savedMeal in
-                    Button {
-                        selectedSavedMeal = savedMeal
-                    } label: {
-                        HStack(spacing: Constants.Spacing.regular) {
-                            Image(systemName: "bookmark.fill")
-                                .font(.subheadline)
-                                .foregroundColor(Constants.Colors.primaryBlue)
-                                .frame(width: 22)
-
-                            Text(savedMeal.title)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.primary)
+    private var dateAndMealTypeRow: some View {
+        HStack(spacing: 12) {
+            // Date picker
+            VStack(alignment: .leading, spacing: 6) {
+                Text("DATE")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                
+                HStack(spacing: 0) {
+                    // Left arrow - previous day
+                    Button(action: {
+                        viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: viewModel.selectedDate) ?? viewModel.selectedDate
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .frame(width: 28, height: 40)
+                            .contentShape(Rectangle())
+                    }
+                    
+                    // Date text - opens calendar sheet
+                    Button(action: {
+                        AnalyticsService.trackDatePickerOpened()
+                        viewModel.showDatePicker = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Text(DateFormatterCache.formatDate(viewModel.selectedDate))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
-                                .truncationMode(.tail)
-
-                            Spacer(minLength: Constants.Spacing.small)
-
-                            Text("\(Int(savedMeal.totalCalories)) cal")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.secondary)
+                            Image(systemName: "calendar")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Theme.primaryGreen)
                         }
-                        .padding(.horizontal, Constants.Spacing.regular)
-                        .frame(height: 48)
-                        .background(Constants.Colors.secondaryBackground)
-                        .cornerRadius(Constants.Sizes.cornerRadius)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    
+                    // Right arrow - next day
+                    Button(action: {
+                        viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: viewModel.selectedDate) ?? viewModel.selectedDate
+                    }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .frame(width: 28, height: 40)
+                            .contentShape(Rectangle())
+                    }
+                }
+                .frame(height: 40)
+                .background(Theme.cardBackground(colorScheme: colorScheme))
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                )
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Meal type picker
+            VStack(alignment: .leading, spacing: 6) {
+                Text("MEAL TYPE")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                
+                HStack(spacing: 0) {
+                    // Left arrow - previous meal type (wraps around)
+                    Button(action: {
+                        let allMeals = MealType.allCases
+                        if let idx = allMeals.firstIndex(of: viewModel.selectedMealType) {
+                            let prevIdx = (idx - 1 + allMeals.count) % allMeals.count
+                            viewModel.selectedMealType = allMeals[prevIdx]
+                            viewModel.handleMealTypeChange(viewModel.selectedMealType)
+                        }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .frame(width: 28, height: 40)
+                            .contentShape(Rectangle())
+                    }
+                    
+                    // Meal type label - taps to toggle custom dropdown
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showMealTypeDropdown.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Text(viewModel.selectedMealType.rawValue.capitalized)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                .lineLimit(1)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Theme.primaryGreen)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    
+                    // Right arrow - next meal type (wraps around)
+                    Button(action: {
+                        let allMeals = MealType.allCases
+                        if let idx = allMeals.firstIndex(of: viewModel.selectedMealType) {
+                            let nextIdx = (idx + 1) % allMeals.count
+                            viewModel.selectedMealType = allMeals[nextIdx]
+                            viewModel.handleMealTypeChange(viewModel.selectedMealType)
+                        }
+                    }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .frame(width: 28, height: 40)
+                            .contentShape(Rectangle())
+                    }
+                }
+                .frame(height: 40)
+                .background(Theme.cardBackground(colorScheme: colorScheme))
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            showMealTypeDropdown ? Theme.primaryGreen.opacity(0.5) : Theme.cardBorder(colorScheme: colorScheme),
+                            lineWidth: showMealTypeDropdown ? 1.5 : 1
+                        )
+                )
+                .overlay(alignment: .top) {
+                    if showMealTypeDropdown {
+                        VStack(spacing: 0) {
+                            ForEach(Array(MealType.allCases.enumerated()), id: \.element) { index, mealType in
+                                Button(action: {
+                                    viewModel.selectedMealType = mealType
+                                    viewModel.handleMealTypeChange(mealType)
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showMealTypeDropdown = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text(mealType.rawValue.capitalized)
+                                            .font(.system(size: 14, weight: mealType == viewModel.selectedMealType ? .bold : .medium, design: .rounded))
+                                            .foregroundColor(
+                                                mealType == viewModel.selectedMealType
+                                                ? Theme.primaryGreen
+                                                : Theme.primaryText(colorScheme: colorScheme)
+                                            )
+                                        Spacer()
+                                        if mealType == viewModel.selectedMealType {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 12, weight: .bold))
+                                                .foregroundColor(Theme.primaryGreen)
+                                        }
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 11)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                
+                                if index < MealType.allCases.count - 1 {
+                                    Divider()
+                                        .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                        .padding(.horizontal, 10)
+                                }
+                            }
+                        }
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+                        .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.8), radius: 12, x: 0, y: 6)
+                        .background {
+                            Color.black.opacity(0.001)
+                                .contentShape(Rectangle())
+                                .frame(width: 2000, height: 2000)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showMealTypeDropdown = false
+                                    }
+                                }
+                        }
+                        .offset(y: 44)
+                        .zIndex(100)
+                        .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .top)))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .zIndex(showMealTypeDropdown ? 10 : 0)
+        }
+        .padding(.horizontal)
+        .zIndex(showMealTypeDropdown ? 100 : 0)
+        .sheet(isPresented: $viewModel.showDatePicker) {
+            LogDatePickerSheet(
+                selectedDate: $viewModel.selectedDate,
+                isPresented: $viewModel.showDatePicker
+            )
+        }
+    }
+
+    private var foodTextInputCard: some View {
+        let isComposerBusy = viewModel.isListening || viewModel.isTranscribingSpeech
+        let imageLimitReached = viewModel.selectedImages.count >= Constants.Images.maxMealImages
+        
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("What did you eat?")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 12) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $viewModel.foodText)
+                        .font(.system(size: 16, design: .rounded))
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
+                        .frame(minHeight: 80)
+                        .focused($isTextFieldFocused)
+                        .allowsHitTesting(!viewModel.isListening && !viewModel.isTranscribingSpeech)
+                    
+                    let isTextEmpty = viewModel.foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    let showPlaceholder = isTextEmpty && viewModel.selectedImages.isEmpty
+                        && !viewModel.isListening && !viewModel.isTranscribingSpeech
+                    
+                    if showPlaceholder {
+                        Text("Write or speak naturally about what you ate...")
+                            .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+                            .font(.system(size: 16, design: .rounded))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 8)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                
+                if !viewModel.selectedImages.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(viewModel.selectedImages.enumerated()), id: \.offset) { index, image in
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 72, height: 72)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                                        )
+                                    
+                                    Button(action: {
+                                        AnalyticsService.trackImageRemoved()
+                                        viewModel.removeImage(at: index)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(.white)
+                                            .background(Color.black.opacity(0.6))
+                                            .clipShape(Circle())
+                                    }
+                                    .offset(x: 4, y: -4)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 12)
+                    }
+                }
+                
+                Divider()
+                    .background(Theme.cardBorder(colorScheme: colorScheme))
+                    .padding(.horizontal, 12)
+                
+                HStack(alignment: .center, spacing: 8) {
+                    if viewModel.isListening {
+                        // --- Recording mode ---
+                        Button(action: {
+                            viewModel.cancelSpeechRecognition()
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(10)
+                                .background(Color.red.opacity(0.85))
+                                .clipShape(Circle())
+                        }
+                        
+                        inlineWaveformVisualizer
+                        
+                        Button(action: {
+                            viewModel.stopSpeechRecognition()
+                        }) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(10)
+                                .background(Theme.primaryGreen)
+                                .clipShape(Circle())
+                        }
+                        
+                        Button(action: {
+                            isTextFieldFocused = false
+                            Task {
+                                await viewModel.logMeal()
+                            }
+                        }) {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(10)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.orange, Color.orange.opacity(0.85)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .clipShape(Circle())
+                                .shadow(color: Color.orange.opacity(0.3), radius: 4, x: 0, y: 2)
+                        }
+                    } else {
+                        // --- Normal mode ---
+                        HStack(spacing: 10) {
+                            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                Button(action: {
+                                    AnalyticsService.trackCameraPickerOpened()
+                                    viewModel.showCameraPicker = true
+                                }) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Theme.primaryGreen)
+                                        .padding(10)
+                                        .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                        .clipShape(Circle())
+                                }
+                                .disabled(isComposerBusy || imageLimitReached)
+                                .opacity((isComposerBusy || imageLimitReached) ? 0.45 : 1)
+                            }
+                            
+                            Button(action: {
+                                AnalyticsService.trackImagePickerOpened()
+                                viewModel.showImagePicker = true
+                            }) {
+                                Image(systemName: !viewModel.selectedImages.isEmpty ? "photo.fill" : "photo")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(Theme.primaryGreen)
+                                    .padding(10)
+                                    .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                    .clipShape(Circle())
+                            }
+                            .disabled(isComposerBusy || imageLimitReached)
+                            .opacity((isComposerBusy || imageLimitReached) ? 0.45 : 1)
+                        }
+                        
+                        Spacer()
+                        
+                        if viewModel.isTranscribingSpeech {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Transcribing...")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                            .padding(.trailing, 8)
+                        }
+                        
+                        Button(action: {
+                            isTextFieldFocused = false
+                            viewModel.toggleSpeechRecognition()
+                        }) {
+                            Image(systemName: "mic.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.orange, Color.orange.opacity(0.85)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .clipShape(Circle())
+                                .shadow(color: Color.orange.opacity(0.35), radius: 6, x: 0, y: 3)
+                        }
+                        .disabled(viewModel.isTranscribingSpeech)
+                        .opacity(viewModel.isTranscribingSpeech ? 0.45 : 1)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+                .animation(.easeInOut(duration: 0.25), value: viewModel.isListening)
+            }
+            .background(Theme.cardBackground(colorScheme: colorScheme))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+            )
+            .shadow(color: Theme.shadowColor(colorScheme: colorScheme), radius: 8, x: 0, y: 4)
+        }
+        .padding(.horizontal)
+        .sheet(isPresented: $viewModel.showImagePicker) {
+            ImagePickerView(selectedImages: Binding(
+                get: { viewModel.selectedImages },
+                set: { viewModel.setImages($0) }
+            ))
+        }
+        .sheet(isPresented: $viewModel.showCameraPicker) {
+            CameraPickerView(selectedImage: Binding(
+                get: { nil },
+                set: { viewModel.appendImage($0) }
+            ))
+        }
+    }
+
+    private var logMealButton: some View {
+        let canSubmitMeal = viewModel.canSubmitMeal
+        return Button(action: {
+            isTextFieldFocused = false
+            Task {
+                print("DEBUG: Log Meal button tapped")
+                await viewModel.logMeal()
+                print("DEBUG: Log Meal button action completed")
+            }
+        }) {
+            ZStack {
+                if viewModel.isLoading {
+                    LottieView(animationName: "LoadingAnimation", loopMode: LottieLoopMode.loop, contentMode: .scaleAspectFit)
+                        .frame(height: 24)
+                } else {
+                    Text("Log Meal")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                viewModel.isLoading
+                    ? Color.gray.opacity(0.3)
+                    : (canSubmitMeal
+                        ? Theme.primaryGreen
+                        : Theme.primaryGreen.opacity(0.12))
+            )
+            .foregroundColor(canSubmitMeal && !viewModel.isLoading ? .white : Theme.primaryGreen.opacity(0.4))
+            .cornerRadius(25)
+            .overlay(
+                RoundedRectangle(cornerRadius: 25)
+                    .stroke(
+                        canSubmitMeal || viewModel.isLoading ? Color.clear : Theme.primaryGreen.opacity(0.2),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: canSubmitMeal && !viewModel.isLoading ? Theme.primaryGreen.opacity(0.3) : Color.clear, radius: 6, x: 0, y: 3)
+        }
+        .disabled(!canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech)
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var resultCardSection: some View {
+        if let result = viewModel.latestResult {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 0) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text("Logged Successfully")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        
+                        Text(result.mealType.capitalized)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                            .foregroundColor(Theme.primaryGreen)
+                            .cornerRadius(6)
+                    }
+                    
+                    Spacer(minLength: 12)
+                    
+                    Button(action: {
+                        viewModel.saveLatestMealAsFavorite()
+                        toastManager.show(ToastMessage(
+                            title: "Saved",
+                            message: "Meal added to saved meals.",
+                            type: .success
+                        ))
+                    }) {
+                        Image(systemName: "bookmark")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.primaryGreen)
+                            .accessibilityLabel("Save meal")
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
+
+                    Button(action: {
+                        print("DEBUG: [HomeView] User dismissed meal preview (close)")
+                        mealPreviewAutoDismissWork?.cancel()
+                        mealPreviewAutoDismissWork = nil
+                        quickEditPrompt = ""
+                        viewModel.errorMessage = nil
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            viewModel.latestResult = nil
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Dismiss meal summary")
                     }
                     .buttonStyle(.plain)
                 }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(Int(result.totalCalories)) kcal")
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                }
+                
+                // Macros Row
+                if let macros = result.resolvedMealMacrosForDisplay() {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Theme.proteinColor)
+                                .frame(width: 8, height: 8)
+                            Text("\(Int(macros.protein))g Protein")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.proteinColor.opacity(0.12))
+                        .cornerRadius(12)
+                        
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Theme.carbsColor)
+                                .frame(width: 8, height: 8)
+                            Text("\(Int(macros.carbs))g Carbs")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.carbsColor.opacity(0.12))
+                        .cornerRadius(12)
+                        
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Theme.fatColor)
+                                .frame(width: 8, height: 8)
+                            Text("\(Int(macros.fat))g Fat")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.fatColor.opacity(0.12))
+                        .cornerRadius(12)
+                    }
+                    .padding(.top, 4)
+                }
+                
+                Divider()
+                    .background(Theme.cardBorder(colorScheme: colorScheme))
+                
+                Text("Items Breakdown")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                
+                ForEach(Array(result.items.enumerated()), id: \.offset) { index, item in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(item.name)
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            Spacer()
+                            Text("\(Int(item.calories)) cal")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryGreen)
+                        }
+                        
+                        Text("\(item.quantity)")
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        
+                        if let p = item.protein, let c = item.carbs, let f = item.fat {
+                            MacrosCaptionLine(protein: p, carbs: c, fat: f, font: .system(size: 11, design: .rounded))
+                                .padding(.top, 2)
+                        }
+                        
+                        if let assumptions = item.assumptions, !assumptions.isEmpty {
+                            Text("Assumptions: \(assumptions)")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+                                .padding(.top, 2)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    
+                    if index < result.items.count - 1 {
+                        Divider()
+                            .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                            .padding(.horizontal, 10)
+                    }
+                }
+
+                Divider()
+                    .background(Theme.cardBorder(colorScheme: colorScheme))
+                
+                QuickEditMealSection(
+                    prompt: $quickEditPrompt,
+                    isLoading: viewModel.isRefiningMeal,
+                    errorMessage: viewModel.errorMessage
+                ) {
+                    Task {
+                        let text = quickEditPrompt
+                        await viewModel.quickRefineLoggedMeal(correctionPrompt: text)
+                        if viewModel.errorMessage == nil {
+                            quickEditPrompt = ""
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .background(Theme.cardBackground(colorScheme: colorScheme))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+            )
+            .padding(.horizontal)
+            .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.5), radius: 6, x: 0, y: 3)
+            .onAppear {
+                AnalyticsService.trackMealSummaryViewed()
+            }
+        }
+    }
+
+    private var savedMealsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Favorites")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                
+                Spacer()
+                
+                if !savedMeals.isEmpty {
+                    Button(action: {
+                        showAllFavorites = true
+                    }) {
+                        Text("See all")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(Theme.primaryGreen)
+                    }
+                }
             }
             .padding(.horizontal)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(savedMeals.prefix(8)) { savedMeal in
+                        Button {
+                            selectedSavedMeal = savedMeal
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bookmark.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Theme.primaryGreen)
+
+                                Text(savedMeal.title)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                    .lineLimit(1)
+
+                                Text("\(Int(savedMeal.totalCalories)) cal")
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                            .padding(.horizontal, 14)
+                            .frame(height: 38)
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(19)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 19)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                            .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.3), radius: 2, x: 0, y: 1)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+            }
         }
     }
     
+    private var inlineWaveformVisualizer: some View {
+        GeometryReader { geometry in
+            let spacing: CGFloat = 3
+            let barWidth: CGFloat = 3
+            let samples = viewModel.waveformSamples
+            let capacity = max(1, Int((geometry.size.width + spacing) / (barWidth + spacing)))
+            let visible = Array(samples.suffix(capacity))
+            let visibleSamples = if visible.count == capacity {
+                visible
+            } else {
+                Array(repeating: 0.08, count: capacity - visible.count) + visible
+            }
+            
+            HStack(alignment: .center, spacing: spacing) {
+                ForEach(Array(visibleSamples.enumerated()), id: \.offset) { index, sample in
+                    let height = max(4, 32 * sample)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.orange,
+                                    Color.orange.opacity(0.6)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: barWidth, height: height)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 36)
+    }
+}
+
+/// Sheet showing all saved meals with search and a link to manage them.
+private struct AllFavoritesSheet: View {
+    let savedMeals: [SavedMeal]
+    let onSelectMeal: (SavedMeal) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var searchText = ""
     
+    private var filteredMeals: [SavedMeal] {
+        if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+            return Array(savedMeals)
+        }
+        return savedMeals.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                if filteredMeals.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    ForEach(filteredMeals) { meal in
+                        Button {
+                            onSelectMeal(meal)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "bookmark.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Theme.primaryGreen)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(meal.title)
+                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                        .lineLimit(1)
+                                    
+                                    if let response = meal.response {
+                                        Text(response.items.prefix(3).map(\.name).joined(separator: ", "))
+                                            .font(.system(size: 12, design: .rounded))
+                                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                            .lineLimit(1)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Text("\(Int(meal.totalCalories)) cal")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                Section {
+                    NavigationLink(destination: SavedMealsView()) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.primaryGreen)
+                            Text("Manage Saved Meals")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundColor(Theme.primaryGreen)
+                        }
+                    }
+                }
+            }
+            .searchable(text: $searchText, prompt: "Search favorites")
+            .navigationTitle("Favorites")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
 }
 
 /// Graphical date picker: dismisses as soon as the user taps a **different** calendar day (one tap). "Close" still available if they only browse months.
 private struct LogDatePickerSheet: View {
     @Binding var selectedDate: Date
     @Binding var isPresented: Bool
+    @Environment(\.colorScheme) private var colorScheme
     @State private var dayBaselineForDismiss: Date?
 
     var body: some View {
         NavigationStack {
-            VStack {
-                DatePicker(
-                    "Select Date",
-                    selection: $selectedDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.graphical)
-                .padding()
-                .onAppear {
-                    dayBaselineForDismiss = selectedDate
-                    print("DEBUG: [LogDatePickerSheet] opened baseline day=\(selectedDate)")
-                }
-                .onChange(of: selectedDate) { _, newValue in
-                    guard let baseline = dayBaselineForDismiss else { return }
-                    if !Calendar.current.isDate(newValue, equalTo: baseline, toGranularity: .day) {
-                        print("DEBUG: [LogDatePickerSheet] new day selected, dismissing")
-                        isPresented = false
+            ZStack {
+                Theme.backgroundColor(colorScheme: colorScheme)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    VStack {
+                        DatePicker(
+                            "Select Date",
+                            selection: $selectedDate,
+                            displayedComponents: [.date]
+                        )
+                        .datePickerStyle(.graphical)
+                        .tint(Theme.primaryGreen)
+                        .padding(8)
                     }
+                    .background(Theme.cardBackground(colorScheme: colorScheme))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                    )
+                    .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.4), radius: 8, x: 0, y: 4)
+                    .padding(16)
+                    
+                    Spacer()
                 }
-
-                Spacer()
             }
             .navigationTitle("Select Date")
             .navigationBarTitleDisplayMode(.inline)
@@ -664,6 +1015,19 @@ private struct LogDatePickerSheet: View {
                         print("DEBUG: [LogDatePickerSheet] Close tapped")
                         isPresented = false
                     }
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.primaryGreen)
+                }
+            }
+            .onAppear {
+                dayBaselineForDismiss = selectedDate
+                print("DEBUG: [LogDatePickerSheet] opened baseline day=\(selectedDate)")
+            }
+            .onChange(of: selectedDate) { _, newValue in
+                guard let baseline = dayBaselineForDismiss else { return }
+                if !Calendar.current.isDate(newValue, equalTo: baseline, toGranularity: .day) {
+                    print("DEBUG: [LogDatePickerSheet] new day selected, dismissing")
+                    isPresented = false
                 }
             }
         }
@@ -989,3 +1353,21 @@ struct HomeViewOverlayModifier: ViewModifier {
     HomeView()
         .modelContainer(for: [MealEntry.self, SavedMeal.self])
 }
+
+extension View {
+    @ViewBuilder
+    func dismissDropdownOnScroll(show: Binding<Bool>) -> some View {
+        if #available(iOS 18.0, *) {
+            self.onScrollPhaseChange { _, newPhase in
+                if newPhase != .idle && show.wrappedValue {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        show.wrappedValue = false
+                    }
+                }
+            }
+        } else {
+            self
+        }
+    }
+}
+
