@@ -9,42 +9,80 @@ import SwiftUI
 
 struct StreakCard: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let streak: Int
     
     var body: some View {
         DashboardCard {
-            VStack(alignment: .leading, spacing: 8) {
-                // Flame Icon Circle
-                ZStack {
-                    Circle()
-                        .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
-                        .frame(width: 36, height: 36)
+            if horizontalSizeClass == .regular {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Flame Icon Circle
+                    ZStack {
+                        Circle()
+                            .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                            .frame(width: 36, height: 36)
+                        
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(Theme.warningAmber)
+                    }
                     
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(Theme.warningAmber)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Streak")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .lineLimit(1)
+                        
+                        Text("\(streak) days")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            .lineLimit(1)
+                        
+                        Text("Keep it going!")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.warningAmber)
+                            .padding(.top, 2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
                 }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Streak")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                        .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 12) {
+                    // Flame Icon Circle
+                    ZStack {
+                        Circle()
+                            .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                            .frame(width: 44, height: 44)
+                        
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Theme.warningAmber)
+                    }
                     
-                    Text("\(streak) days")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Streak")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .lineLimit(1)
+                        
+                        Text("\(streak) days")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            .lineLimit(1)
+                        
+                        Text("Keep it going!")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(Theme.warningAmber)
+                            .padding(.top, 2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
                     
-                    Text("Keep it going!")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Theme.warningAmber)
-                        .padding(.top, 2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    Spacer()
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
