@@ -48,125 +48,10 @@ struct logcalApp: App {
                         .toastNotification(toastManager: toastManager)
                         .environmentObject(toastManager)
                 } else {
-                    ZStack {
-                        if horizontalSizeClass == .regular {
-                            NavigationSplitView {
-                                List(selection: Binding<Int?>(
-                                    get: { selectedTab },
-                                    set: { if let val = $0 { selectedTab = val } }
-                                )) {
-                                    NavigationLink(value: 0) {
-                                        Label("Home", systemImage: "house.fill")
-                                    }
-                                    NavigationLink(value: 1) {
-                                        Label("Log", systemImage: "plus.circle")
-                                    }
-                                    NavigationLink(value: 2) {
-                                        Label("History", systemImage: "list.bullet")
-                                    }
-                                    NavigationLink(value: 3) {
-                                        Label("Profile", systemImage: "person.fill")
-                                    }
-                                }
-                                .listStyle(SidebarListStyle())
-                                .navigationTitle("LogCal")
-                            } detail: {
-                                Group {
-                                    switch selectedTab {
-                                    case 0:
-                                        DashboardView(selectedTab: $selectedTab)
-                                    case 1:
-                                        HomeView()
-                                    case 2:
-                                        HistoryView(selectedTab: $selectedTab)
-                                    case 3:
-                                        ProfileView()
-                                    default:
-                                        DashboardView(selectedTab: $selectedTab)
-                                    }
-                                }
-                                .tint(Theme.primaryGreen)
-                            }
-                            .onChange(of: selectedTab) { oldValue, newValue in
-                                let tabNames = ["Dashboard", "Log", "History", "Profile"]
-                                if newValue < tabNames.count {
-                                    AnalyticsService.trackTabChanged(tabName: tabNames[newValue])
-                                    AnalyticsService.trackViewOpened(viewName: tabNames[newValue])
-                                }
-                            }
-                        } else {
-                            TabView(selection: $selectedTab) {
-                                DashboardView(selectedTab: $selectedTab)
-                                    .tabItem {
-                                        Label("Home", systemImage: "house.fill")
-                                    }
-                                    .tag(0)
-                                    .onAppear {
-                                        if selectedTab == 0 {
-                                            AnalyticsService.trackViewOpened(viewName: "Dashboard")
-                                        }
-                                    }
-                                
-                                HomeView()
-                                    .tabItem {
-                                        Label("Log", systemImage: "plus.circle")
-                                    }
-                                    .tag(1)
-                                    .onAppear {
-                                        if selectedTab == 1 {
-                                            AnalyticsService.trackViewOpened(viewName: "Log")
-                                        }
-                                    }
-                                
-                                HistoryView(selectedTab: $selectedTab)
-                                    .tabItem {
-                                        Label("History", systemImage: "list.bullet")
-                                    }
-                                    .tag(2)
-                                    .onAppear {
-                                        if selectedTab == 2 {
-                                            AnalyticsService.trackViewOpened(viewName: "History")
-                                        }
-                                    }
-                                
-                                ProfileView()
-                                    .tabItem {
-                                        Label("Profile", systemImage: "person.fill")
-                                    }
-                                    .tag(3)
-                                    .onAppear {
-                                        if selectedTab == 3 {
-                                            AnalyticsService.trackViewOpened(viewName: "Profile")
-                                        }
-                                    }
-                            }
-                            .tint(Theme.primaryGreen)
-                            .onChange(of: selectedTab) { oldValue, newValue in
-                                let tabNames = ["Dashboard", "Log", "History", "Profile"]
-                                if newValue < tabNames.count {
-                                    AnalyticsService.trackTabChanged(tabName: tabNames[newValue])
-                                }
-                            }
-                        }
-                        
-                        // SyncHandlerView as an overlay to ensure it has access to the same modelContext
-                        SyncHandlerView(cloudSyncService: cloudSyncService, authViewModel: authViewModel)
-                            .allowsHitTesting(false) // Don't intercept touches
-                        
-                        // Loading overlay while syncing after sign-in
-                        if cloudSyncService.isSyncing && isInitialSyncAfterSignIn {
-                            VStack(spacing: 16) {
-                                ProgressView()
-                                    .scaleEffect(1.5)
-                                Text("Loading your meals...")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .padding(.top, 8)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color(.systemBackground).opacity(0.9))
-                        }
-                    }
+                    AppRootView(
+                        selectedTab: $selectedTab,
+                        isInitialSyncAfterSignIn: $isInitialSyncAfterSignIn
+                    )
                     .modelContainer(for: [MealEntry.self, SavedMeal.self])
                     .environmentObject(cloudSyncService)
                     .environmentObject(authViewModel)
@@ -282,3 +167,135 @@ struct logcalApp: App {
         AppTheme(rawValue: appThemeString) ?? .system
     }
 }
+
+struct AppRootView: View {
+    @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var cloudSyncService: CloudSyncService
+    @EnvironmentObject private var toastManager: ToastManager
+    @Binding var selectedTab: Int
+    @Binding var isInitialSyncAfterSignIn: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
+    var body: some View {
+        ZStack {
+            if horizontalSizeClass == .regular {
+                NavigationSplitView {
+                    List(selection: Binding<Int?>(
+                        get: { selectedTab },
+                        set: { if let val = $0 { selectedTab = val } }
+                    )) {
+                        NavigationLink(value: 0) {
+                            Label("Home", systemImage: "house.fill")
+                        }
+                        NavigationLink(value: 1) {
+                            Label("Log", systemImage: "plus.circle")
+                        }
+                        NavigationLink(value: 2) {
+                            Label("History", systemImage: "list.bullet")
+                        }
+                        NavigationLink(value: 3) {
+                            Label("Profile", systemImage: "person.fill")
+                        }
+                    }
+                    .listStyle(SidebarListStyle())
+                    .navigationTitle("LogCal")
+                } detail: {
+                    Group {
+                        switch selectedTab {
+                        case 0:
+                            DashboardView(selectedTab: $selectedTab)
+                        case 1:
+                            HomeView()
+                        case 2:
+                            HistoryView(selectedTab: $selectedTab)
+                        case 3:
+                            ProfileView()
+                        default:
+                            DashboardView(selectedTab: $selectedTab)
+                        }
+                    }
+                    .tint(Theme.primaryGreen)
+                }
+                .onChange(of: selectedTab) { oldValue, newValue in
+                    let tabNames = ["Dashboard", "Log", "History", "Profile"]
+                    if newValue < tabNames.count {
+                        AnalyticsService.trackTabChanged(tabName: tabNames[newValue])
+                        AnalyticsService.trackViewOpened(viewName: tabNames[newValue])
+                    }
+                }
+            } else {
+                TabView(selection: $selectedTab) {
+                    DashboardView(selectedTab: $selectedTab)
+                        .tabItem {
+                            Label("Home", systemImage: "house.fill")
+                        }
+                        .tag(0)
+                        .onAppear {
+                            if selectedTab == 0 {
+                                AnalyticsService.trackViewOpened(viewName: "Dashboard")
+                            }
+                        }
+                    
+                    HomeView()
+                        .tabItem {
+                            Label("Log", systemImage: "plus.circle")
+                        }
+                        .tag(1)
+                        .onAppear {
+                            if selectedTab == 1 {
+                                AnalyticsService.trackViewOpened(viewName: "Log")
+                            }
+                        }
+                    
+                    HistoryView(selectedTab: $selectedTab)
+                        .tabItem {
+                            Label("History", systemImage: "list.bullet")
+                        }
+                        .tag(2)
+                        .onAppear {
+                            if selectedTab == 2 {
+                                AnalyticsService.trackViewOpened(viewName: "History")
+                            }
+                        }
+                    
+                    ProfileView()
+                        .tabItem {
+                            Label("Profile", systemImage: "person.fill")
+                        }
+                        .tag(3)
+                        .onAppear {
+                            if selectedTab == 3 {
+                                AnalyticsService.trackViewOpened(viewName: "Profile")
+                            }
+                        }
+                }
+                .tint(Theme.primaryGreen)
+                .onChange(of: selectedTab) { oldValue, newValue in
+                    let tabNames = ["Dashboard", "Log", "History", "Profile"]
+                    if newValue < tabNames.count {
+                        AnalyticsService.trackTabChanged(tabName: tabNames[newValue])
+                    }
+                }
+            }
+            
+            // SyncHandlerView as an overlay to ensure it has access to the same modelContext
+            SyncHandlerView(cloudSyncService: cloudSyncService, authViewModel: authViewModel)
+                .allowsHitTesting(false) // Don't intercept touches
+            
+            // Loading overlay while syncing after sign-in
+            if cloudSyncService.isSyncing && isInitialSyncAfterSignIn {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Loading your meals...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground).opacity(0.9))
+            }
+        }
+    }
+}
+

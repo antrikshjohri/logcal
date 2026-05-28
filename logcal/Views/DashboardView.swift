@@ -40,6 +40,14 @@ struct DashboardView: View {
             .reduce(0) { $0 + $1.totalCalories }
     }
     
+    private var todayMeals: [MealEntry] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: selectedDate)
+        return meals
+            .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+            .sorted(by: { $0.timestamp > $1.timestamp })
+    }
+    
     /// Uncapped ratio for selected day's calories card (ring caps at full circle; center label can exceed 100%).
     private var calorieProgressRatio: Double {
         guard dailyGoal > 0 else { return 0 }
@@ -404,6 +412,57 @@ struct DashboardView: View {
                         }
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
+                    
+                    // Today's Meals Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Today's Meals")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                            .padding(.top, Constants.Spacing.regular)
+                        
+                        if todayMeals.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "fork.knife")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                Text("No meals logged yet today")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 32)
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(Constants.Sizes.cornerRadius)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(todayMeals) { meal in
+                                    MealRowView(meal: meal)
+                                        .padding(.horizontal, Constants.Spacing.large)
+                                    
+                                    if meal.id != todayMeals.last?.id {
+                                        Divider()
+                                            .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                            .padding(.horizontal, Constants.Spacing.large)
+                                    }
+                                }
+                            }
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(Constants.Sizes.cornerRadius)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        }
+                    }
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 950 : .infinity)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .padding(.bottom, Constants.Spacing.extraLarge)
             }

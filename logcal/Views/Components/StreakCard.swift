@@ -13,40 +13,38 @@ struct StreakCard: View {
     
     var body: some View {
         DashboardCard {
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Flame Icon Circle
                 ZStack {
                     Circle()
                         .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 36, height: 36)
                     
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: 16))
                         .foregroundColor(Theme.warningAmber)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Streak")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                         .lineLimit(1)
                     
                     Text("\(streak) days")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         .lineLimit(1)
                     
                     Text("Keep it going!")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Theme.warningAmber)
                         .padding(.top, 2)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                
-                Spacer()
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

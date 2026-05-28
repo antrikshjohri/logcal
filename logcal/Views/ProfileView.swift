@@ -160,7 +160,6 @@ struct ProfileView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical)
-                }
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)

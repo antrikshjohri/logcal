@@ -13,6 +13,7 @@ struct NotificationsSettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var toastManager: ToastManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private let notificationService = NotificationService.shared
     private let firestoreService = FirestoreService()
     
@@ -285,7 +286,9 @@ struct NotificationsSettingsView: View {
                     .padding(.top, Constants.Spacing.regular)
                 }
                 .padding(.bottom, Constants.Spacing.extraLarge)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             .navigationTitle("Meal Reminders")
             .navigationBarTitleDisplayMode(.inline)
             .background(Theme.backgroundColor(colorScheme: colorScheme))

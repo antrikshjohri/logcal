@@ -14,6 +14,7 @@ struct EditProfileView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var countryList = CountryList()
     private let firestoreService = FirestoreService()
     
@@ -250,7 +251,9 @@ struct EditProfileView: View {
                     .padding(.bottom, Constants.Spacing.extraLarge)
                 }
                 .padding(.horizontal, Constants.Spacing.extraLarge)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .background(Theme.backgroundColor(colorScheme: colorScheme))

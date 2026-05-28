@@ -15,6 +15,7 @@ struct FAQItem: Identifiable {
 
 struct HelpFAQView: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var expandedFAQs: Set<UUID> = []
     
     private let faqs: [FAQItem] = [
@@ -79,8 +80,10 @@ struct HelpFAQView: View {
                     }
                 }
                 .padding(.horizontal, Constants.Spacing.extraLarge)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .center)
         .background(Theme.backgroundColor(colorScheme: colorScheme))
         .navigationTitle("Help & FAQ")
         .navigationBarTitleDisplayMode(.inline)

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ThisWeekCard: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let weeklyData: [(day: String, calories: Double, isToday: Bool)]
     let weeklyAverage: Double
     let dailyGoal: Double
@@ -30,7 +31,7 @@ struct ThisWeekCard: View {
                 }
                 
                 WeeklyBarChartView(data: weeklyData, dailyGoal: dailyGoal)
-                    .frame(height: 140)
+                    .frame(height: horizontalSizeClass == .regular ? 200 : 140)
             }
         }
     }

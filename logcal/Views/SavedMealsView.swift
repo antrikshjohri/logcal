@@ -9,6 +9,7 @@ import SwiftData
 struct SavedMealsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     @State private var mealBeingRenamed: SavedMeal?
     @State private var mealPendingDeletion: SavedMeal?
@@ -103,6 +104,8 @@ struct SavedMealsView: View {
                 }
             }
         }
+        .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
+        .frame(maxWidth: .infinity, alignment: .center)
         .background(Theme.backgroundColor(colorScheme: colorScheme))
         .scrollContentBackground(.hidden)
         .navigationTitle("Favourites")

@@ -12,6 +12,7 @@ struct DailyGoalView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var cloudSyncService: CloudSyncService
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var currentGoal: Double = 2000
     @State private var isSaving = false
     
@@ -113,7 +114,9 @@ struct DailyGoalView: View {
                 .padding(.horizontal, Constants.Spacing.extraLarge)
                 .padding(.bottom, Constants.Spacing.extraLarge)
             }
+            .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
         }
+        .frame(maxWidth: .infinity, alignment: .center)
         .navigationTitle("Daily Goal")
         .navigationBarTitleDisplayMode(.large)
         .background(Theme.backgroundColor(colorScheme: colorScheme))

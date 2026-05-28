@@ -2,4 +2,4 @@
 trigger: always_on
 ---
 
-Always ask me what to change before changing anything
+Ask me what to change before changing anything (unless it is very simple like string change or syntax error handling)
