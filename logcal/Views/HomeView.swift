@@ -28,6 +28,7 @@ struct HomeView: View {
     @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isTextFieldFocused: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var showConfetti = false
     @State private var mealPreviewAutoDismissWork: DispatchWorkItem?
@@ -134,25 +135,29 @@ struct HomeView: View {
     private var mainContent: some View {
         ScrollView {
             VStack(spacing: 16) {
-                Text("What's on your plate, \(userName)?")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                
-                dateAndMealTypeRow
-                
-                if !savedMeals.isEmpty {
-                    savedMealsSection
+                Group {
+                    Text("What's on your plate, \(userName)?")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                    
+                    dateAndMealTypeRow
+                    
+                    if !savedMeals.isEmpty {
+                        savedMealsSection
+                    }
+                    
+                    foodTextInputCard
+                    
+                    logMealButton
+                    
+                    resultCardSection
                 }
-                
-                foodTextInputCard
-                
-                logMealButton
-                
-                resultCardSection
+                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
+            .frame(maxWidth: .infinity)
             .padding(.vertical)
         }
         .background(Theme.backgroundColor(colorScheme: colorScheme))

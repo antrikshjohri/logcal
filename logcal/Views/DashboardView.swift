@@ -22,6 +22,7 @@ struct DashboardView: View {
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var selectedDate = Date()
     @State private var showDatePicker = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     init(selectedTab: Binding<Int>) {
         self._selectedTab = selectedTab
@@ -311,49 +312,98 @@ struct DashboardView: View {
                     )
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     
-                    // Calories Card
-                    TodaysCaloriesCard(
-                        calories: todayCalories,
-                        goal: dailyGoal,
-                        progress: calorieProgressRatio
-                    )
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    
-                    // Today's Macros Card
-                    TodaysMacrosCard(
-                        protein: todayProtein,
-                        carbs: todayCarbs,
-                        fat: todayFat,
-                        proteinGoal: proteinGoal,
-                        carbsGoal: carbsGoal,
-                        fatGoal: fatGoal,
-                        onDetailsTapped: {
-                            navigateToDateTimestamp = selectedDate.timeIntervalSince1970
-                            selectedTab = 2
+                    if horizontalSizeClass == .regular {
+                        HStack(alignment: .top, spacing: Constants.Spacing.extraLarge) {
+                            // Left Column
+                            VStack(spacing: Constants.Spacing.extraLarge) {
+                                TodaysCaloriesCard(
+                                    calories: todayCalories,
+                                    goal: dailyGoal,
+                                    progress: calorieProgressRatio
+                                )
+                                
+                                TodaysMacrosCard(
+                                    protein: todayProtein,
+                                    carbs: todayCarbs,
+                                    fat: todayFat,
+                                    proteinGoal: proteinGoal,
+                                    carbsGoal: carbsGoal,
+                                    fatGoal: fatGoal,
+                                    onDetailsTapped: {
+                                        navigateToDateTimestamp = selectedDate.timeIntervalSince1970
+                                        selectedTab = 2
+                                    }
+                                )
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            // Right Column
+                            VStack(spacing: Constants.Spacing.extraLarge) {
+                                ThisWeekCard(
+                                    weeklyData: weeklyData,
+                                    weeklyAverage: weeklyAverage,
+                                    dailyGoal: dailyGoal
+                                )
+                                
+                                HStack(spacing: Constants.Spacing.regular) {
+                                    Button(action: {
+                                        showEditGoalSheet = true
+                                    }) {
+                                        DailyGoalCard(goal: dailyGoal)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    
+                                    StreakCard(streak: streakDays)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                    )
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    
-                    // This Week Card
-                    ThisWeekCard(
-                        weeklyData: weeklyData,
-                        weeklyAverage: weeklyAverage,
-                        dailyGoal: dailyGoal
-                    )
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    
-                    // Daily Goal and Streak Cards
-                    HStack(spacing: Constants.Spacing.regular) {
-                        Button(action: {
-                            showEditGoalSheet = true
-                        }) {
-                            DailyGoalCard(goal: dailyGoal)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                    } else {
+                        // Calories Card
+                        TodaysCaloriesCard(
+                            calories: todayCalories,
+                            goal: dailyGoal,
+                            progress: calorieProgressRatio
+                        )
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
                         
-                        StreakCard(streak: streakDays)
+                        // Today's Macros Card
+                        TodaysMacrosCard(
+                            protein: todayProtein,
+                            carbs: todayCarbs,
+                            fat: todayFat,
+                            proteinGoal: proteinGoal,
+                            carbsGoal: carbsGoal,
+                            fatGoal: fatGoal,
+                            onDetailsTapped: {
+                                navigateToDateTimestamp = selectedDate.timeIntervalSince1970
+                                selectedTab = 2
+                            }
+                        )
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        // This Week Card
+                        ThisWeekCard(
+                            weeklyData: weeklyData,
+                            weeklyAverage: weeklyAverage,
+                            dailyGoal: dailyGoal
+                        )
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        // Daily Goal and Streak Cards
+                        HStack(spacing: Constants.Spacing.regular) {
+                            Button(action: {
+                                showEditGoalSheet = true
+                            }) {
+                                DailyGoalCard(goal: dailyGoal)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            StreakCard(streak: streakDays)
+                        }
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
                 }
                 .padding(.bottom, Constants.Spacing.extraLarge)
             }

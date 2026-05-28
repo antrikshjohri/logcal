@@ -23,6 +23,7 @@ struct HistoryView: View {
     @State private var hasInitialized: Bool = false
     @State private var searchText = ""
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     // Group meals by date
     private var groupedMeals: [(date: Date, meals: [MealEntry], totalCalories: Double)] {
@@ -183,12 +184,14 @@ struct HistoryView: View {
                                     navigateToDateTimestamp: $navigateToDateTimestamp,
                                     selectedTab: $selectedTab
                                 )
+                                }
+                                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
+                                .frame(maxWidth: .infinity, alignment: .center)
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, Constants.Spacing.large)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, Constants.Spacing.large)
-                    }
-                    .background(Theme.backgroundColor(colorScheme: colorScheme))
+                        .background(Theme.backgroundColor(colorScheme: colorScheme))
                     .refreshable {
                         await refreshFromCloud()
                     }

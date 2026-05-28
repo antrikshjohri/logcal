@@ -12,6 +12,7 @@ struct ProfileView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showThemeSelector = false
     @State private var showEditProfile = false
     @State private var profileImage: UIImage?
@@ -56,105 +57,109 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Constants.Spacing.extraLarge) {
-
-                    
-                    // User Card
-                    ProfileCard(
-                        name: userName,
-                        email: userEmail,
-                        profileImage: profileImage,
-                        onEditProfile: {
-                            showEditProfile = true
-                        }
-                    )
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    
-                    // Account & Preferences Section
-                    VStack(alignment: .leading, spacing: 6) {
-                        settingsGroupHeader("ACCOUNT & PREFERENCES")
-                        
-                        VStack(spacing: 0) {
-                            NavigationLink(destination: DailyGoalView()) {
-                                SettingsGroupRow(
-                                    icon: "target",
-                                    iconColor: Theme.primaryGreen,
-                                    title: "Daily Goal",
-                                    trailingValue: formattedGoal
-                                )
+                    Group {
+                        // User Card
+                        ProfileCard(
+                            name: userName,
+                            email: userEmail,
+                            profileImage: profileImage,
+                            onEditProfile: {
+                                showEditProfile = true
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            Divider()
-                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                                .padding(.leading, 56)
-                            
-                            NavigationLink(destination: SavedMealsView()) {
-                                SettingsGroupRow(
-                                    icon: "bookmark.fill",
-                                    iconColor: Theme.primaryGreen,
-                                    title: "Favourite meals"
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            Divider()
-                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                                .padding(.leading, 56)
-                            
-                            SettingsGroupButtonRow(
-                                icon: "paintpalette",
-                                iconColor: Theme.primaryGreen,
-                                title: "Theme",
-                                trailingValue: themeDisplayName
-                            ) {
-                                showThemeSelector = true
-                            }
-                            
-                            Divider()
-                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                                .padding(.leading, 56)
-                            
-                            NavigationLink(destination: NotificationsSettingsView()) {
-                                SettingsGroupRow(
-                                    icon: "bell.fill",
-                                    iconColor: Theme.primaryGreen,
-                                    title: "Meal Reminders"
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        .background(Theme.cardBackground(colorScheme: colorScheme))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
                         )
                         .padding(.horizontal, Constants.Spacing.extraLarge)
-                    }
-                    
-                    // Support Section
-                    VStack(alignment: .leading, spacing: 6) {
-                        settingsGroupHeader("SUPPORT")
                         
-                        VStack(spacing: 0) {
-                            NavigationLink(destination: HelpFAQView()) {
-                                SettingsGroupRow(
-                                    icon: "questionmark.circle",
+                        // Account & Preferences Section
+                        VStack(alignment: .leading, spacing: 6) {
+                            settingsGroupHeader("ACCOUNT & PREFERENCES")
+                            
+                            VStack(spacing: 0) {
+                                NavigationLink(destination: DailyGoalView()) {
+                                    SettingsGroupRow(
+                                        icon: "target",
+                                        iconColor: Theme.primaryGreen,
+                                        title: "Daily Goal",
+                                        trailingValue: formattedGoal
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
+                                NavigationLink(destination: SavedMealsView()) {
+                                    SettingsGroupRow(
+                                        icon: "bookmark.fill",
+                                        iconColor: Theme.primaryGreen,
+                                        title: "Favourite meals"
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
+                                SettingsGroupButtonRow(
+                                    icon: "paintpalette",
                                     iconColor: Theme.primaryGreen,
-                                    title: "Help & FAQ"
-                                )
+                                    title: "Theme",
+                                    trailingValue: themeDisplayName
+                                ) {
+                                    showThemeSelector = true
+                                }
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
+                                NavigationLink(destination: NotificationsSettingsView()) {
+                                    SettingsGroupRow(
+                                        icon: "bell.fill",
+                                        iconColor: Theme.primaryGreen,
+                                        title: "Meal Reminders"
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
                         }
-                        .background(Theme.cardBackground(colorScheme: colorScheme))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                        )
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        // Support Section
+                        VStack(alignment: .leading, spacing: 6) {
+                            settingsGroupHeader("SUPPORT")
+                            
+                            VStack(spacing: 0) {
+                                NavigationLink(destination: HelpFAQView()) {
+                                    SettingsGroupRow(
+                                        icon: "questionmark.circle",
+                                        iconColor: Theme.primaryGreen,
+                                        title: "Help & FAQ"
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        }
+                        .padding(.bottom, Constants.Spacing.extraLarge)
                     }
-                    .padding(.bottom, Constants.Spacing.extraLarge)
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical)
                 }
             }
             .navigationTitle("Profile")
