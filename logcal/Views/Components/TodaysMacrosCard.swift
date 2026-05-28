@@ -30,7 +30,7 @@ struct TodaysMacrosCard: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             // Header
             HStack {
                 Text("Macros")
@@ -52,7 +52,7 @@ struct TodaysMacrosCard: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .padding(.bottom, 6)
+            .padding(.bottom, 2)
             
             // Protein Row
             MacroRow(
@@ -64,9 +64,6 @@ struct TodaysMacrosCard: View {
                 percentColor: Theme.proteinColor
             )
             
-            Divider()
-                .background(Theme.cardBorder(colorScheme: colorScheme))
-            
             // Carbs Row
             MacroRow(
                 title: "Carbs",
@@ -76,9 +73,6 @@ struct TodaysMacrosCard: View {
                 color: Theme.carbsColor,
                 percentColor: Theme.carbsColor
             )
-            
-            Divider()
-                .background(Theme.cardBorder(colorScheme: colorScheme))
             
             // Fat Row
             MacroRow(
@@ -90,7 +84,7 @@ struct TodaysMacrosCard: View {
                 percentColor: Theme.fatColor
             )
         }
-        .padding(Constants.Spacing.extraLarge)
+        .padding(16)
         .background(
             RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
                 .fill(Theme.cardBackground(colorScheme: colorScheme))
@@ -99,7 +93,7 @@ struct TodaysMacrosCard: View {
             RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
                 .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
         )
-        .shadow(color: Theme.shadowColor(colorScheme: colorScheme), radius: 18, x: 0, y: 10)
+        .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.1), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -121,65 +115,39 @@ private struct MacroRow: View {
     }
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.regular) {
-            // Left: Circular progress ring with value inside
-            ZStack {
-                Circle()
-                    .stroke(color.opacity(colorScheme == .dark ? 0.15 : 0.1), lineWidth: 4.5)
-                    .frame(width: 44, height: 44)
-                
-                Circle()
-                    .trim(from: 0, to: cappedProgress)
-                    .stroke(color, style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
-                    .frame(width: 44, height: 44)
-                    .rotationEffect(.degrees(-90))
-                
-                VStack(spacing: -2) {
-                    Text("\(Int(current))")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                    
-                    Text("g")
-                        .font(.system(size: 9, weight: .regular))
-                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                }
-            }
-            
-            // Middle: Title, target values, and linear progress bar
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
                 Text(title)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                 
-                Text("\(Int(current)) / \(Int(goal)) g")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                Spacer()
                 
-                // Linear Progress Bar
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(color.opacity(colorScheme == .dark ? 0.15 : 0.1))
-                        
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(color)
-                            .frame(width: geometry.size.width * cappedProgress)
-                    }
+                HStack(spacing: 8) {
+                    Text("\(Int(current))/\(Int(goal))g")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    
+                    Text("\(percentage)%")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(percentColor)
                 }
-                .frame(height: 6)
             }
-            .padding(.leading, 4)
             
-            Spacer(minLength: 8)
-            
-            // Right: Percentage only (no chevron)
-            HStack(spacing: Constants.Spacing.small) {
-                Text("\(percentage)%")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(percentColor)
+            // Linear Progress Bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3.5)
+                        .fill(color.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                    
+                    RoundedRectangle(cornerRadius: 3.5)
+                        .fill(color)
+                        .frame(width: geometry.size.width * cappedProgress)
+                }
             }
+            .frame(height: 7)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 2)
     }
 }
 

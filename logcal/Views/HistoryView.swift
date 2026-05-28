@@ -195,6 +195,7 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("History")
+            .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search meals...")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

@@ -60,9 +60,21 @@ struct SavedMealsView: View {
                             .accessibilityLabel("Delete favourite meal")
                         }
 
-                        Text(savedMeal.mealType.capitalized)
-                            .font(.caption)
-                            .foregroundColor(Theme.primaryGreen)
+                        HStack(spacing: 6) {
+                            Text(savedMeal.mealType.capitalized)
+                                .font(.caption)
+                                .foregroundColor(Theme.primaryGreen)
+                            
+                            if let p = savedMeal.protein, let c = savedMeal.carbs, let f = savedMeal.fat,
+                               p > 0 || c > 0 || f > 0 {
+                                Text("·")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("P: \(Int(p))g  C: \(Int(c))g  F: \(Int(f))g")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
 
                         if let response = savedMeal.response {
                             Text(response.items.prefix(3).map(\.name).joined(separator: ", "))

@@ -9,10 +9,20 @@ import SwiftUI
 import SwiftData
 import Lottie
 import UIKit
+import FirebaseAuth
 
 struct HomeView: View {
     @StateObject private var viewModel = LogViewModel()
     @EnvironmentObject private var authViewModel: AuthViewModel
+    
+    private var userName: String {
+        if let name = authViewModel.userName {
+            return name
+        } else if let email = Auth.auth().currentUser?.email {
+            return String(email.split(separator: "@").first ?? "User")
+        }
+        return "User"
+    }
     @EnvironmentObject private var toastManager: ToastManager
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
@@ -31,7 +41,7 @@ struct HomeView: View {
             NavigationStack {
                 mainContent
                     .navigationTitle("Log")
-                    .navigationBarTitleDisplayMode(.inline)
+                    .navigationBarTitleDisplayMode(.large)
                     .onChange(of: viewModel.latestResult) { oldValue, newValue in
                         mealPreviewAutoDismissWork?.cancel()
                         mealPreviewAutoDismissWork = nil
@@ -124,6 +134,13 @@ struct HomeView: View {
     private var mainContent: some View {
         ScrollView {
             VStack(spacing: 16) {
+                Text("What's on your plate, \(userName)?")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                
                 dateAndMealTypeRow
                 
                 if !savedMeals.isEmpty {
@@ -1077,6 +1094,15 @@ private struct SavedMealLogSheet: View {
                     Text("\(Int(displayedCalories)) cal · \(savedMeal.mealType.capitalized)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                    
+                    let p = (savedMeal.protein ?? 0) * servingMultiplier
+                    let c = (savedMeal.carbs ?? 0) * servingMultiplier
+                    let f = (savedMeal.fat ?? 0) * servingMultiplier
+                    if p > 0 || c > 0 || f > 0 {
+                        Text("Protein: \(Int(p))g  ·  Carbs: \(Int(c))g  ·  Fat: \(Int(f))g")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: Constants.Spacing.small) {

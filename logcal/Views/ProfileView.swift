@@ -56,15 +56,7 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Constants.Spacing.extraLarge) {
-                    // Header
-                    HStack {
-                        Text("Profile")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    .padding(.top, Constants.Spacing.regular)
+
                     
                     // User Card
                     ProfileCard(
@@ -165,8 +157,8 @@ struct ProfileView: View {
                     .padding(.bottom, Constants.Spacing.extraLarge)
                 }
             }
-            .navigationTitle("")
-            .navigationBarHidden(true)
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.large)
             .background(Theme.backgroundColor(colorScheme: colorScheme))
             .sheet(isPresented: $showThemeSelector) {
                 ThemeSelectorSheet()
