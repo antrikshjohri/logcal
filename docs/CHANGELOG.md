@@ -37,3 +37,19 @@ This changelog tracks notable project changes from the point we adopted the new 
 - Added the first LogCal AI SEO blog draft about tracking calories without weighing food
 - Added a website Blog section with a blog index, article route, placeholder visuals, and SEO schema
 - Updated the SEO blog agent with production article rules, region-agnostic defaults, portion guidance, and image-generation prompt requirements
+
+## 2026-05-29 (v1.7)
+
+- Prepared App Store release notes for v1.7 and bumped the iOS app marketing version to `1.7` (build `8`)
+- Added native universal support for iPad (updated targeted device family configuration to `"1,2"`)
+- Implemented responsive navigation selection routing with `AppRootView` using `NavigationSplitView` on iPad and `TabView` on iPhone
+- Optimized the iPad dashboard layout to display in two side-by-side columns (calories and macros on the left; weekly trends, daily goal, and streak cards on the right)
+- Integrated an iPad-exclusive "Today's Meals" list section at the bottom of the home dashboard
+- Added dynamic text scaling (`minimumScaleFactor`) on small widget cards to prevent label truncation under narrow iPhone portrait modes and iPad multitasking Split Views
+- Constrained and centered settings, profile sheets, and detail views to `650pt` max-width on iPad screens
+- Implemented a complete `SavedMeal` favorite meals model and list interface, including quick-log actions from the Log composer
+- Revamped the app-wide font system to use SF Pro Rounded typography
+- Re-architected meal details view to support custom capsule macro pills and specific meal type icons (sunrise, sun, stars)
+- Defaulted the History view to expand the two most recent logging days automatically for better quality of life
+- Improved meal logging speed by approximately 50% through service optimization
+
