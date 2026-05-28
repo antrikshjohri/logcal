@@ -191,13 +191,13 @@ struct OpenAIService {
                                 "assumptions": ["type": "string"],
                                 "confidence": ["type": "number"]
                             ],
-                            "required": ["name", "quantity", "calories", "confidence"]
+                            "required": ["name", "quantity", "calories", "protein", "carbs", "fat", "assumptions", "confidence"]
                         ]
                     ],
                     "needs_clarification": ["type": "boolean"],
                     "clarifying_question": ["type": "string"]
                 ],
-                "required": ["meal_type", "total_calories", "items", "needs_clarification"]
+                "required": ["meal_type", "total_calories", "protein", "carbs", "fat", "items", "needs_clarification"]
             ]
         ]
         
@@ -349,13 +349,13 @@ struct OpenAIService {
                                 "assumptions": ["type": "string"],
                                 "confidence": ["type": "number"]
                             ],
-                            "required": ["name", "quantity", "calories", "confidence"]
+                            "required": ["name", "quantity", "calories", "protein", "carbs", "fat", "assumptions", "confidence"]
                         ]
                     ],
                     "needs_clarification": ["type": "boolean"],
                     "clarifying_question": ["type": "string"]
                 ],
-                "required": ["meal_type", "total_calories", "items", "needs_clarification"]
+                "required": ["meal_type", "total_calories", "protein", "carbs", "fat", "items", "needs_clarification"]
             ]
         ]
 

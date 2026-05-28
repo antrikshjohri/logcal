@@ -91,19 +91,22 @@ struct MealEditView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Clear spacer at top of ScrollView content to prevent it from starting hidden under the navigation bar
+                Color.clear
+                    .frame(height: 12)
+                
                 // Success Header / Title Card
                 VStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 40))
                         .foregroundColor(Theme.primaryGreen)
-                        .padding(.top, 16)
+                        .padding(.top, 8)
                     
                     Text("Meal Logged!")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.top, 8)
                 
                 // Estimated Calories Card (Interactive)
                 ZStack(alignment: .topTrailing) {
@@ -188,14 +191,14 @@ struct MealEditView: View {
                     .transition(.opacity)
                 }
                 
-                // Macros Row
-                if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
+                // Macros Row (uses modifiedResponse if present to remain reactive)
+                if let macros = (modifiedResponse ?? meal.response)?.resolvedMealMacrosForDisplay() {
                     HStack(spacing: 8) {
                         HStack(spacing: 4) {
                             Circle()
                                 .fill(Theme.proteinColor)
                                 .frame(width: 8, height: 8)
-                            Text("\(Int(protein))g Protein")
+                            Text("\(Int(macros.protein))g Protein")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         }
@@ -208,7 +211,7 @@ struct MealEditView: View {
                             Circle()
                                 .fill(Theme.carbsColor)
                                 .frame(width: 8, height: 8)
-                            Text("\(Int(carbs))g Carbs")
+                            Text("\(Int(macros.carbs))g Carbs")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         }
@@ -221,7 +224,7 @@ struct MealEditView: View {
                             Circle()
                                 .fill(Theme.fatColor)
                                 .frame(width: 8, height: 8)
-                            Text("\(Int(fat))g Fat")
+                            Text("\(Int(macros.fat))g Fat")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         }
@@ -258,9 +261,14 @@ struct MealEditView: View {
                 // Details Card (Date, Meal Type, Time, Description/What you ate)
                 VStack(spacing: 16) {
                     HStack {
-                        Text("Date")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        HStack(spacing: 6) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            Text("Date")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        }
                         Spacer()
                         Button(action: {
                             showDatePicker = true
@@ -269,9 +277,12 @@ struct MealEditView: View {
                                 Text(DateFormatterCache.formatDate(editedDate))
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 14))
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 11, weight: .bold))
                                     .foregroundColor(Theme.primaryGreen)
+                                    .frame(width: 26, height: 26)
+                                    .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                    .clipShape(Circle())
                             }
                         }
                     }
@@ -280,10 +291,16 @@ struct MealEditView: View {
                         .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
                     
                     HStack {
-                        Text("Meal Type")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        HStack(spacing: 6) {
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            Text("Meal Type")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        }
                         Spacer()
+                        
                         Picker("Meal Type", selection: $editedMealType) {
                             ForEach(mealTypes, id: \.self) { type in
                                 Text(type.capitalized).tag(type)
@@ -298,9 +315,14 @@ struct MealEditView: View {
                         .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
                     
                     HStack {
-                        Text("Logged At")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            Text("Logged At")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        }
                         Spacer()
                         Text(meal.timestamp, style: .time)
                             .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -459,24 +481,14 @@ struct MealEditView: View {
         }
         .background(Theme.backgroundColor(colorScheme: colorScheme))
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: editedDate) { oldValue, newValue in
+            autoSaveChanges()
+        }
+        .onChange(of: editedMealType) { oldValue, newValue in
+            autoSaveChanges()
+        }
         .navigationTitle("Meal Details")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(Theme.primaryGreen)
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
-                    saveChanges()
-                }
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(Theme.primaryGreen)
-            }
-        }
         .sheet(isPresented: $showDatePicker) {
             NavigationStack {
                 VStack {
@@ -540,6 +552,8 @@ struct MealEditView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isCaloriesFieldFocused = true
                 }
+            } else if oldValue && !newValue {
+                autoSaveChanges()
             }
         }
     }
@@ -628,9 +642,10 @@ struct MealEditView: View {
         } else {
             editedCalories = meal.totalCalories
         }
+        autoSaveChanges()
     }
     
-    private func saveChanges() {
+    private func autoSaveChanges() {
         // Update meal with edited values
         meal.timestamp = editedDate
         meal.mealType = editedMealType
@@ -643,10 +658,6 @@ struct MealEditView: View {
                let jsonString = String(data: jsonData, encoding: .utf8) {
                 meal.rawResponseJson = jsonString
             }
-        } else if caloriesManuallyOverridden {
-            // If manually overridden with multiple items, we need to create a minimal response
-            // For now, keep the original response but the UI won't show items breakdown
-            // The calories mismatch will indicate manual override
         }
         
         do {
@@ -659,8 +670,6 @@ struct MealEditView: View {
             
             // Track analytics
             AnalyticsService.trackMealEdited()
-            
-            dismiss()
         } catch {
             print("DEBUG: Error saving meal: \(error)")
         }
