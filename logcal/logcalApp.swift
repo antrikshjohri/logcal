@@ -93,6 +93,7 @@ struct logcalApp: App {
                                     }
                                 }
                         }
+                        .tint(Theme.primaryGreen)
                         .onChange(of: selectedTab) { oldValue, newValue in
                             let tabNames = ["Dashboard", "Log", "History", "Profile"]
                             if newValue < tabNames.count {

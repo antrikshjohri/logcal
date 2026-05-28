@@ -96,23 +96,12 @@ struct ThemeSelectorSheet: View {
                 .padding(.horizontal, Constants.Spacing.extraLarge)
         }
         .frame(maxWidth: .infinity, alignment: .top)
-        .background(sheetBackgroundColor(colorScheme: effectiveColorScheme))
+        .background(Theme.backgroundColor(colorScheme: effectiveColorScheme))
         .ignoresSafeArea(edges: .bottom)
         .preferredColorScheme(selectedTheme.colorScheme)
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
-        .presentationBackground(sheetBackgroundColor(colorScheme: effectiveColorScheme))
-    }
-    
-    // Sheet background with better contrast in dark mode
-    private func sheetBackgroundColor(colorScheme: ColorScheme) -> Color {
-        if colorScheme == .dark {
-            // Slightly lighter than pure black for better separation, fully opaque
-            return Color(white: 0.1).opacity(1.0)
-        } else {
-            // Fully opaque white background for light mode
-            return Color(.systemGroupedBackground).opacity(1.0)
-        }
+        .presentationBackground(Theme.backgroundColor(colorScheme: effectiveColorScheme))
     }
 }
 

@@ -28,12 +28,12 @@ enum Constants {
         static let warningBackground = Color.orange.opacity(0.1)
         static let successBackground = Color.green.opacity(0.1)
         
-        static let badgeBackground = Color.blue.opacity(0.2)
+        static let badgeBackground = Color(red: 0.11, green: 0.45, blue: 0.28).opacity(0.2)
         static let micActiveBackground = Color.red.opacity(0.1)
-        static let micInactiveBackground = Color.blue.opacity(0.1)
+        static let micInactiveBackground = Color(red: 0.11, green: 0.45, blue: 0.28).opacity(0.1)
         
         static let borderGray = Color.gray.opacity(0.3)
-        static let primaryBlue = Color.blue
+        static let primaryBlue = Color(red: 0.11, green: 0.45, blue: 0.28)
         static let primaryRed = Color.red
         static let primaryGray = Color.gray
         static let secondaryGray = Color.secondary

@@ -449,7 +449,7 @@ struct MealEditView: View {
                     }) {
                         HStack(spacing: 6) {
                             Image(systemName: isSavedToFavorites ? "bookmark.fill" : "bookmark")
-                            Text(isSavedToFavorites ? "Saved" : "Save Favorite")
+                            Text(isSavedToFavorites ? "Saved" : "Save Favourite")
                         }
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(Theme.primaryGreen)
@@ -498,6 +498,7 @@ struct MealEditView: View {
                         displayedComponents: [.date]
                     )
                     .datePickerStyle(.graphical)
+                    .tint(Theme.primaryGreen)
                     .padding()
                     
                     Spacer()
@@ -533,7 +534,7 @@ struct MealEditView: View {
         } message: {
             Text("Are you sure you want to delete this meal? This action cannot be undone.")
         }
-        .alert("Delete Saved Meal", isPresented: Binding(
+        .alert("Delete Favourite Meal", isPresented: Binding(
             get: { savedMealPendingDeletion != nil },
             set: { if !$0 { savedMealPendingDeletion = nil } }
         )) {
@@ -544,7 +545,7 @@ struct MealEditView: View {
                 deleteSavedMeal()
             }
         } message: {
-            Text("Are you sure you want to delete this saved meal? This action cannot be undone.")
+            Text("Are you sure you want to delete this favourite meal? This action cannot be undone.")
         }
         .onChange(of: isEditingCalories) { oldValue, newValue in
             if newValue && !oldValue {

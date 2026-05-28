@@ -631,7 +631,7 @@ struct HomeView: View {
                         viewModel.saveLatestMealAsFavorite()
                         toastManager.show(ToastMessage(
                             title: "Saved",
-                            message: "Meal added to saved meals.",
+                            message: "Meal added to favourites.",
                             type: .success
                         ))
                     }) {
@@ -791,7 +791,7 @@ struct HomeView: View {
     private var savedMealsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Favorites")
+                Text("Favourites")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                 
@@ -820,7 +820,7 @@ struct HomeView: View {
                                     .font(.system(size: 11))
                                     .foregroundColor(Theme.primaryGreen)
 
-                                Text(savedMeal.title)
+                                Text(savedMeal.title.count > 40 ? String(savedMeal.title.prefix(40)) + "..." : savedMeal.title)
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                                     .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                     .lineLimit(1)
@@ -950,15 +950,15 @@ private struct AllFavoritesSheet: View {
                             Image(systemName: "slider.horizontal.3")
                                 .font(.system(size: 14))
                                 .foregroundColor(Theme.primaryGreen)
-                            Text("Manage Saved Meals")
+                            Text("Manage Favourites")
                                 .font(.system(size: 14, weight: .medium, design: .rounded))
                                 .foregroundColor(Theme.primaryGreen)
                         }
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "Search favorites")
-            .navigationTitle("Favorites")
+            .searchable(text: $searchText, prompt: "Search favourites")
+            .navigationTitle("Favourites")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1068,10 +1068,10 @@ private struct SavedMealLogSheet: View {
                         } label: {
                             Image(systemName: "pencil")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundColor(Constants.Colors.primaryBlue)
+                                .foregroundColor(Theme.primaryGreen)
                                 .frame(width: 32, height: 32)
                         }
-                        .accessibilityLabel("Rename saved meal")
+                        .accessibilityLabel("Rename favourite meal")
                     }
 
                     Text("\(Int(displayedCalories)) cal · \(savedMeal.mealType.capitalized)")
@@ -1124,7 +1124,7 @@ private struct SavedMealLogSheet: View {
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Constants.Colors.primaryBlue)
+                        .background(Theme.primaryGreen)
                         .foregroundColor(.white)
                         .cornerRadius(Constants.Sizes.cornerRadius)
                 }
@@ -1138,14 +1138,14 @@ private struct SavedMealLogSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(Constants.Colors.primaryBackground)
-                        .foregroundColor(Constants.Colors.primaryBlue)
+                        .foregroundColor(Theme.primaryGreen)
                         .cornerRadius(Constants.Sizes.cornerRadius)
                 }
             }
             .padding()
-            .navigationTitle("Saved Meal")
+            .navigationTitle("Favourite Meal")
             .navigationBarTitleDisplayMode(.inline)
-            .alert("Rename Saved Meal", isPresented: $isRenaming) {
+            .alert("Rename Favourite Meal", isPresented: $isRenaming) {
                 TextField("Name", text: $renameText)
                 Button("Cancel", role: .cancel) {}
                 Button("Save") {
@@ -1290,8 +1290,8 @@ private struct DictationWaveformView: View {
 
     private func barColor(for index: Int, count: Int) -> Color {
         index > count / 2
-            ? Constants.Colors.primaryBlue.opacity(0.55)
-            : Constants.Colors.primaryBlue.opacity(0.9)
+            ? Theme.primaryGreen.opacity(0.55)
+            : Theme.primaryGreen.opacity(0.9)
     }
 }
 

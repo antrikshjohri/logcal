@@ -133,7 +133,7 @@ class LogViewModel: ObservableObject {
 
     func logSavedMealAsIs(_ savedMeal: SavedMeal, servingMultiplier: Double = 1.0) {
         guard let context = modelContext else {
-            errorMessage = "Could not log saved meal."
+            errorMessage = "Could not log favourite meal."
             return
         }
 
@@ -498,7 +498,7 @@ class LogViewModel: ObservableObject {
     /// Quick-edit the meal shown in the success preview (same row as `latestResult`).
     func quickRefineLoggedMeal(correctionPrompt: String) async {
         guard let id = lastLoggedMealId, let context = modelContext else {
-            errorMessage = "Could not find the saved meal to update."
+            errorMessage = "Could not find the logged meal to update."
             print("DEBUG: [LogViewModel] quickRefineLoggedMeal missing id or context")
             return
         }

@@ -108,18 +108,8 @@ struct NotificationsSettingsView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: Constants.Spacing.extraLarge) {
-                    // Header
-                    HStack {
-                        Text("Notifications")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, Constants.Spacing.extraLarge)
-                    .padding(.top, Constants.Spacing.regular)
+        ScrollView {
+            VStack(spacing: Constants.Spacing.extraLarge) {
                     
                     // Meal Reminders Section
                     VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
@@ -296,16 +286,9 @@ struct NotificationsSettingsView: View {
                 }
                 .padding(.bottom, Constants.Spacing.extraLarge)
             }
-            .navigationTitle("")
-            .navigationBarHidden(true)
+            .navigationTitle("Meal Reminders")
+            .navigationBarTitleDisplayMode(.inline)
             .background(Theme.backgroundColor(colorScheme: colorScheme))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
             .alert("Notification Permission Required", isPresented: $showPermissionAlert) {
                 Button("Settings") {
                     if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
@@ -320,7 +303,6 @@ struct NotificationsSettingsView: View {
                 AnalyticsService.trackViewOpened(viewName: "Notifications Settings")
                 loadNotificationPreferences()
             }
-        }
     }
     
     private func handleToggleChange(_ enabled: Bool) {

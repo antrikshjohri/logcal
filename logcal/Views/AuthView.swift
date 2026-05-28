@@ -99,7 +99,7 @@ struct AuthView: View {
                         // Microphone icon
                         Image(systemName: "mic.circle.fill")
                             .font(.system(size: 80))
-                            .foregroundColor(Constants.Colors.primaryBlue)
+                            .foregroundColor(Theme.primaryGreen)
                         
                         // Fixed height container for meal text to prevent layout shifts
                         VStack {

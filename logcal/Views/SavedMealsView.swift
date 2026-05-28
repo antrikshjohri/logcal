@@ -8,6 +8,7 @@ import SwiftData
 
 struct SavedMealsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) var colorScheme
     @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     @State private var mealBeingRenamed: SavedMeal?
     @State private var mealPendingDeletion: SavedMeal?
@@ -17,7 +18,7 @@ struct SavedMealsView: View {
         List {
             if savedMeals.isEmpty {
                 ContentUnavailableView(
-                    "No Saved Meals",
+                    "No Favourites",
                     systemImage: "bookmark",
                     description: Text("Save meals after logging them to make repeat logging faster.")
                 )
@@ -35,11 +36,11 @@ struct SavedMealsView: View {
                             } label: {
                                 Image(systemName: "pencil")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(Constants.Colors.primaryBlue)
+                                    .foregroundColor(Theme.primaryGreen)
                                     .frame(width: 32, height: 32)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Rename saved meal")
+                            .accessibilityLabel("Rename favourite meal")
 
                             Spacer()
 
@@ -56,12 +57,12 @@ struct SavedMealsView: View {
                                     .frame(width: 32, height: 32)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Delete saved meal")
+                            .accessibilityLabel("Delete favourite meal")
                         }
 
                         Text(savedMeal.mealType.capitalized)
                             .font(.caption)
-                            .foregroundColor(Constants.Colors.primaryBlue)
+                            .foregroundColor(Theme.primaryGreen)
 
                         if let response = savedMeal.response {
                             Text(response.items.prefix(3).map(\.name).joined(separator: ", "))
@@ -71,6 +72,7 @@ struct SavedMealsView: View {
                         }
                     }
                     .padding(.vertical, Constants.Spacing.small)
+                    .listRowBackground(Theme.cardBackground(colorScheme: colorScheme))
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             mealPendingDeletion = savedMeal
@@ -84,13 +86,15 @@ struct SavedMealsView: View {
                         } label: {
                             Label("Rename", systemImage: "pencil")
                         }
-                        .tint(Constants.Colors.primaryBlue)
+                        .tint(Theme.primaryGreen)
                     }
                 }
             }
         }
-        .navigationTitle("Saved Meals")
-        .alert("Rename Saved Meal", isPresented: Binding(
+        .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .scrollContentBackground(.hidden)
+        .navigationTitle("Favourites")
+        .alert("Rename Favourite Meal", isPresented: Binding(
             get: { mealBeingRenamed != nil },
             set: { if !$0 { mealBeingRenamed = nil } }
         )) {
@@ -102,7 +106,7 @@ struct SavedMealsView: View {
                 renameSelectedMeal()
             }
         }
-        .alert("Delete Saved Meal", isPresented: Binding(
+        .alert("Delete Favourite Meal", isPresented: Binding(
             get: { mealPendingDeletion != nil },
             set: { if !$0 { mealPendingDeletion = nil } }
         )) {
@@ -113,7 +117,7 @@ struct SavedMealsView: View {
                 deletePendingMeal()
             }
         } message: {
-            Text("Are you sure you want to delete this saved meal? This action cannot be undone.")
+            Text("Are you sure you want to delete this favourite meal? This action cannot be undone.")
         }
     }
 

@@ -121,9 +121,9 @@ struct QuickEditMealSection: View {
                     } else {
                         Image(systemName: dictation.isListening ? "arrow.up" : "mic")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(dictation.isListening ? .white : Constants.Colors.primaryBlue)
+                            .foregroundColor(dictation.isListening ? .white : Theme.primaryGreen)
                             .frame(width: 36, height: 36)
-                            .background(dictation.isListening ? Constants.Colors.primaryBlue : Constants.Colors.micInactiveBackground)
+                            .background(dictation.isListening ? Theme.primaryGreen : Constants.Colors.micInactiveBackground)
                             .clipShape(Circle())
                     }
                 }

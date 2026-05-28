@@ -77,97 +77,91 @@ struct ProfileView: View {
                     )
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     
-                    // Goals & Progress Section
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Goals & Progress")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                    // Account & Preferences Section
+                    VStack(alignment: .leading, spacing: 6) {
+                        settingsGroupHeader("ACCOUNT & PREFERENCES")
                         
-                        NavigationLink(destination: DailyGoalView()) {
-                            SettingsRowContent(
-                                icon: "target",
-                                iconColor: Theme.accentBlue,
-                                title: "Daily Goal",
-                                trailingValue: formattedGoal
-                            )
+                        VStack(spacing: 0) {
+                            NavigationLink(destination: DailyGoalView()) {
+                                SettingsGroupRow(
+                                    icon: "target",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "Daily Goal",
+                                    trailingValue: formattedGoal
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Divider()
+                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                .padding(.leading, 56)
+                            
+                            NavigationLink(destination: SavedMealsView()) {
+                                SettingsGroupRow(
+                                    icon: "bookmark.fill",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "Favourite meals"
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Divider()
+                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                .padding(.leading, 56)
+                            
+                            SettingsGroupButtonRow(
+                                icon: "paintpalette",
+                                iconColor: Theme.primaryGreen,
+                                title: "Theme",
+                                trailingValue: themeDisplayName
+                            ) {
+                                showThemeSelector = true
+                            }
+                            
+                            Divider()
+                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                .padding(.leading, 56)
+                            
+                            NavigationLink(destination: NotificationsSettingsView()) {
+                                SettingsGroupRow(
+                                    icon: "bell.fill",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "Meal Reminders"
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                    }
-
-                    // Meals Section
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Meals")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
-
-                        NavigationLink(destination: SavedMealsView()) {
-                            SettingsRowContent(
-                                icon: "bookmark.fill",
-                                iconColor: Theme.accentBlue,
-                                title: "Saved Meals"
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                    }
-                    
-                    // Appearance Section
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Appearance")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
-                        
-                        SettingsRow(
-                            icon: "paintpalette",
-                            iconColor: Theme.accentBlue,
-                            title: "Theme",
-                            trailingValue: themeDisplayName
-                        ) {
-                            showThemeSelector = true
-                        }
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                    }
-                    
-                    // Notifications Section
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Notifications")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
-                        
-                        NavigationLink(destination: NotificationsSettingsView()) {
-                            SettingsRowContent(
-                                icon: "bell.fill",
-                                iconColor: Theme.accentBlue,
-                                title: "Meal Reminders"
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
                     
                     // Support Section
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Support")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Theme.secondaryText)
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                    VStack(alignment: .leading, spacing: 6) {
+                        settingsGroupHeader("SUPPORT")
                         
-                        NavigationLink(destination: HelpFAQView()) {
-                            SettingsRowContent(
-                                icon: "questionmark.circle",
-                                iconColor: Theme.accentBlue,
-                                title: "Help & FAQ"
-                            )
+                        VStack(spacing: 0) {
+                            NavigationLink(destination: HelpFAQView()) {
+                                SettingsGroupRow(
+                                    icon: "questionmark.circle",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "Help & FAQ"
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     }
-                    
                     .padding(.bottom, Constants.Spacing.extraLarge)
                 }
             }
@@ -207,6 +201,13 @@ struct ProfileView: View {
         }
     }
     
+    private func settingsGroupHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+            .padding(.horizontal, Constants.Spacing.extraLarge + 4)
+    }
+    
     private func loadProfileImage() {
         guard let photoURL = Auth.auth().currentUser?.photoURL else {
             profileImage = nil
@@ -225,6 +226,63 @@ struct ProfileView: View {
                 print("DEBUG: Failed to load profile image: \(error)")
             }
         }
+    }
+}
+
+private struct SettingsGroupRow: View {
+    @Environment(\.colorScheme) var colorScheme
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let trailingValue: String?
+    
+    init(icon: String, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.title = title
+        self.trailingValue = trailingValue
+    }
+    
+    var body: some View {
+        HStack(spacing: Constants.Spacing.regular) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(iconColor)
+                .frame(width: 24, height: 24)
+            
+            Text(title)
+                .font(.system(size: 17, weight: .regular))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            if let value = trailingValue {
+                Text(value)
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(Theme.secondaryText)
+            }
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Theme.secondaryText)
+        }
+        .padding(Constants.Spacing.large)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct SettingsGroupButtonRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let trailingValue: String?
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            SettingsGroupRow(icon: icon, iconColor: iconColor, title: title, trailingValue: trailingValue)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
