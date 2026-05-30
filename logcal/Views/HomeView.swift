@@ -36,6 +36,7 @@ struct HomeView: View {
     @State private var selectedSavedMeal: SavedMeal?
     @State private var showAllFavorites = false
     @State private var showMealTypeDropdown = false
+    @State private var showLinkSheet = false
     
     var body: some View {
         ZStack {
@@ -114,6 +115,11 @@ struct HomeView: View {
                                 }
                             }
                         )
+                    }
+                    .sheet(isPresented: $showLinkSheet) {
+                        LinkAccountView()
+                            .environmentObject(authViewModel)
+                            .environmentObject(toastManager)
                     }
             }
 
@@ -687,6 +693,46 @@ struct HomeView: View {
                             .accessibilityLabel("Dismiss meal summary")
                     }
                     .buttonStyle(.plain)
+                }
+                
+                if authViewModel.isAnonymous {
+                    HStack(alignment: .center, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(Theme.warningAmber)
+                            .font(.system(size: 16))
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Guest Session")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            Text("Sign in to back up your meals to the cloud.")
+                                .font(.system(size: 10, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            showLinkSheet = true
+                        }) {
+                            Text("Sign In")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Theme.primaryGreen)
+                                .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(10)
+                    .background(Theme.warningAmber.opacity(0.08))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Theme.warningAmber.opacity(0.2), lineWidth: 1)
+                    )
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {

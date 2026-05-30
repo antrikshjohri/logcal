@@ -231,28 +231,12 @@ class CloudSyncService: ObservableObject {
     func clearLocalMeals(modelContext: ModelContext) async {
         print("DEBUG: Clearing all local meals...")
         
-        // Use optional try to handle cases where modelContext might be invalid
-        // This can happen during sign-out when the view hierarchy is changing
-        guard let localMeals = try? modelContext.fetch(FetchDescriptor<MealEntry>()) else {
-            print("DEBUG: Could not fetch meals (modelContext may be invalid during sign-out) - this is expected")
-            // Clear session state even if we couldn't fetch
-            currentUserId = nil
-            isAnonymousSession = false
-            return
-        }
-        
-        print("DEBUG: Found \(localMeals.count) local meals to delete")
-        
-        // Delete meals
-        for meal in localMeals {
-            modelContext.delete(meal)
-        }
-        
-        // Try to save - use optional try to handle save failures gracefully
-        if let _ = try? modelContext.save() {
-            print("DEBUG: Successfully cleared \(localMeals.count) local meals")
-        } else {
-            print("DEBUG: Could not save after deleting meals (modelContext may be invalid) - this is expected during sign-out")
+        do {
+            try modelContext.delete(model: MealEntry.self)
+            try modelContext.save()
+            print("DEBUG: Successfully cleared all local meals")
+        } catch {
+            print("DEBUG: Error clearing local meals: \(error) - this can be expected during sign-out")
         }
         
         // Clear session state when clearing local data

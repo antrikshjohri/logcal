@@ -8,12 +8,14 @@
 import SwiftUI
 import AuthenticationServices
 import FirebaseAuth
+import SwiftData
 
 struct LinkAccountView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var toastManager: ToastManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.modelContext) private var modelContext
     
     private let showAppleSignIn = true
     
@@ -96,7 +98,21 @@ struct LinkAccountView: View {
         }
         .onChange(of: authViewModel.errorMessage) { oldValue, newValue in
             if newValue == "CREDENTIAL_ALREADY_IN_USE" {
-                showConflictSheet = true
+                // Check if there are local guest meals to merge
+                let descriptor = FetchDescriptor<MealEntry>()
+                let hasLocalMeals = (try? modelContext.fetch(descriptor))?.isEmpty == false
+                
+                if hasLocalMeals {
+                    showConflictSheet = true
+                } else {
+                    // No guest data exists: automatically switch to the existing account and dismiss
+                    print("DEBUG: No local guest meals found, automatically switching to existing account...")
+                    Task { @MainActor in
+                        authViewModel.shouldMergeOnSwitch = false
+                        await authViewModel.switchAccountWithPendingCredential()
+                        dismiss()
+                    }
+                }
             } else if let message = newValue, message != oldValue {
                 toastManager.show(ToastMessage(
                     title: "Linking Error",

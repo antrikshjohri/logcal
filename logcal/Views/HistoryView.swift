@@ -24,6 +24,9 @@ struct HistoryView: View {
     @State private var searchText = ""
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var toastManager: ToastManager
+    @State private var showLinkSheet = false
     
     // Group meals by date
     private var groupedMeals: [(date: Date, meals: [MealEntry], totalCalories: Double)] {
@@ -165,6 +168,49 @@ struct HistoryView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: Constants.Spacing.large) {
+                            if authViewModel.isAnonymous {
+                                HStack(alignment: .center, spacing: 10) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(Theme.warningAmber)
+                                        .font(.system(size: 18))
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Guest Session")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                        Text("Sign in to back up your meals to the cloud.")
+                                            .font(.system(size: 11, design: .rounded))
+                                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        showLinkSheet = true
+                                    }) {
+                                        Text("Sign In")
+                                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Theme.primaryGreen)
+                                            .cornerRadius(6)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Theme.cardBackground(colorScheme: colorScheme))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Theme.warningAmber.opacity(0.3), lineWidth: 1)
+                                )
+                                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
+                                .padding(.bottom, 4)
+                            }
+                            
                             ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
                                 DayCardView(
                                     dayGroup: dayGroup,
@@ -316,6 +362,11 @@ struct HistoryView: View {
                 if newValue > oldValue && !hasInitialized {
                     initializeExpandedDates()
                 }
+            }
+            .sheet(isPresented: $showLinkSheet) {
+                LinkAccountView()
+                    .environmentObject(authViewModel)
+                    .environmentObject(toastManager)
             }
         }
     }

@@ -98,13 +98,13 @@ struct SyncHandlerView: View {
                     if wasAuthenticated {
                         // Switching from authenticated to anonymous - clear authenticated data
                         print("DEBUG: Switching from authenticated to anonymous, clearing authenticated data...")
-                        Task {
+                        Task { @MainActor in
                             await cloudSyncService.initializeAnonymousSession(modelContext: modelContext)
                         }
                     } else if oldValue == nil {
                         // First time anonymous sign-in
                         print("DEBUG: Initializing anonymous session...")
-                        Task {
+                        Task { @MainActor in
                             await cloudSyncService.initializeAnonymousSession(modelContext: modelContext)
                         }
                     }
@@ -122,7 +122,7 @@ struct SyncHandlerView: View {
                         DebugLogger.log(location: "SyncHandlerView.swift:72", message: "Starting sync after sign-in in onChange", data: ["wasAnonymous": wasAnonymous, "wasNil": wasNil, "userChanged": userChanged, "newUserId": newUser.uid], hypothesisId: "A")
                         // #endregion
                         // User just signed in (not anonymous) or switched accounts - sync data
-                        Task {
+                        Task { @MainActor in
                             // Wait a bit to ensure modelContext is ready
                             // Use a shorter delay since we're already in the onChange handler
                             try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds

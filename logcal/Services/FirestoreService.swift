@@ -9,6 +9,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 
+@MainActor
 struct FirestoreService {
     private let db = Firestore.firestore()
     
