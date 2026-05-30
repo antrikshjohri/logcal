@@ -39,90 +39,88 @@ struct HomeView: View {
     @State private var showLinkSheet = false
     
     var body: some View {
-        ZStack {
-            NavigationStack {
-                mainContent
-                    .navigationTitle("Log")
-                    .navigationBarTitleDisplayMode(.large)
-                    .onChange(of: viewModel.latestResult) { oldValue, newValue in
-                        mealPreviewAutoDismissWork?.cancel()
-                        mealPreviewAutoDismissWork = nil
-                        if newValue == nil {
-                            quickEditPrompt = ""
-                        }
-                        
-                        if oldValue == nil && newValue != nil {
-                            showConfetti = true
-                            // Auto-dismiss confetti after animation completes (3 seconds)
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                                showConfetti = false
-                            }
-                        }
-                        
-                        if newValue != nil {
-                            let work = DispatchWorkItem { [viewModel] in
-                                print("DEBUG: [HomeView] Meal preview auto-dismiss after 2 minutes")
-                                withAnimation(.easeOut(duration: 0.3)) {
-                                    viewModel.latestResult = nil
-                                }
-                            }
-                            mealPreviewAutoDismissWork = work
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 120.0, execute: work)
+        NavigationStack {
+            mainContent
+                .navigationTitle("Log")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbarBackground(Theme.backgroundColor(colorScheme: colorScheme), for: .navigationBar)
+                .onChange(of: viewModel.latestResult) { oldValue, newValue in
+                    mealPreviewAutoDismissWork?.cancel()
+                    mealPreviewAutoDismissWork = nil
+                    if newValue == nil {
+                        quickEditPrompt = ""
+                    }
+                    
+                    if oldValue == nil && newValue != nil {
+                        showConfetti = true
+                        // Auto-dismiss confetti after animation completes (3 seconds)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            showConfetti = false
                         }
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SetMealTypeFromNotification"))) { notification in
-                        // Set meal type when notification is tapped
-                        if let userInfo = notification.userInfo,
-                           let mealTypeString = userInfo["mealType"] as? String,
-                           let mealType = MealType(rawValue: mealTypeString) {
-                            print("DEBUG: [HomeView] Setting meal type from notification: \(mealTypeString)")
-                            viewModel.selectedMealType = mealType
-                            viewModel.isMealTypeManuallySet = true
+                    
+                    if newValue != nil {
+                        let work = DispatchWorkItem { [viewModel] in
+                            print("DEBUG: [HomeView] Meal preview auto-dismiss after 2 minutes")
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                viewModel.latestResult = nil
+                            }
                         }
+                        mealPreviewAutoDismissWork = work
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 120.0, execute: work)
                     }
-                    .modifier(HomeViewModifiers(
-                        viewModel: viewModel,
-                        modelContext: modelContext,
-                        navigateToDateTimestamp: $navigateToDateTimestamp,
-                        toastManager: toastManager,
-                        showConfetti: $showConfetti,
-                        showUpdateRequiredAlert: Binding(
-                            get: { viewModel.showUpdateRequiredAlert },
-                            set: { viewModel.showUpdateRequiredAlert = $0 }
-                        )
-                    ))
-                    .sheet(item: $selectedSavedMeal) { savedMeal in
-                        SavedMealLogSheet(
-                            savedMeal: savedMeal,
-                            onLog: { servingMultiplier in
-                                viewModel.logSavedMealAsIs(savedMeal, servingMultiplier: servingMultiplier)
-                                selectedSavedMeal = nil
-                            },
-                            onEdit: {
-                                viewModel.prepareSavedMealForEditing(savedMeal)
-                                selectedSavedMeal = nil
-                                isTextFieldFocused = true
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SetMealTypeFromNotification"))) { notification in
+                    // Set meal type when notification is tapped
+                    if let userInfo = notification.userInfo,
+                       let mealTypeString = userInfo["mealType"] as? String,
+                       let mealType = MealType(rawValue: mealTypeString) {
+                        print("DEBUG: [HomeView] Setting meal type from notification: \(mealTypeString)")
+                        viewModel.selectedMealType = mealType
+                        viewModel.isMealTypeManuallySet = true
+                    }
+                }
+                .modifier(HomeViewModifiers(
+                    viewModel: viewModel,
+                    modelContext: modelContext,
+                    navigateToDateTimestamp: $navigateToDateTimestamp,
+                    toastManager: toastManager,
+                    showConfetti: $showConfetti,
+                    showUpdateRequiredAlert: Binding(
+                        get: { viewModel.showUpdateRequiredAlert },
+                        set: { viewModel.showUpdateRequiredAlert = $0 }
+                    )
+                ))
+                .sheet(item: $selectedSavedMeal) { savedMeal in
+                    SavedMealLogSheet(
+                        savedMeal: savedMeal,
+                        onLog: { servingMultiplier in
+                            viewModel.logSavedMealAsIs(savedMeal, servingMultiplier: servingMultiplier)
+                            selectedSavedMeal = nil
+                        },
+                        onEdit: {
+                            viewModel.prepareSavedMealForEditing(savedMeal)
+                            selectedSavedMeal = nil
+                            isTextFieldFocused = true
+                        }
+                    )
+                }
+                .sheet(isPresented: $showAllFavorites) {
+                    AllFavoritesSheet(
+                        savedMeals: savedMeals,
+                        onSelectMeal: { meal in
+                            showAllFavorites = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                selectedSavedMeal = meal
                             }
-                        )
-                    }
-                    .sheet(isPresented: $showAllFavorites) {
-                        AllFavoritesSheet(
-                            savedMeals: savedMeals,
-                            onSelectMeal: { meal in
-                                showAllFavorites = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                    selectedSavedMeal = meal
-                                }
-                            }
-                        )
-                    }
-                    .sheet(isPresented: $showLinkSheet) {
-                        LinkAccountView()
-                            .environmentObject(authViewModel)
-                            .environmentObject(toastManager)
-                    }
-            }
-
+                        }
+                    )
+                }
+                .sheet(isPresented: $showLinkSheet) {
+                    LinkAccountView()
+                        .environmentObject(authViewModel)
+                        .environmentObject(toastManager)
+                }
         }
     }
     
@@ -166,8 +164,9 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical)
         }
+        .background(Theme.backgroundColor(colorScheme: colorScheme))
         .background(
-            Theme.backgroundColor(colorScheme: colorScheme)
+            Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -1419,16 +1418,14 @@ struct HomeViewOverlayModifier: ViewModifier {
     @Binding var showConfetti: Bool
     
     func body(content: Content) -> some View {
-        ZStack {
-            content
-            
-            if showConfetti {
-                LottieView(animationName: "ConfettiAnimation", loopMode: LottieLoopMode.playOnce, contentMode: .scaleAspectFit)
-                    .frame(width: 400, height: 400)
-                    .allowsHitTesting(false)
-                    .zIndex(1000)
+        content
+            .overlay {
+                if showConfetti {
+                    LottieView(animationName: "ConfettiAnimation", loopMode: LottieLoopMode.playOnce, contentMode: .scaleAspectFit)
+                        .frame(width: 400, height: 400)
+                        .allowsHitTesting(false)
+                }
             }
-        }
     }
 }
 

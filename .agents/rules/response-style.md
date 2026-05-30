@@ -6,4 +6,4 @@ Ask me what to change before changing anything (unless it is very simple like st
 
 Do not automatically commit and push
 
-No Need to run xcode compile and build every time
+Do not run build on xcode. I can build and let you know in case of any errors. 
