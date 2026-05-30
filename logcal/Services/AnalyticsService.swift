@@ -7,6 +7,7 @@
 
 import Foundation
 import FirebaseAnalytics
+import FirebaseCrashlytics
 
 /// Centralized service for tracking analytics events
 struct AnalyticsService {
@@ -54,6 +55,7 @@ struct AnalyticsService {
         logEvent("meal_log_failed", parameters: [
             "error_type": errorType
         ])
+        logMessage("Meal log failed with error: \(errorType)")
     }
     
     /// Track meal edit
@@ -205,6 +207,37 @@ struct AnalyticsService {
             "dinner_hour": dinnerHour,
             "dinner_minute": dinnerMinute
         ])
+    }
+    
+    // MARK: - Error Logging (Crashlytics)
+    
+    /// Record a non-fatal error in Crashlytics
+    static func trackError(_ error: Error, additionalInfo: [String: Any]? = nil) {
+        let crashlytics = Crashlytics.crashlytics()
+        
+        if let additionalInfo = additionalInfo {
+            for (key, value) in additionalInfo {
+                crashlytics.setCustomValue(value, forKey: key)
+            }
+        }
+        
+        crashlytics.record(error: error)
+        
+        #if DEBUG
+        print("DEBUG: [Crashlytics] Recorded non-fatal error: \(error.localizedDescription)")
+        if let info = additionalInfo {
+            print("DEBUG: [Crashlytics] Additional Info: \(info)")
+        }
+        #endif
+    }
+    
+    /// Write custom log message to Crashlytics
+    static func logMessage(_ message: String) {
+        Crashlytics.crashlytics().log(message)
+        
+        #if DEBUG
+        print("DEBUG: [Crashlytics] Log: \(message)")
+        #endif
     }
     
     // MARK: - Private Helper
