@@ -18,6 +18,8 @@ class AuthViewModel: ObservableObject {
     @Published var userName: String?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var pendingCredential: AuthCredential?
+    @Published var shouldMergeOnSwitch: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
     private var authStateListener: AuthStateDidChangeListenerHandle?
@@ -59,11 +61,19 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    /// Check if user is signed in (not anonymous)
+    /// Check if user is signed in (either anonymous or authenticated)
     var isSignedIn: Bool {
-        guard let user = currentUser else { return false }
-        // Anonymous users have isAnonymous = true
-        return !user.isAnonymous
+        return currentUser != nil
+    }
+    
+    /// Check if current user is guest/anonymous
+    var isAnonymous: Bool {
+        return currentUser?.isAnonymous ?? false
+    }
+    
+    /// Check if we have a fully authenticated user (Google/Apple)
+    var hasAuthenticatedUser: Bool {
+        return currentUser != nil && !isAnonymous
     }
     
     /// Sign in with Google
@@ -169,6 +179,135 @@ class AuthViewModel: ObservableObject {
             isLoading = false
         } catch {
             print("DEBUG: Anonymous sign-in error: \(error)")
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+    
+    /// Link current anonymous user with Google credential
+    func linkWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+        pendingCredential = nil
+        
+        guard let user = currentUser else {
+            errorMessage = "No user logged in to link"
+            isLoading = false
+            return
+        }
+        
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            errorMessage = "Google Sign-In not configured."
+            isLoading = false
+            return
+        }
+        
+        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = config
+        
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            errorMessage = "Could not find root view controller"
+            isLoading = false
+            return
+        }
+        
+        do {
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+            guard let idToken = result.user.idToken?.tokenString else {
+                throw AppError.unknown(NSError(domain: "AuthViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get ID token"]))
+            }
+            
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: result.user.accessToken.tokenString)
+            
+            do {
+                let authResult = try await user.link(with: credential)
+                print("DEBUG: Google link successful: \(authResult.user.email ?? "no email")")
+                updateUserName()
+                isLoading = false
+            } catch {
+                let nsError = error as NSError
+                if nsError.domain == AuthErrorDomain && nsError.code == AuthErrorCode.credentialAlreadyInUse.rawValue {
+                    self.pendingCredential = credential
+                    self.errorMessage = "CREDENTIAL_ALREADY_IN_USE"
+                } else {
+                    self.errorMessage = error.localizedDescription
+                }
+                isLoading = false
+            }
+        } catch {
+            print("DEBUG: Google sign-in for linking error: \(error)")
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+    
+    /// Link current anonymous user with Apple credential
+    func linkWithApple(authorization: ASAuthorization) async {
+        isLoading = true
+        errorMessage = nil
+        pendingCredential = nil
+        
+        guard let user = currentUser else {
+            errorMessage = "No user logged in to link"
+            isLoading = false
+            return
+        }
+        
+        do {
+            guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let idTokenData = appleIDCredential.identityToken,
+                  let idTokenString = String(data: idTokenData, encoding: .utf8) else {
+                throw AppError.unknown(NSError(domain: "AuthViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get Apple ID token"]))
+            }
+            
+            let credential = OAuthProvider.appleCredential(
+                withIDToken: idTokenString,
+                rawNonce: nil,
+                fullName: appleIDCredential.fullName
+            )
+            
+            do {
+                let authResult = try await user.link(with: credential)
+                print("DEBUG: Apple link successful: \(authResult.user.email ?? "no email")")
+                updateUserName()
+                isLoading = false
+            } catch {
+                let nsError = error as NSError
+                if nsError.domain == AuthErrorDomain && nsError.code == AuthErrorCode.credentialAlreadyInUse.rawValue {
+                    self.pendingCredential = credential
+                    self.errorMessage = "CREDENTIAL_ALREADY_IN_USE"
+                } else {
+                    self.errorMessage = error.localizedDescription
+                }
+                isLoading = false
+            }
+        } catch {
+            print("DEBUG: Apple linking error: \(error)")
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+    
+    /// Switch to the account associated with the pending credential
+    func switchAccountWithPendingCredential() async {
+        guard let credential = pendingCredential else { return }
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            // Sign out of the anonymous user
+            try Auth.auth().signOut()
+            
+            // Sign in with the credential
+            let authResult = try await Auth.auth().signIn(with: credential)
+            print("DEBUG: Switched account successfully to user: \(authResult.user.uid)")
+            
+            // Clear pending credential
+            pendingCredential = nil
+            isLoading = false
+        } catch {
+            print("DEBUG: Switch account error: \(error)")
             errorMessage = error.localizedDescription
             isLoading = false
         }

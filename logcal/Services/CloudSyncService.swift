@@ -52,8 +52,7 @@ class CloudSyncService: ObservableObject {
         
         // Check if we're switching from anonymous to authenticated
         if isAnonymousSession {
-            print("DEBUG: Switching from anonymous to authenticated user, clearing anonymous data...")
-            await clearLocalMeals(modelContext: modelContext)
+            print("DEBUG: Switching from anonymous to authenticated user, keeping local guest data to merge...")
             isAnonymousSession = false
         }
         

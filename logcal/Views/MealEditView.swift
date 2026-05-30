@@ -122,12 +122,12 @@ struct MealEditView: View {
                                     .multilineTextAlignment(.center)
                                     .frame(maxWidth: 180)
                                 
-                                Text("kcal")
+                                Text("cal")
                                     .font(.system(size: 20, weight: .bold, design: .rounded))
                                     .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                             }
                         } else {
-                            Text("\(Int(editedCalories)) kcal")
+                            Text("\(Int(editedCalories)) cal")
                                 .font(.system(size: 44, weight: .black, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         }

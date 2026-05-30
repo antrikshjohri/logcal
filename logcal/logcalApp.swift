@@ -76,7 +76,7 @@ struct logcalApp: App {
             .preferredColorScheme(appTheme.colorScheme)
             .task {
                 // Check if we should show auth view
-                // Show if no user exists (sign-in is mandatory)
+                // Show if no user exists (sign-in/guest is mandatory)
                 // Use .task instead of .onAppear to ensure Firebase is fully initialized
                 let currentUser = Auth.auth().currentUser
                 print("DEBUG: Checking auth state - currentUser: \(currentUser?.uid ?? "nil"), isAnonymous: \(currentUser?.isAnonymous ?? false)")
@@ -85,14 +85,9 @@ struct logcalApp: App {
                     // No user at all - show auth view (sign-in required)
                     print("DEBUG: No user found, showing auth view")
                     showAuthView = true
-                } else if let user = currentUser, user.isAnonymous {
-                    // Anonymous user - sign them out and show auth view (sign-in required)
-                    print("DEBUG: Anonymous user found, signing out and showing auth view")
-                    try? Auth.auth().signOut()
-                    showAuthView = true
                 } else {
-                    // User is signed in with Google - don't show auth view
-                    print("DEBUG: User is signed in (not anonymous), hiding auth view")
+                    // User is signed in (either anonymous guest or Google/Apple) - don't show auth view
+                    print("DEBUG: User is signed in, hiding auth view")
                     showAuthView = false
                 }
             }

@@ -140,18 +140,46 @@ struct SyncHandlerView: View {
                                     await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
                                 }
                             } else if wasAnonymous {
-                                print("DEBUG: Switching from anonymous to authenticated, migrating anonymous data...")
-                                // First migrate anonymous local data to cloud
-                                await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
-                                // Then fetch any cloud data for authenticated user
-                                await cloudSyncService.syncFromCloud(modelContext: modelContext)
-                                // Fetch daily goal from cloud
-                                await fetchDailyGoalFromCloud()
-                                // Fetch and sync user country
-                                await fetchUserCountryFromCloud()
-                                // Schedule notifications if enabled
-                                if mealRemindersEnabled {
-                                    await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                if oldValue?.uid == newUserId {
+                                    print("DEBUG: Anonymous account linked successfully (same UID: \(newUserId)), migrating local guest data...")
+                                    // First migrate anonymous local data to cloud
+                                    await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
+                                    // Then fetch any cloud data for authenticated user
+                                    await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                    // Fetch daily goal from cloud
+                                    await fetchDailyGoalFromCloud()
+                                    // Fetch and sync user country
+                                    await fetchUserCountryFromCloud()
+                                    // Schedule notifications if enabled
+                                    if mealRemindersEnabled {
+                                        await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                    }
+                                } else {
+                                    if authViewModel.shouldMergeOnSwitch {
+                                        print("DEBUG: User switched accounts from anonymous (UID: \(oldValue?.uid ?? "nil")) to existing account (UID: \(newUserId)), merging guest data...")
+                                        // First migrate local guest data to the new user's cloud database
+                                        await cloudSyncService.migrateLocalToCloud(modelContext: modelContext)
+                                        // Then fetch the existing user's cloud data and merge
+                                        await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                    } else {
+                                        print("DEBUG: User switched accounts from anonymous (UID: \(oldValue?.uid ?? "nil")) to existing account (UID: \(newUserId)), discarding guest data...")
+                                        // Clear guest data first
+                                        await cloudSyncService.clearLocalMeals(modelContext: modelContext)
+                                        // Then fetch the existing user's cloud data
+                                        await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                                    }
+                                    
+                                    // Reset the merge flag
+                                    authViewModel.shouldMergeOnSwitch = false
+                                    
+                                    // Fetch daily goal from cloud
+                                    await fetchDailyGoalFromCloud()
+                                    // Fetch and sync user country
+                                    await fetchUserCountryFromCloud()
+                                    // Schedule notifications if enabled
+                                    if mealRemindersEnabled {
+                                        await NotificationService.shared.scheduleMealRemindersWithFirestorePreferences(modelContext: modelContext)
+                                    }
                                 }
                             } else {
                                 print("DEBUG: User signed in, migrating and syncing data...")

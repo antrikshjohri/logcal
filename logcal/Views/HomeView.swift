@@ -684,7 +684,7 @@ struct HomeView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(Int(result.totalCalories)) kcal")
+                    Text("\(Int(result.totalCalories)) cal")
                         .font(.system(size: 32, weight: .black, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                 }

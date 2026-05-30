@@ -148,7 +148,7 @@ struct AuthView: View {
                     .padding(.vertical, Constants.Spacing.extraLarge)
                     
                     // Sign in prompt
-                    Text("Sign in to start logging")
+                    Text("Sign in to sync your data")
                         .font(.system(size: 15, weight: .regular))
                         .foregroundColor(Constants.Colors.secondaryGray)
                         .padding(.top, Constants.Spacing.extraLarge * 2)
@@ -187,6 +187,22 @@ struct AuthView: View {
                                 }
                             }
                         }
+                        
+                        // Continue as Guest
+                        Button(action: {
+                            Task {
+                                await authViewModel.signInAnonymously()
+                                if authViewModel.isSignedIn {
+                                    isPresented = false
+                                }
+                            }
+                        }) {
+                            Text("Continue as Guest")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Theme.primaryGreen)
+                                .padding(.vertical, 8)
+                        }
+                        .disabled(authViewModel.isLoading)
                     }
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     .padding(.bottom, Constants.Spacing.large)

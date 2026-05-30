@@ -13,12 +13,15 @@ struct DashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var cloudSyncService: CloudSyncService
+    @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var toastManager: ToastManager
     @Binding var selectedTab: Int
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     @AppStorage("proteinGoal") private var proteinGoal: Double = 150
     @AppStorage("carbsGoal") private var carbsGoal: Double = 200
     @AppStorage("fatGoal") private var fatGoal: Double = 65
     @State private var showEditGoalSheet = false
+    @State private var showLinkSheet = false
     @AppStorage("navigateToDate") private var navigateToDateTimestamp: Double = 0
     @State private var selectedDate = Date()
     @State private var showDatePicker = false
@@ -280,6 +283,38 @@ struct DashboardView: View {
                     .padding(.horizontal, Constants.Spacing.extraLarge)
                     .padding(.top, Constants.Spacing.large)
                     
+                    // Guest Warning Banner (if anonymous)
+                    if authViewModel.isAnonymous {
+                        HStack(spacing: Constants.Spacing.large) {
+                            Image(systemName: "cloud.sun.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(Theme.warningAmber)
+                            
+                            Text("Cloud backup is disabled in Guest Mode.")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                showLinkSheet = true
+                            }) {
+                                Text("Sign In")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(Theme.primaryGreen)
+                            }
+                        }
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                        .padding(.vertical, 12)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(Constants.Sizes.cornerRadius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                    }
+                    
                     // Status Card
                     HStack(spacing: Constants.Spacing.large) {
                         ZStack {
@@ -479,6 +514,11 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showDatePicker) {
                 LogDatePickerSheet(selectedDate: $selectedDate, isPresented: $showDatePicker)
+            }
+            .sheet(isPresented: $showLinkSheet) {
+                LinkAccountView()
+                    .environmentObject(authViewModel)
+                    .environmentObject(toastManager)
             }
             .onAppear {
                 // #region agent log

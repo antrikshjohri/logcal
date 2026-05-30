@@ -10,15 +10,20 @@ import FirebaseAuth
 
 struct ProfileView: View {
     @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var toastManager: ToastManager
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showThemeSelector = false
     @State private var showEditProfile = false
+    @State private var showLinkSheet = false
     @State private var profileImage: UIImage?
     
     // User info
     private var userName: String {
+        if authViewModel.isAnonymous {
+            return "Guest User"
+        }
         if let name = authViewModel.userName {
             return name
         } else if let email = Auth.auth().currentUser?.email {
@@ -28,7 +33,10 @@ struct ProfileView: View {
     }
     
     private var userEmail: String {
-        Auth.auth().currentUser?.email ?? "No email"
+        if authViewModel.isAnonymous {
+            return "Logs are saved locally"
+        }
+        return Auth.auth().currentUser?.email ?? "No email"
     }
     
     // Format goal for display
@@ -58,11 +66,56 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: Constants.Spacing.extraLarge) {
                     Group {
+                        if authViewModel.isAnonymous {
+                            VStack(alignment: .leading, spacing: Constants.Spacing.medium) {
+                                HStack(spacing: Constants.Spacing.regular) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(Theme.warningAmber)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Guest Session")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("Your logs are saved only on this device. Sign in to back them up to the cloud.")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(Theme.secondaryText)
+                                    }
+                                }
+                                
+                                Button(action: {
+                                    showLinkSheet = true
+                                }) {
+                                    HStack {
+                                        Spacer()
+                                        Text("Sign In to Sync")
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 12)
+                                    .background(Theme.primaryGreen)
+                                    .cornerRadius(8)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            .padding(Constants.Spacing.extraLarge)
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Theme.warningAmber.opacity(0.3), lineWidth: 1)
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        }
+
                         // User Card
                         ProfileCard(
                             name: userName,
                             email: userEmail,
                             profileImage: profileImage,
+                            isAnonymous: authViewModel.isAnonymous,
                             onEditProfile: {
                                 showEditProfile = true
                             }
@@ -169,6 +222,11 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showEditProfile) {
                 EditProfileView()
+            }
+            .sheet(isPresented: $showLinkSheet) {
+                LinkAccountView()
+                    .environmentObject(authViewModel)
+                    .environmentObject(toastManager)
             }
             .onAppear {
                 loadProfileImage()

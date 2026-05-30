@@ -440,7 +440,7 @@ struct MealRowView: View {
             
             Spacer()
             
-            Text("\(Int(meal.totalCalories)) kcal")
+            Text("\(Int(meal.totalCalories)) cal")
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(Theme.primaryGreen)
         }
@@ -494,12 +494,12 @@ struct DayCardView: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(isOverGoal ? Theme.warningAmber : Theme.primaryGreen)
                             
-                            Text("\(Int(dayGroup.totalCalories)) kcal")
+                            Text("\(Int(dayGroup.totalCalories)) cal")
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundColor(isOverGoal ? Theme.warningAmber : Theme.primaryGreen)
                         }
                     } else if isToday {
-                        Text("0 kcal")
+                        Text("0 cal")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                     }

@@ -12,7 +12,16 @@ struct ProfileCard: View {
     let name: String
     let email: String
     let profileImage: UIImage?
+    let isAnonymous: Bool
     let onEditProfile: () -> Void
+    
+    init(name: String, email: String, profileImage: UIImage?, isAnonymous: Bool = false, onEditProfile: @escaping () -> Void) {
+        self.name = name
+        self.email = email
+        self.profileImage = profileImage
+        self.isAnonymous = isAnonymous
+        self.onEditProfile = onEditProfile
+    }
     
     var body: some View {
         VStack(spacing: Constants.Spacing.large) {
@@ -52,8 +61,10 @@ struct ProfileCard: View {
                 Spacer()
             }
             
-            // Edit Profile button
-            SecondaryButton(title: "Edit Profile", action: onEditProfile)
+            // Edit Profile button (only if not anonymous)
+            if !isAnonymous {
+                SecondaryButton(title: "Edit Profile", action: onEditProfile)
+            }
         }
         .padding(Constants.Spacing.extraLarge)
         .background(Theme.cardBackground(colorScheme: colorScheme))
