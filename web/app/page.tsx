@@ -191,10 +191,10 @@ function FinalDashboardMockup() {
   return (
     <div className="final-dashboard-shell">
       <Image
-        src="/final-cta/dashboard-view.webp"
-        alt="LogCal dashboard showing daily calories, macros, and recent meals"
+        src="/final-cta/dashboard-home-view.webp"
+        alt="LogCal dashboard showing daily calories, macros, and weekly trends"
         width={360}
-        height={789}
+        height={738}
         className="final-dashboard-image"
         sizes="(max-width: 560px) 210px, (max-width: 900px) 250px, 360px"
       />
