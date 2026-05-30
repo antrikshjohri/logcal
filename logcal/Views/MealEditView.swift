@@ -479,7 +479,15 @@ struct MealEditView: View {
             }
             .padding(16)
         }
-        .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .background(
+            Theme.backgroundColor(colorScheme: colorScheme)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if !isEditingCalories {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                }
+        )
         .scrollDismissesKeyboard(.interactively)
         .onChange(of: editedDate) { oldValue, newValue in
             autoSaveChanges()

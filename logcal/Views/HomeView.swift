@@ -160,7 +160,13 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical)
         }
-        .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .background(
+            Theme.backgroundColor(colorScheme: colorScheme)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+        )
         .dismissDropdownOnScroll(show: $showMealTypeDropdown)
     }
 
