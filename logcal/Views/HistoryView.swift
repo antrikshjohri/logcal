@@ -11,6 +11,10 @@ import FirebaseAuth
 
 struct HistoryView: View {
     @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
+    
+    private var activeMeals: [MealEntry] {
+        meals.filter { $0.modelContext != nil && !$0.isDeleted }
+    }
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var cloudSyncService: CloudSyncService
@@ -54,9 +58,9 @@ struct HistoryView: View {
     private var filteredMeals: [MealEntry] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            return meals
+            return activeMeals
         } else {
-            return meals.filter { meal in
+            return activeMeals.filter { meal in
                 meal.foodText.localizedCaseInsensitiveContains(trimmed)
             }
         }
@@ -105,7 +109,7 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if meals.isEmpty {
+                if activeMeals.isEmpty {
                     VStack(spacing: 24) {
                         Spacer()
                         
@@ -256,7 +260,7 @@ struct HistoryView: View {
                         }
                         .foregroundColor(Theme.primaryGreen)
                     } else {
-                        if !meals.isEmpty {
+                        if !activeMeals.isEmpty {
                             Button("Edit") {
                                 savedExpandedDates = expandedDates
                                 editMode = .active
@@ -275,7 +279,7 @@ struct HistoryView: View {
                             .foregroundColor(.red)
                         }
                     } else {
-                        if !meals.isEmpty {
+                        if !activeMeals.isEmpty {
                             Button("Clear All") {
                                 showClearAllAlert = true
                             }
@@ -307,7 +311,7 @@ struct HistoryView: View {
                     clearAllMeals()
                 }
             } message: {
-                Text("Are you sure you want to delete all \(meals.count) meal logs? This action cannot be undone.")
+                Text("Are you sure you want to delete all \(activeMeals.count) meal logs? This action cannot be undone.")
             }
             .onAppear {
                 if !hasInitialized {
@@ -322,7 +326,7 @@ struct HistoryView: View {
                     navigateToDateTimestamp = 0
                 }
                 
-                if meals.isEmpty && !cloudSyncService.isSyncing {
+                if activeMeals.isEmpty && !cloudSyncService.isSyncing {
                     if let user = Auth.auth().currentUser, !user.isAnonymous {
                         print("DEBUG: History tab appeared with no meals, triggering auto-refresh...")
                         Task {
@@ -342,7 +346,7 @@ struct HistoryView: View {
                 }
             }
             .onChange(of: cloudSyncService.lastSyncTime) { oldValue, newValue in
-                print("DEBUG: [HistoryView] Sync completed, meal count: \(meals.count)")
+                print("DEBUG: [HistoryView] Sync completed, meal count: \(activeMeals.count)")
             }
             .onChange(of: Auth.auth().currentUser?.uid) { oldValue, newValue in
                 print("DEBUG: [HistoryView] User changed, refreshing...")
@@ -384,7 +388,7 @@ struct HistoryView: View {
     }
     
     private func deleteSelectedMeals() {
-        let mealsToDelete = meals.filter { selectedMeals.contains($0.id) }
+        let mealsToDelete = activeMeals.filter { selectedMeals.contains($0.id) }
         
         for meal in mealsToDelete {
             Task {
@@ -405,7 +409,7 @@ struct HistoryView: View {
     }
     
     private func clearAllMeals() {
-        for meal in meals {
+        for meal in activeMeals {
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }

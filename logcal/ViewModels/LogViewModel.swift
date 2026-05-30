@@ -169,10 +169,10 @@ class LogViewModel: ObservableObject {
             lastLoggedMealId = entry.id
             latestResult = response ?? savedMeal.response
 
-            Task {
+            Task { @MainActor in
                 await cloudSyncService.syncMealToCloud(entry)
             }
-            Task {
+            Task { @MainActor in
                 await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
             }
 
@@ -365,12 +365,12 @@ class LogViewModel: ObservableObject {
                 print("DEBUG: [LogViewModel] lastLoggedMealId=\(entry.id)")
                 
                 // Sync to Firestore if user is signed in
-                Task {
+                Task { @MainActor in
                     await cloudSyncService.syncMealToCloud(entry)
                 }
                 
                 // Reschedule notifications after meal is logged (smart logic will skip if needed)
-                Task {
+                Task { @MainActor in
                     await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
                 }
             }

@@ -231,13 +231,47 @@ class CloudSyncService: ObservableObject {
     func clearLocalMeals(modelContext: ModelContext) async {
         print("DEBUG: Clearing all local meals...")
         
+        let container = modelContext.container
+        
+        // CRITICAL: Perform deletion on a BACKGROUND THREAD using Task.detached.
+        //
+        // The root cause of the EXC_BREAKPOINT crash:
+        // 1. We delete MealEntry objects and call save()
+        // 2. save() internally posts an NSNotification via NSNotificationCenter
+        // 3. NSNotificationCenter delivers notifications SYNCHRONOUSLY on the posting thread
+        // 4. SwiftData_SwiftUI's @Query observer receives the notification on the main thread
+        // 5. The observer tries to diff/process the deleted objects and crashes
+        //
+        // By using Task.detached with a separate ModelContext:
+        // - The ModelContext is created and used entirely on a background thread
+        // - save() posts the notification on the background thread
+        // - SwiftData_SwiftUI's @Query observer (registered on main thread) processes
+        //   the store change asynchronously, after the deletion is complete
+        // - The @Query safely re-fetches from the (now empty) persistent store
         do {
-            try modelContext.delete(model: MealEntry.self)
-            try modelContext.save()
-            print("DEBUG: Successfully cleared all local meals")
+            try await Task.detached(priority: .userInitiated) {
+                let bgContext = ModelContext(container)
+                bgContext.autosaveEnabled = false
+                
+                let descriptor = FetchDescriptor<MealEntry>()
+                let localMeals = try bgContext.fetch(descriptor)
+                guard !localMeals.isEmpty else {
+                    print("DEBUG: No local meals to delete")
+                    return
+                }
+                print("DEBUG: Found \(localMeals.count) local meals to delete (background thread)")
+                for meal in localMeals {
+                    bgContext.delete(meal)
+                }
+                try bgContext.save()
+                print("DEBUG: Successfully cleared \(localMeals.count) local meals via background thread")
+            }.value
         } catch {
-            print("DEBUG: Error clearing local meals: \(error) - this can be expected during sign-out")
+            print("DEBUG: Error clearing local meals: \(error)")
         }
+        
+        // Allow time for the store change notification to propagate to the UI context's @Query
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
         // Clear session state when clearing local data
         currentUserId = nil
@@ -251,20 +285,9 @@ class CloudSyncService: ObservableObject {
     func initializeAnonymousSession(modelContext: ModelContext) async {
         print("DEBUG: Initializing anonymous session...")
         
-        // If we were in an authenticated session, clear that data
-        if currentUserId != nil {
-            print("DEBUG: Clearing authenticated user data before switching to anonymous...")
-            await clearLocalMeals(modelContext: modelContext)
-        }
-        // If currentUserId is nil but we have local data, we're switching to anonymous after sign-out
-        // Clear the old user's data
-        else {
-            let descriptor = FetchDescriptor<MealEntry>()
-            if let localMeals = try? modelContext.fetch(descriptor), !localMeals.isEmpty {
-                print("DEBUG: Switching to anonymous after sign-out, clearing previous user's local data...")
-                await clearLocalMeals(modelContext: modelContext)
-            }
-        }
+        // Note: We no longer clear local meals here. They are safely cleared in logcalApp.swift
+        // when the user signs out, while the AppRootView (and its @Query observers) are 
+        // completely detached from the view hierarchy. This prevents SwiftData crashes.
         
         // Set anonymous session state
         currentUserId = nil

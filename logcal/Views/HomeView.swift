@@ -142,7 +142,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 16) {
                 Group {
-                    Text("What's on your plate, \(userName)?")
+                    Text(authViewModel.isAnonymous ? "What's on your plate?" : "What's on your plate, \(userName)?")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         .frame(maxWidth: .infinity, alignment: .leading)

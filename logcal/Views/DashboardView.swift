@@ -10,6 +10,10 @@ import SwiftData
 
 struct DashboardView: View {
     @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
+    
+    private var activeMeals: [MealEntry] {
+        meals.filter { $0.modelContext != nil && !$0.isDeleted }
+    }
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var cloudSyncService: CloudSyncService
@@ -38,7 +42,7 @@ struct DashboardView: View {
     private var todayCalories: Double {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: selectedDate)
-        return meals
+        return activeMeals
             .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
             .reduce(0) { $0 + $1.totalCalories }
     }
@@ -46,7 +50,7 @@ struct DashboardView: View {
     private var todayMeals: [MealEntry] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: selectedDate)
-        return meals
+        return activeMeals
             .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
             .sorted(by: { $0.timestamp > $1.timestamp })
     }
@@ -61,7 +65,7 @@ struct DashboardView: View {
     private var todayProtein: Double {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: selectedDate)
-        let todayMeals = meals.filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+        let todayMeals = activeMeals.filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
         let proteinValues = todayMeals.compactMap { $0.protein }
         let result = proteinValues.reduce(0, +)
         // #region agent log
@@ -75,7 +79,7 @@ struct DashboardView: View {
     private var todayCarbs: Double {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: selectedDate)
-        return meals
+        return activeMeals
             .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
             .compactMap { $0.carbs }
             .reduce(0, +)
@@ -84,7 +88,7 @@ struct DashboardView: View {
     private var todayFat: Double {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: selectedDate)
-        return meals
+        return activeMeals
             .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
             .compactMap { $0.fat }
             .reduce(0, +)
@@ -104,7 +108,7 @@ struct DashboardView: View {
             let dayLabel = dateFormatter.string(from: date)
             let isSelected = calendar.isDate(date, inSameDayAs: anchorDate)
             
-            let dayCalories = meals
+            let dayCalories = activeMeals
                 .filter { calendar.isDate($0.timestamp, inSameDayAs: date) }
                 .reduce(0) { $0 + $1.totalCalories }
             
@@ -127,7 +131,7 @@ struct DashboardView: View {
         let today = calendar.startOfDay(for: Date())
         
         // Get all unique dates that have meals
-        let mealDates = Set(meals.map { calendar.startOfDay(for: $0.timestamp) })
+        let mealDates = Set(activeMeals.map { calendar.startOfDay(for: $0.timestamp) })
         
         // If no meals, streak is 0
         guard let mostRecentMealDate = mealDates.max() else { return 0 }

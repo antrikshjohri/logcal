@@ -25,6 +25,20 @@ struct logcalApp: App {
     @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
+    // Shared container to allow background access
+    static var sharedModelContainer: ModelContainer = {
+        let schema = Schema([
+            MealEntry.self,
+            SavedMeal.self,
+        ])
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        do {
+            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+    }()
+    
     init() {
         print("DEBUG: App initializing...")
         // Initialize Firebase
@@ -52,7 +66,7 @@ struct logcalApp: App {
                         selectedTab: $selectedTab,
                         isInitialSyncAfterSignIn: $isInitialSyncAfterSignIn
                     )
-                    .modelContainer(for: [MealEntry.self, SavedMeal.self])
+                    .modelContainer(logcalApp.sharedModelContainer)
                     .environmentObject(cloudSyncService)
                     .environmentObject(authViewModel)
                     .toastNotification(toastManager: toastManager)
@@ -116,6 +130,14 @@ struct logcalApp: App {
                 // Show auth view when user becomes nil (signed out)
                 if newValue == nil {
                     showAuthView = true
+                    // Safely clear local data here since AppRootView (and its @Query observers) 
+                    // is removed from the view hierarchy when showAuthView is true.
+                    Task {
+                        // Wait a tiny bit for the view transition to complete
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        let bgContext = ModelContext(logcalApp.sharedModelContainer)
+                        await cloudSyncService.clearLocalMeals(modelContext: bgContext)
+                    }
                 }
                 // Trigger sync when user signs in (not anonymous)
                 else if let newUser = newValue, !newUser.isAnonymous {
