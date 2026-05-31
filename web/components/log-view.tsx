@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
-import { doc, setDoc, Timestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db, functions } from "../lib/firebase-client";
-import { Mic, Check, X, Camera, Image as ImageIcon, Send, Sparkles, Bookmark, Trash2, ArrowRight } from "lucide-react";
+import { Mic, Check, X, Camera, Image as ImageIcon, Send, Sparkles, Bookmark, Trash2, ArrowRight, Star } from "lucide-react";
 
 // Types matching Swift models
 interface MealItem {
@@ -37,9 +37,14 @@ export function LogView() {
     return today.toISOString().split("T")[0];
   });
   
-  // Images (as Base64 data URLs)
-  const [images, setImages] = useState<string[]>([]);
+  // Images (as objects containing base64/status)
+  const [images, setImages] = useState<{ id: string; src: string; loading: boolean }[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Favorites List & Selection
+  const [savedMeals, setSavedMeals] = useState<any[]>([]);
+  const [activeFavorite, setActiveFavorite] = useState<any | null>(null);
 
   // Audio Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -64,6 +69,85 @@ export function LogView() {
     else setMealType("snack");
   }, []);
 
+  // Fetch favorites from Firestore on load/auth change
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const fetchFavorites = async () => {
+          const userId = user.uid;
+          try {
+            const userDocRef = doc(db, "users", userId);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data();
+              if (userData.savedMeals && Array.isArray(userData.savedMeals) && userData.savedMeals.length > 0) {
+                setSavedMeals(userData.savedMeals);
+                return;
+              }
+            }
+            
+            // Fallback defaults
+            const DEFAULT_FAVORITES = [
+              {
+                id: "fav-1",
+                title: "Double Egg Omelette",
+                foodText: "Double Egg Omelette",
+                mealType: "breakfast",
+                totalCalories: 280,
+                rawResponseJson: JSON.stringify({
+                  meal_type: "breakfast",
+                  total_calories: 280,
+                  protein: 24,
+                  carbs: 2,
+                  fat: 20,
+                  items: [{ name: "Egg Omelette", quantity: "2 large eggs", calories: 280, protein: 24, carbs: 2, fat: 20, confidence: 0.95 }]
+                })
+              },
+              {
+                id: "fav-2",
+                title: "Chicken Breast & Rice",
+                foodText: "Chicken Breast with Rice",
+                mealType: "lunch",
+                totalCalories: 550,
+                rawResponseJson: JSON.stringify({
+                  meal_type: "lunch",
+                  total_calories: 550,
+                  protein: 45,
+                  carbs: 50,
+                  fat: 10,
+                  items: [
+                    { name: "Chicken Breast", quantity: "150g", calories: 250, protein: 35, carbs: 0, fat: 4, confidence: 0.95 },
+                    { name: "White Rice", quantity: "1.5 cups cooked", calories: 300, protein: 10, carbs: 50, fat: 6, confidence: 0.95 }
+                  ]
+                })
+              },
+              {
+                id: "fav-3",
+                title: "Protein Shake",
+                foodText: "Protein Shake",
+                mealType: "snack",
+                totalCalories: 200,
+                rawResponseJson: JSON.stringify({
+                  meal_type: "snack",
+                  total_calories: 200,
+                  protein: 30,
+                  carbs: 5,
+                  fat: 3,
+                  items: [{ name: "Protein Shake", quantity: "1 scoop protein powder", calories: 200, protein: 30, carbs: 5, fat: 3, confidence: 0.99 }]
+                })
+              }
+            ];
+            setSavedMeals(DEFAULT_FAVORITES);
+          } catch (err) {
+            console.error("Error loading favorites:", err);
+          }
+        };
+        fetchFavorites();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Handle Date Navigation Chevrons
   const changeDateByDays = (days: number) => {
     const currentDate = new Date(selectedDate);
@@ -76,26 +160,70 @@ export function LogView() {
     fileInputRef.current?.click();
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
+  const processImageFiles = (files: File[]) => {
     if (images.length + files.length > 3) {
       alert("Maximum of 3 images can be uploaded.");
       return;
     }
 
     files.forEach((file) => {
+      const imageId = crypto.randomUUID();
+      // Add loading placeholder first
+      setImages((prev) => [...prev, { id: imageId, src: "", loading: true }]);
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        setImages((prev) => [...prev, base64String]);
+        setImages((prev) =>
+          prev.map((img) =>
+            img.id === imageId ? { ...img, src: base64String, loading: false } : img
+          )
+        );
       };
       reader.readAsDataURL(file);
     });
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    processImageFiles(Array.from(e.target.files));
+  };
+
+  const removeImage = (id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  // Drag and Drop Event Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files).filter((file) =>
+        file.type.startsWith("image/")
+      );
+      if (droppedFiles.length > 0) {
+        processImageFiles(droppedFiles);
+      }
+    }
   };
 
   // Voice recording logic
@@ -178,7 +306,8 @@ export function LogView() {
 
   // Submit Meal for AI Estimation
   const handleEstimateMeal = async () => {
-    if (!foodText.trim() && images.length === 0) return;
+    const loadedImages = images.filter((img) => !img.loading);
+    if (!foodText.trim() && loadedImages.length === 0) return;
     setLoading(true);
     setLatestResult(null);
     setIsSaved(false);
@@ -187,7 +316,7 @@ export function LogView() {
     const logMealFn = httpsCallable(functions, "logMeal");
     
     // Strip metadata prefixes from base64 if present
-    const cleanedImages = images.map((img) => img.split(",")[1] || img);
+    const cleanedImages = loadedImages.map((img) => img.src.split(",")[1] || img.src);
 
     try {
       const result = await logMealFn({
@@ -249,6 +378,8 @@ export function LogView() {
     const now = new Date();
     timestampDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
 
+    const loadedImages = images.filter((img) => !img.loading);
+
     const mealData = {
       id: mealId,
       timestamp: Timestamp.fromDate(timestampDate),
@@ -257,7 +388,7 @@ export function LogView() {
       mealType: latestResult.meal_type,
       totalCalories: latestResult.total_calories,
       rawResponseJson: JSON.stringify(latestResult),
-      hasImage: images.length > 0
+      hasImage: loadedImages.length > 0
     };
 
     try {
@@ -280,6 +411,126 @@ export function LogView() {
     } catch (err: any) {
       console.error("Error saving meal:", err);
       alert(err.message || "Failed to save meal to database.");
+    } finally {
+      setLoading(false);
+      setStatusMessage(null);
+    }
+  };
+
+  // Log a favorite meal with a serving size multiplier
+  const handleLogFavorite = async (fav: any, multiplier: number) => {
+    if (!auth.currentUser) return;
+    setLoading(true);
+    setStatusMessage(`Logging ${fav.title} (${multiplier}x)...`);
+    setIsSaved(false);
+    
+    const userId = auth.currentUser.uid;
+    const mealId = crypto.randomUUID();
+    const timestampDate = new Date(selectedDate);
+    const now = new Date();
+    timestampDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(fav.rawResponseJson);
+    } catch (e) {
+      parsedJson = { items: [] };
+    }
+
+    // Scale items
+    const multipliedItems = (parsedJson.items || []).map((item: any) => ({
+      ...item,
+      calories: Math.round((item.calories || 0) * multiplier),
+      protein: item.protein !== undefined ? Math.round((item.protein || 0) * multiplier) : undefined,
+      carbs: item.carbs !== undefined ? Math.round((item.carbs || 0) * multiplier) : undefined,
+      fat: item.fat !== undefined ? Math.round((item.fat || 0) * multiplier) : undefined,
+      quantity: `${item.quantity} (x${multiplier})`
+    }));
+
+    const multipliedResult = {
+      meal_type: fav.mealType,
+      total_calories: Math.round((fav.totalCalories || 0) * multiplier),
+      protein: parsedJson.protein !== undefined ? Math.round((parsedJson.protein || 0) * multiplier) : undefined,
+      carbs: parsedJson.carbs !== undefined ? Math.round((parsedJson.carbs || 0) * multiplier) : undefined,
+      fat: parsedJson.fat !== undefined ? Math.round((parsedJson.fat || 0) * multiplier) : undefined,
+      items: multipliedItems,
+      needs_clarification: false
+    };
+
+    const mealData = {
+      id: mealId,
+      timestamp: Timestamp.fromDate(timestampDate),
+      createdAt: Timestamp.fromDate(new Date()),
+      foodText: `${fav.title} (${multiplier}x serving)`,
+      mealType: fav.mealType,
+      totalCalories: multipliedResult.total_calories,
+      rawResponseJson: JSON.stringify(multipliedResult),
+      hasImage: false
+    };
+
+    try {
+      // 1. Save to users/{userId}/meals/{mealId}
+      await setDoc(doc(db, "users", userId, "meals", mealId), mealData);
+      
+      // 2. Log analytics
+      const recordMealLogAnalyticsFn = httpsCallable(functions, "recordMealLogAnalytics");
+      await recordMealLogAnalyticsFn({
+        foodText: mealData.foodText,
+        mealType: mealData.mealType,
+        totalCalories: mealData.totalCalories,
+        hasImage: false
+      });
+
+      setIsSaved(true);
+      setActiveFavorite(null);
+    } catch (err: any) {
+      console.error("Error logging favorite:", err);
+      alert(err.message || "Failed to log favorite meal.");
+    } finally {
+      setLoading(false);
+      setStatusMessage(null);
+    }
+  };
+
+  // Add currently estimated meal to favorites in settings doc
+  const handleSaveToFavorites = async () => {
+    if (!latestResult || !auth.currentUser) return;
+    setLoading(true);
+    setStatusMessage("Saving to Favorites...");
+
+    const userId = auth.currentUser.uid;
+    const trimmed = foodText.trim();
+    let title = "";
+    if (trimmed && trimmed !== "Image uploaded") {
+      title = trimmed.substring(0, 140);
+    } else {
+      const itemNames = latestResult.items
+        .slice(0, 3)
+        .map((i) => i.name)
+        .filter(Boolean)
+        .join(", ");
+      title = itemNames ? itemNames.substring(0, 140) : `${latestResult.meal_type} Meal`;
+    }
+
+    const newFavorite = {
+      id: crypto.randomUUID(),
+      title: title,
+      foodText: trimmed || title,
+      mealType: latestResult.meal_type,
+      totalCalories: latestResult.total_calories,
+      rawResponseJson: JSON.stringify(latestResult)
+    };
+
+    try {
+      const userDocRef = doc(db, "users", userId);
+      const updatedFavorites = [...savedMeals.filter((f) => f.title !== newFavorite.title), newFavorite];
+      
+      await setDoc(userDocRef, { savedMeals: updatedFavorites }, { merge: true });
+      setSavedMeals(updatedFavorites);
+      alert("Added to Favorites!");
+    } catch (err: any) {
+      console.error("Error saving favorite:", err);
+      alert(err.message || "Failed to save to favorites.");
     } finally {
       setLoading(false);
       setStatusMessage(null);
@@ -346,24 +597,59 @@ export function LogView() {
         </div>
       </div>
 
+      {/* Favorites Tray */}
+      {savedMeals.length > 0 && (
+        <div className="favorites-container">
+          <div className="favorites-label">
+            <Star size={14} fill="var(--muted)" style={{ color: "var(--muted)" }} />
+            <span>Quick Favorites</span>
+          </div>
+          <div className="favorites-tray">
+            {savedMeals.map((fav) => {
+              let displayCal = fav.totalCalories;
+              return (
+                <div
+                  className="favorite-chip"
+                  key={fav.id}
+                  onClick={() => setActiveFavorite(fav)}
+                >
+                  <span className="favorite-chip-title">{fav.title}</span>
+                  <span className="favorite-chip-cal">{Math.round(displayCal)} cal</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Main Composer Card */}
       <div className="glass-card composer-card">
-        <div className="composer-textarea-wrap">
+        <div
+          className={`composer-textarea-wrap ${isDragging ? "dragging" : ""}`}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <textarea
             value={foodText}
             onChange={(e) => setFoodText(e.target.value)}
             className="composer-textarea"
-            placeholder="Write or speak naturally about what you ate..."
+            placeholder="Write or speak naturally about what you ate... (or drag & drop images here)"
             disabled={isRecording || isTranscribing}
           />
 
           {images.length > 0 && (
             <div className="image-previews">
-              {images.map((img, idx) => (
-                <div className="image-preview-item" key={idx}>
-                  <img src={img} alt="meal attachment" />
+              {images.map((img) => (
+                <div className={`image-preview-item ${img.loading ? "image-loading" : ""}`} key={img.id}>
+                  {img.loading ? (
+                    <div className="image-preview-spinner" />
+                  ) : (
+                    <img src={img.src} alt="meal attachment" />
+                  )}
                   <button
-                    onClick={() => removeImage(idx)}
+                    onClick={() => removeImage(img.id)}
                     className="image-preview-remove"
                     type="button"
                   >
@@ -449,7 +735,7 @@ export function LogView() {
           <div className="composer-actions-right">
             <button
               onClick={handleEstimateMeal}
-              disabled={loading || isRecording || isTranscribing || (!foodText.trim() && images.length === 0)}
+              disabled={loading || isRecording || isTranscribing || (!foodText.trim() && images.filter(img => !img.loading).length === 0)}
               className="primary-btn"
               type="button"
             >
@@ -478,7 +764,17 @@ export function LogView() {
               </div>
             </div>
             
-            <div className="result-actions">
+            <div className="result-actions" style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={handleSaveToFavorites}
+                className="icon-btn"
+                style={{ background: "transparent", color: "#e0a800", borderColor: "#f3c022", display: "flex", alignItems: "center", justifyContent: "center" }}
+                disabled={loading}
+                title="Add to Favorites"
+                type="button"
+              >
+                <Star size={18} fill="#f3c022" />
+              </button>
               <button
                 onClick={handleSaveMeal}
                 className="primary-btn"
@@ -572,6 +868,41 @@ export function LogView() {
           <div>
             <div style={{ fontWeight: 800, color: "var(--green)", fontSize: "16px" }}>Meal Saved Successfully!</div>
             <div style={{ fontSize: "14px", color: "var(--muted)", marginTop: "2px" }}>Your calories and macros have been recorded for today.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Multiplier Selector Popover */}
+      {activeFavorite && (
+        <div className="multiplier-overlay" onClick={() => setActiveFavorite(null)}>
+          <div className="multiplier-card" onClick={(e) => e.stopPropagation()}>
+            <h4>Log Serving Size</h4>
+            <p>Select portion multiplier for "{activeFavorite.title}"</p>
+            
+            <div className="multiplier-grid">
+              {[0.5, 1.0, 1.5, 2.0].map((mult) => {
+                const scaledCalories = Math.round(activeFavorite.totalCalories * mult);
+                return (
+                  <button
+                    key={mult}
+                    onClick={() => handleLogFavorite(activeFavorite, mult)}
+                    className="multiplier-btn"
+                    type="button"
+                  >
+                    <span>{mult === 1.0 ? "1.0x (Regular)" : `${mult}x`}</span>
+                    <span className="multiplier-btn-cal">{scaledCalories} cal</span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            <button
+              onClick={() => setActiveFavorite(null)}
+              className="multiplier-cancel-btn"
+              type="button"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

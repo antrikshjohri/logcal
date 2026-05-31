@@ -34,6 +34,10 @@ export function DashboardView({ setActiveTab }: DashboardViewProps) {
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Weekly tooltip hover states
+  const [hoveredDay, setHoveredDay] = useState<any>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
   // Fetch goals and meals from Firestore
   useEffect(() => {
     const fetchData = async () => {
@@ -201,13 +205,96 @@ export function DashboardView({ setActiveTab }: DashboardViewProps) {
       const dayStr = d.toISOString().split("T")[0];
       const dayMeals = getMealsForDate(dayStr);
       const dayCal = dayMeals.reduce((acc, m) => acc + m.totalCalories, 0);
+
+      let protein = 0;
+      let carbs = 0;
+      let fat = 0;
+      dayMeals.forEach((meal) => {
+        try {
+          const responseObj = JSON.parse(meal.rawResponseJson);
+          let p = responseObj.protein || 0;
+          let c = responseObj.carbs || 0;
+          let f = responseObj.fat || 0;
+          
+          if (p === 0 && c === 0 && f === 0 && responseObj.items) {
+            responseObj.items.forEach((item: any) => {
+              p += item.protein || 0;
+              c += item.carbs || 0;
+              f += item.fat || 0;
+            });
+          }
+          protein += p;
+          carbs += c;
+          fat += f;
+        } catch (e) {
+          // Ignore parse errors
+        }
+      });
+
       list.push({
         label: dayLabel,
+        dateStr: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
         calories: dayCal,
+        protein,
+        carbs,
+        fat,
         isToday: isSameDay(d, new Date())
       });
     }
     return list;
+  };
+
+  const renderMiniPieChart = (protein: number, carbs: number, fat: number) => {
+    const total = protein + carbs + fat;
+    if (total === 0) return null;
+    
+    const r = 16;
+    const circ = 2 * Math.PI * r;
+    const proteinPct = protein / total;
+    const carbsPct = carbs / total;
+    const fatPct = fat / total;
+    
+    const proteinOffset = 0;
+    const carbsOffset = proteinPct * circ;
+    const fatOffset = (proteinPct + carbsPct) * circ;
+    
+    return (
+      <svg width="40" height="40" viewBox="0 0 40 40" style={{ transform: "rotate(-90deg)" }}>
+        {/* Protein segment */}
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="transparent"
+          stroke="#436d1a"
+          strokeWidth="6"
+          strokeDasharray={`${proteinPct * circ} ${circ}`}
+          strokeDashoffset={-proteinOffset}
+        />
+        {/* Carbs segment */}
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="transparent"
+          stroke="#8e6212"
+          strokeWidth="6"
+          strokeDasharray={`${carbsPct * circ} ${circ}`}
+          strokeDashoffset={-carbsOffset}
+        />
+        {/* Fat segment */}
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="transparent"
+          stroke="#9c3f25"
+          strokeWidth="6"
+          strokeDasharray={`${fatPct * circ} ${circ}`}
+          strokeDashoffset={-fatOffset}
+        />
+      </svg>
+    );
   };
 
   const weeklyData = getWeeklyData();
@@ -317,7 +404,23 @@ export function DashboardView({ setActiveTab }: DashboardViewProps) {
         {/* Left Column: Progress Ring & Macro Targets */}
         <div className="glass-card" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div className="goal-ring-container">
-            <svg width="220" height="220" className="goal-svg-ring">
+            <svg width="220" height="220" className="goal-svg-ring" style={{ overflow: "visible" }}>
+              <defs>
+                <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#08724a" />
+                  <stop offset="100%" stopColor="#2ecc71" />
+                </linearGradient>
+                <linearGradient id="overGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ff7f50" />
+                  <stop offset="100%" stopColor="#ff9f43" />
+                </linearGradient>
+                <filter id="ringGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#2ecc71" floodOpacity="0.4" />
+                </filter>
+                <filter id="overGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#ff9f43" floodOpacity="0.4" />
+                </filter>
+              </defs>
               <circle cx="110" cy="110" r={radius} className="goal-ring-bg" />
               <circle
                 cx="110"
@@ -326,6 +429,8 @@ export function DashboardView({ setActiveTab }: DashboardViewProps) {
                 className={`goal-ring-progress ${todayCalories > dailyGoal ? "over" : ""}`}
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
+                stroke={todayCalories > dailyGoal ? "url(#overGradient)" : "url(#ringGradient)"}
+                filter={todayCalories > dailyGoal ? "url(#overGlow)" : "url(#ringGlow)"}
               />
             </svg>
             <div className="goal-ring-center">
@@ -392,19 +497,35 @@ export function DashboardView({ setActiveTab }: DashboardViewProps) {
           {/* Weekly Calorie Bar Chart */}
           <div className="glass-card" style={{ flexGrow: 1 }}>
             <h3 style={{ margin: 0, fontWeight: 900, fontSize: "18px" }}>Weekly Calories</h3>
-            <div className="weekly-chart-wrapper">
+            <div className="weekly-chart-wrapper" style={{ paddingBottom: "0px" }}>
               {weeklyData.map((d, index) => {
                 const heightPct = Math.round((d.calories / maxWeeklyCal) * 100);
+                const rectHeight = Math.max(heightPct, 3);
                 return (
                   <div className="weekly-chart-col" key={index}>
-                    <div className="weekly-chart-bar-container">
-                      <div
-                        className={`weekly-chart-bar ${d.isToday ? "active" : ""}`}
-                        style={{ height: `${Math.max(heightPct, 3)}%` }}
-                      />
-                      <div className="weekly-chart-bar-tooltip">
-                        {Math.round(d.calories)} cal
-                      </div>
+                    <div
+                      className="weekly-chart-bar-container"
+                      style={{ height: "100%", width: "100%", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+                      onMouseMove={(e) => {
+                        setTooltipPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseEnter={() => setHoveredDay(d)}
+                      onMouseLeave={() => setHoveredDay(null)}
+                    >
+                      <svg width="24" height="100%" style={{ overflow: "visible" }}>
+                        <rect
+                          x="0"
+                          y={`${100 - rectHeight}%`}
+                          width="24"
+                          height={`${rectHeight}%`}
+                          rx="4"
+                          className={`weekly-chart-bar-rect ${d.isToday ? "active" : ""}`}
+                          style={{
+                            fill: d.isToday ? "var(--green)" : "var(--green-soft)",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </svg>
                     </div>
                     <span className="weekly-chart-day">{d.label}</span>
                   </div>
@@ -456,6 +577,50 @@ export function DashboardView({ setActiveTab }: DashboardViewProps) {
           )}
         </div>
       </div>
+
+      {/* Floating Tooltip for Weekly Chart */}
+      {hoveredDay && (
+        <div
+          className="floating-tooltip"
+          style={{
+            position: "fixed",
+            left: tooltipPos.x + 15,
+            top: tooltipPos.y + 15,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)" }}>{hoveredDay.dateStr}</div>
+            <div style={{ fontSize: "16px", fontWeight: 900, color: "#002d25", margin: "2px 0 6px" }}>
+              {Math.round(hoveredDay.calories)} kcal
+            </div>
+            {hoveredDay.protein + hoveredDay.carbs + hoveredDay.fat > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "11px", fontWeight: 700 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#436d1a" }} />
+                  <span>P: {Math.round(hoveredDay.protein)}g</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#8e6212" }} />
+                  <span>C: {Math.round(hoveredDay.carbs)}g</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#9c3f25" }} />
+                  <span>F: {Math.round(hoveredDay.fat)}g</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: "11px", color: "var(--muted)", fontStyle: "italic" }}>
+                No macros logged
+              </div>
+            )}
+          </div>
+          {hoveredDay.protein + hoveredDay.carbs + hoveredDay.fat > 0 && (
+            <div style={{ flexShrink: 0 }}>
+              {renderMiniPieChart(hoveredDay.protein, hoveredDay.carbs, hoveredDay.fat)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
