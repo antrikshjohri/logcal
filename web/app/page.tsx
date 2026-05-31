@@ -275,8 +275,8 @@ export default function HomePage() {
           </p>
           <div className="hero-actions">
             <DownloadButton />
-            <a className="secondary-button" href="#how-it-works">
-              <span>See how it works</span>
+            <a className="secondary-button" href="/app/">
+              <span>Try now for free</span>
               <span className="arrow-mark" aria-hidden="true" />
             </a>
           </div>
@@ -392,8 +392,8 @@ export default function HomePage() {
           <p>Your next meal can be logged in seconds.</p>
           <div className="hero-actions">
             <DownloadButton />
-            <a className="secondary-button" href="#how-it-works">
-              <span>See how it works</span>
+            <a className="secondary-button" href="/app/">
+              <span>Try now for free</span>
               <span className="arrow-mark" aria-hidden="true" />
             </a>
           </div>
