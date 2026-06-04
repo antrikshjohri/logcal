@@ -377,15 +377,6 @@ class LogViewModel: ObservableObject {
             
             latestResult = response
             perf.mark("result_published")
-
-            Task {
-                await openAIService.recordMealLogAnalytics(
-                    foodText: originalFoodText,
-                    mealType: response.mealType,
-                    totalCalories: response.totalCalories,
-                    hasImage: originalHadImage
-                )
-            }
             
             // Track analytics - successful meal log (check image before clearing)
             let hadImage = !selectedImages.isEmpty
