@@ -11,7 +11,7 @@ struct SavedMealsView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject var cloudSyncService: CloudSyncService
-    @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
+    @Query(sort: \SavedMeal.displayOrder, order: .forward) private var savedMeals: [SavedMeal]
     @State private var mealBeingRenamed: SavedMeal?
     @State private var mealPendingDeletion: SavedMeal?
     @State private var renameText = ""
@@ -103,6 +103,7 @@ struct SavedMealsView: View {
                         .tint(Theme.primaryGreen)
                     }
                 }
+                .onMove(perform: moveSavedMeals)
             }
         }
         .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
@@ -110,6 +111,9 @@ struct SavedMealsView: View {
         .background(Theme.backgroundColor(colorScheme: colorScheme))
         .scrollContentBackground(.hidden)
         .navigationTitle("Favourites")
+        .toolbar {
+            EditButton()
+        }
         .alert("Rename Favourite Meal", isPresented: Binding(
             get: { mealBeingRenamed != nil },
             set: { if !$0 { mealBeingRenamed = nil } }
@@ -168,6 +172,21 @@ struct SavedMealsView: View {
         guard let savedMeal = mealPendingDeletion else { return }
         delete(savedMeal)
         mealPendingDeletion = nil
+    }
+
+    private func moveSavedMeals(from source: IndexSet, to destination: Int) {
+        var revisedMeals = Array(savedMeals)
+        revisedMeals.move(fromOffsets: source, toOffset: destination)
+        
+        for index in 0..<revisedMeals.count {
+            revisedMeals[index].displayOrder = index
+        }
+        
+        try? modelContext.save()
+        
+        Task {
+            await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+        }
     }
 }
 

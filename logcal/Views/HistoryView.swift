@@ -277,9 +277,7 @@ struct HistoryView: View {
                                 deleteSelectedMeals()
                             }
                             .foregroundColor(.red)
-                        }
-                    } else {
-                        if !activeMeals.isEmpty {
+                        } else if !activeMeals.isEmpty {
                             Button("Clear All") {
                                 showClearAllAlert = true
                             }
@@ -658,6 +656,7 @@ struct DayCardView: View {
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 4)
+                                        .contentShape(Rectangle())
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 } else {
@@ -665,6 +664,7 @@ struct DayCardView: View {
                                         MealRowView(meal: meal)
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 4)
+                                            .contentShape(Rectangle())
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }

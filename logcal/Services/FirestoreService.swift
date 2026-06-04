@@ -20,7 +20,7 @@ struct FirestoreService {
             return
         }
         
-        let mealData: [String: Any] = [
+        var mealData: [String: Any] = [
             "id": entry.id.uuidString,
             "timestamp": Timestamp(date: entry.timestamp),
             "createdAt": entry.createdAt != nil ? Timestamp(date: entry.createdAt!) : Timestamp(date: entry.timestamp),
@@ -30,6 +30,9 @@ struct FirestoreService {
             "rawResponseJson": entry.rawResponseJson,
             "hasImage": entry.hasImageValue
         ]
+        if let sourceSavedMealId = entry.sourceSavedMealId {
+            mealData["sourceSavedMealId"] = sourceSavedMealId.uuidString
+        }
         
         do {
             try await db.collection("users").document(userId).collection("meals").document(entry.id.uuidString).setData(mealData)
@@ -89,6 +92,9 @@ struct FirestoreService {
                 let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
                 let hasImage = data["hasImage"] as? Bool // Optional - nil if not present
                 
+                let sourceSavedMealIdString = data["sourceSavedMealId"] as? String
+                let sourceSavedMealId = sourceSavedMealIdString != nil ? UUID(uuidString: sourceSavedMealIdString!) : nil
+                
                 let entry = MealEntry(
                     id: id,
                     timestamp: timestamp,
@@ -97,7 +103,8 @@ struct FirestoreService {
                     mealType: mealType,
                     totalCalories: totalCalories,
                     rawResponseJson: rawResponseJson,
-                    hasImage: hasImage
+                    hasImage: hasImage,
+                    sourceSavedMealId: sourceSavedMealId
                 )
                 
                 entries.append(entry)
@@ -499,7 +506,8 @@ struct FirestoreService {
                 "foodText": meal.foodText,
                 "mealType": meal.mealType,
                 "totalCalories": meal.totalCalories,
-                "rawResponseJson": meal.rawResponseJson
+                "rawResponseJson": meal.rawResponseJson,
+                "displayOrder": meal.displayOrder ?? 0
             ]
             if let sourceId = meal.sourceMealId {
                 dict["sourceMealId"] = sourceId.uuidString
@@ -536,7 +544,7 @@ struct FirestoreService {
                 let data = document.data()
                 if let mealsArray = data?["savedMeals"] as? [[String: Any]] {
                     var savedMeals: [SavedMeal] = []
-                    for dict in mealsArray {
+                    for (index, dict) in mealsArray.enumerated() {
                         guard let idString = dict["id"] as? String,
                               let id = UUID(uuidString: idString),
                               let title = dict["title"] as? String,
@@ -548,6 +556,7 @@ struct FirestoreService {
                         }
                         
                         let sourceMealId = (dict["sourceMealId"] as? String).flatMap { UUID(uuidString: $0) }
+                        let displayOrder = dict["displayOrder"] as? Int ?? index
                         
                         let meal = SavedMeal(
                             id: id,
@@ -556,7 +565,8 @@ struct FirestoreService {
                             mealType: mealType,
                             totalCalories: totalCalories,
                             rawResponseJson: rawResponseJson,
-                            sourceMealId: sourceMealId
+                            sourceMealId: sourceMealId,
+                            displayOrder: displayOrder
                         )
                         savedMeals.append(meal)
                     }

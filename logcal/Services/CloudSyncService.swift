@@ -164,18 +164,28 @@ class CloudSyncService: ObservableObject {
                 
                 let favDescriptor = FetchDescriptor<SavedMeal>()
                 let localFavs = try modelContext.fetch(favDescriptor)
-                let localFavIds = Set(localFavs.map { $0.id })
                 
-                var addedFavsCount = 0
+                var changedFavsCount = 0
                 for cloudFav in cloudFavs {
-                    if !localFavIds.contains(cloudFav.id) {
+                    if let localFav = localFavs.first(where: { $0.id == cloudFav.id }) {
+                        if localFav.title != cloudFav.title || localFav.displayOrder != cloudFav.displayOrder {
+                            localFav.title = cloudFav.title
+                            localFav.displayOrder = cloudFav.displayOrder
+                            localFav.foodText = cloudFav.foodText
+                            localFav.mealType = cloudFav.mealType
+                            localFav.totalCalories = cloudFav.totalCalories
+                            localFav.rawResponseJson = cloudFav.rawResponseJson
+                            localFav.updatedAt = Date()
+                            changedFavsCount += 1
+                        }
+                    } else {
                         modelContext.insert(cloudFav)
-                        addedFavsCount += 1
+                        changedFavsCount += 1
                     }
                 }
-                if addedFavsCount > 0 {
+                if changedFavsCount > 0 {
                     try modelContext.save()
-                    print("DEBUG: Added \(addedFavsCount) favorites from cloud to local storage")
+                    print("DEBUG: Merged/added \(changedFavsCount) favorites from cloud")
                 }
             } catch {
                 print("DEBUG: Error syncing favorites from cloud (non-blocking): \(error.localizedDescription)")
@@ -225,7 +235,8 @@ class CloudSyncService: ObservableObject {
             }
             
             // Also migrate local favorites to cloud
-            let favDescriptor = FetchDescriptor<SavedMeal>()
+            var favDescriptor = FetchDescriptor<SavedMeal>()
+            favDescriptor.sortBy = [SortDescriptor(\SavedMeal.displayOrder, order: .forward)]
             if let localFavs = try? modelContext.fetch(favDescriptor), !localFavs.isEmpty {
                 print("DEBUG: Migrating \(localFavs.count) local favorites to cloud")
                 try await firestoreService.saveSavedMealsToCloud(localFavs)
@@ -379,7 +390,8 @@ class CloudSyncService: ObservableObject {
         }
         
         do {
-            let descriptor = FetchDescriptor<SavedMeal>()
+            var descriptor = FetchDescriptor<SavedMeal>()
+            descriptor.sortBy = [SortDescriptor(\SavedMeal.displayOrder, order: .forward)]
             let localFavs = try modelContext.fetch(descriptor)
             try await firestoreService.saveSavedMealsToCloud(localFavs)
             print("DEBUG: Successfully synced \(localFavs.count) favorites to cloud")

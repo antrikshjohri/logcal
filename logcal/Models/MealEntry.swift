@@ -18,8 +18,19 @@ final class MealEntry: Identifiable {
     var totalCalories: Double
     var rawResponseJson: String
     var hasImage: Bool?           // Indicates if an image was used for this meal (optional for backward compatibility)
+    var sourceSavedMealId: UUID? = nil
     
-    init(id: UUID = UUID(), timestamp: Date = Date(), createdAt: Date? = nil, foodText: String, mealType: String, totalCalories: Double, rawResponseJson: String, hasImage: Bool? = nil) {
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        createdAt: Date? = nil,
+        foodText: String,
+        mealType: String,
+        totalCalories: Double,
+        rawResponseJson: String,
+        hasImage: Bool? = nil,
+        sourceSavedMealId: UUID? = nil
+    ) {
         self.id = id
         self.timestamp = timestamp
         self.createdAt = createdAt ?? Date()
@@ -28,6 +39,7 @@ final class MealEntry: Identifiable {
         self.totalCalories = totalCalories
         self.rawResponseJson = rawResponseJson
         self.hasImage = hasImage
+        self.sourceSavedMealId = sourceSavedMealId
     }
     
     // Helper to get createdAt with fallback to timestamp for old records

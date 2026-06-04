@@ -24,8 +24,9 @@ struct HomeView: View {
         return "User"
     }
     @EnvironmentObject private var toastManager: ToastManager
+    @EnvironmentObject private var cloudSyncService: CloudSyncService
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
+    @Query(sort: \SavedMeal.displayOrder, order: .forward) private var savedMeals: [SavedMeal]
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isTextFieldFocused: Bool
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -37,6 +38,24 @@ struct HomeView: View {
     @State private var showAllFavorites = false
     @State private var showMealTypeDropdown = false
     @State private var showLinkSheet = false
+    @State private var mealBeingSavedAndRenamed: SavedMeal?
+    @State private var renameText = ""
+    @State private var favoritePendingDeletion: SavedMeal?
+    
+    private var linkedFavoriteForLatestMeal: SavedMeal? {
+        guard let latestMealId = viewModel.lastLoggedMealId else { return nil }
+        
+        // 1. Try matching by sourceMealId
+        if let match = savedMeals.first(where: { $0.sourceMealId == latestMealId }) {
+            return match
+        }
+        
+        // 2. Fallback to matching by properties
+        let descriptor = FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == latestMealId })
+        guard let entry = try? modelContext.fetch(descriptor).first else { return nil }
+        
+        return savedMeals.first { SavedMealMatcher.matches($0, meal: entry) }
+    }
     
     var body: some View {
         NavigationStack {
@@ -120,6 +139,61 @@ struct HomeView: View {
                     LinkAccountView()
                         .environmentObject(authViewModel)
                         .environmentObject(toastManager)
+                }
+                .alert("Rename Favourite Meal", isPresented: Binding(
+                    get: { mealBeingSavedAndRenamed != nil },
+                    set: { if !$0 { mealBeingSavedAndRenamed = nil } }
+                )) {
+                    TextField("Name", text: $renameText)
+                    Button("Cancel", role: .cancel) {
+                        mealBeingSavedAndRenamed = nil
+                    }
+                    Button("Save") {
+                        if let savedMeal = mealBeingSavedAndRenamed {
+                            let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !trimmed.isEmpty {
+                                savedMeal.title = String(trimmed.prefix(140))
+                                savedMeal.updatedAt = Date()
+                                try? modelContext.save()
+                                
+                                Task {
+                                    await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+                                }
+                            }
+                        }
+                        mealBeingSavedAndRenamed = nil
+                    }
+                }
+                .alert("Remove Favourite Meal", isPresented: Binding(
+                    get: { favoritePendingDeletion != nil },
+                    set: { if !$0 { favoritePendingDeletion = nil } }
+                )) {
+                    Button("Cancel", role: .cancel) {
+                        favoritePendingDeletion = nil
+                    }
+                    Button("Remove", role: .destructive) {
+                        if let favorite = favoritePendingDeletion {
+                            modelContext.delete(favorite)
+                            if let latestMealId = viewModel.lastLoggedMealId,
+                               let entry = try? modelContext.fetch(FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == latestMealId })).first {
+                                entry.sourceSavedMealId = nil
+                            }
+                            try? modelContext.save()
+                            
+                            toastManager.show(ToastMessage(
+                                title: "Removed",
+                                message: "Meal removed from favourites.",
+                                type: .success
+                            ))
+                            
+                            Task {
+                                await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+                            }
+                        }
+                        favoritePendingDeletion = nil
+                    }
+                } message: {
+                    Text("Are you sure you want to remove this meal from your favourites?")
                 }
         }
     }
@@ -661,17 +735,25 @@ struct HomeView: View {
                     Spacer(minLength: 12)
                     
                     Button(action: {
-                        viewModel.saveLatestMealAsFavorite()
-                        toastManager.show(ToastMessage(
-                            title: "Saved",
-                            message: "Meal added to favourites.",
-                            type: .success
-                        ))
+                        if let existingFavorite = linkedFavoriteForLatestMeal {
+                            favoritePendingDeletion = existingFavorite
+                        } else {
+                            if let savedMeal = viewModel.saveLatestMealAsFavorite() {
+                                renameText = savedMeal.title
+                                mealBeingSavedAndRenamed = savedMeal
+                                
+                                toastManager.show(ToastMessage(
+                                    title: "Saved",
+                                    message: "Meal added to favourites.",
+                                    type: .success
+                                ))
+                            }
+                        }
                     }) {
-                        Image(systemName: "bookmark")
+                        Image(systemName: linkedFavoriteForLatestMeal != nil ? "bookmark.fill" : "bookmark")
                             .font(.system(size: 18))
                             .foregroundStyle(Theme.primaryGreen)
-                            .accessibilityLabel("Save meal")
+                            .accessibilityLabel(linkedFavoriteForLatestMeal != nil ? "Remove from favourites" : "Save meal")
                     }
                     .buttonStyle(.plain)
                     .padding(.trailing, 16)

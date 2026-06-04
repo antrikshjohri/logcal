@@ -114,21 +114,22 @@ class LogViewModel: ObservableObject {
         self.modelContext = context
     }
 
-    func saveLatestMealAsFavorite() {
+    @discardableResult
+    func saveLatestMealAsFavorite() -> SavedMeal? {
         guard let result = latestResult,
               let id = lastLoggedMealId,
               let context = modelContext else {
             errorMessage = "Could not save this meal yet."
-            return
+            return nil
         }
 
         let descriptor = FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == id })
         guard let entry = try? context.fetch(descriptor).first else {
             errorMessage = "Could not find the logged meal to save."
-            return
+            return nil
         }
 
-        saveMealEntryAsFavorite(entry, response: result, context: context)
+        return saveMealEntryAsFavorite(entry, response: result, context: context)
     }
 
     func logSavedMealAsIs(_ savedMeal: SavedMeal, servingMultiplier: Double = 1.0) {
@@ -160,7 +161,8 @@ class LogViewModel: ObservableObject {
             mealType: savedMeal.mealType,
             totalCalories: totalCalories,
             rawResponseJson: rawResponseJson,
-            hasImage: false
+            hasImage: false,
+            sourceSavedMealId: savedMeal.id
         )
 
         context.insert(entry)
@@ -202,22 +204,32 @@ class LogViewModel: ObservableObject {
         lastLoggedMealId = nil
     }
 
-    private func saveMealEntryAsFavorite(_ entry: MealEntry, response: MealLogResponse, context: ModelContext) {
+    @discardableResult
+    private func saveMealEntryAsFavorite(_ entry: MealEntry, response: MealLogResponse, context: ModelContext) -> SavedMeal? {
         let title = SavedMealTitle.suggestedTitle(foodText: entry.foodText, response: response)
+        
+        let count = (try? context.fetchCount(FetchDescriptor<SavedMeal>())) ?? 0
         let savedMeal = SavedMeal(
             title: title,
             foodText: entry.foodText,
             mealType: entry.mealType,
             totalCalories: entry.totalCalories,
             rawResponseJson: entry.rawResponseJson,
-            sourceMealId: entry.id
+            sourceMealId: entry.id,
+            displayOrder: count
         )
 
         context.insert(savedMeal)
         do {
+            entry.sourceSavedMealId = savedMeal.id
             try context.save()
+            Task { @MainActor in
+                await cloudSyncService.syncSavedMealsToCloud(modelContext: context)
+            }
+            return savedMeal
         } catch {
             errorMessage = AppError.unknown(error).errorDescription
+            return nil
         }
     }
     

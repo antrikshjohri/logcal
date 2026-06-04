@@ -30,6 +30,8 @@ struct MealEditView: View {
     @State private var didSaveToFavorites: Bool = false
     @State private var savedMealCreatedInSession: SavedMeal?
     @State private var savedMealPendingDeletion: SavedMeal?
+    @State private var mealBeingSavedAndRenamed: SavedMeal?
+    @State private var renameText = ""
     @State private var quickEditPrompt: String = ""
     @State private var showQuickEdit: Bool = false
     @State private var isQuickEditLoading: Bool = false
@@ -555,6 +557,30 @@ struct MealEditView: View {
         } message: {
             Text("Are you sure you want to delete this favourite meal? This action cannot be undone.")
         }
+        .alert("Rename Favourite Meal", isPresented: Binding(
+            get: { mealBeingSavedAndRenamed != nil },
+            set: { if !$0 { mealBeingSavedAndRenamed = nil } }
+        )) {
+            TextField("Name", text: $renameText)
+            Button("Cancel", role: .cancel) {
+                mealBeingSavedAndRenamed = nil
+            }
+            Button("Save") {
+                if let savedMeal = mealBeingSavedAndRenamed {
+                    let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        savedMeal.title = String(trimmed.prefix(140))
+                        savedMeal.updatedAt = Date()
+                        try? modelContext.save()
+                        
+                        Task {
+                            await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+                        }
+                    }
+                }
+                mealBeingSavedAndRenamed = nil
+            }
+        }
         .onChange(of: isEditingCalories) { oldValue, newValue in
             if newValue && !oldValue {
                 // Focus the text field when editing starts to open keyboard
@@ -734,20 +760,25 @@ struct MealEditView: View {
             rawJson = meal.rawResponseJson
         }
 
+        let count = (try? modelContext.fetchCount(FetchDescriptor<SavedMeal>())) ?? 0
         let savedMeal = SavedMeal(
             title: SavedMealTitle.suggestedTitle(foodText: meal.foodText, response: response),
             foodText: meal.foodText,
             mealType: editedMealType,
             totalCalories: editedCalories,
             rawResponseJson: rawJson,
-            sourceMealId: meal.id
+            sourceMealId: meal.id,
+            displayOrder: count
         )
 
         modelContext.insert(savedMeal)
         do {
+            meal.sourceSavedMealId = savedMeal.id
             try modelContext.save()
             didSaveToFavorites = true
             savedMealCreatedInSession = savedMeal
+            renameText = savedMeal.title
+            mealBeingSavedAndRenamed = savedMeal
             
             // Sync to cloud
             Task {
@@ -762,6 +793,7 @@ struct MealEditView: View {
         guard let savedMeal = savedMealPendingDeletion else { return }
 
         modelContext.delete(savedMeal)
+        meal.sourceSavedMealId = nil
         do {
             try modelContext.save()
             if savedMealCreatedInSession?.id == savedMeal.id {

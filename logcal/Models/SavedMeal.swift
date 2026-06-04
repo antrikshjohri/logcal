@@ -17,6 +17,7 @@ final class SavedMeal: Identifiable {
     var totalCalories: Double
     var rawResponseJson: String
     var sourceMealId: UUID?
+    var displayOrder: Int? = nil
 
     init(
         id: UUID = UUID(),
@@ -27,7 +28,8 @@ final class SavedMeal: Identifiable {
         mealType: String,
         totalCalories: Double,
         rawResponseJson: String,
-        sourceMealId: UUID? = nil
+        sourceMealId: UUID? = nil,
+        displayOrder: Int? = 0
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -38,6 +40,7 @@ final class SavedMeal: Identifiable {
         self.totalCalories = totalCalories
         self.rawResponseJson = rawResponseJson
         self.sourceMealId = sourceMealId
+        self.displayOrder = displayOrder
     }
 
     nonisolated var response: MealLogResponse? {
@@ -91,13 +94,6 @@ enum SavedMealServing {
 
 enum SavedMealMatcher {
     static func matches(_ savedMeal: SavedMeal, meal: MealEntry) -> Bool {
-        if savedMeal.sourceMealId == meal.id {
-            return true
-        }
-
-        return savedMeal.foodText == meal.foodText
-            && savedMeal.mealType == meal.mealType
-            && savedMeal.rawResponseJson == meal.rawResponseJson
-            && abs(savedMeal.totalCalories - meal.totalCalories) < 0.01
+        return savedMeal.sourceMealId == meal.id || meal.sourceSavedMealId == savedMeal.id
     }
 }
