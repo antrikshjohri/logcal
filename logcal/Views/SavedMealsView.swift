@@ -10,6 +10,7 @@ struct SavedMealsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject var cloudSyncService: CloudSyncService
     @Query(sort: \SavedMeal.updatedAt, order: .reverse) private var savedMeals: [SavedMeal]
     @State private var mealBeingRenamed: SavedMeal?
     @State private var mealPendingDeletion: SavedMeal?
@@ -148,11 +149,19 @@ struct SavedMealsView: View {
         savedMeal.updatedAt = Date()
         try? modelContext.save()
         mealBeingRenamed = nil
+        
+        Task {
+            await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+        }
     }
 
     private func delete(_ savedMeal: SavedMeal) {
         modelContext.delete(savedMeal)
         try? modelContext.save()
+        
+        Task {
+            await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+        }
     }
 
     private func deletePendingMeal() {
@@ -167,4 +176,5 @@ struct SavedMealsView: View {
         SavedMealsView()
     }
     .modelContainer(for: [MealEntry.self, SavedMeal.self])
+    .environmentObject(CloudSyncService())
 }

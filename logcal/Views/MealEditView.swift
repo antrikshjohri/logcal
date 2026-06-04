@@ -669,6 +669,9 @@ struct MealEditView: View {
             }
         }
         
+        // Update linked favorite if it exists
+        updateLinkedFavoriteIfNeeded()
+        
         do {
             try modelContext.save()
             
@@ -681,6 +684,21 @@ struct MealEditView: View {
             AnalyticsService.trackMealEdited()
         } catch {
             print("DEBUG: Error saving meal: \(error)")
+        }
+    }
+
+    private func updateLinkedFavoriteIfNeeded() {
+        if let linkedFavorite = savedMeals.first(where: { $0.sourceMealId == meal.id }) {
+            linkedFavorite.foodText = meal.foodText
+            linkedFavorite.mealType = meal.mealType
+            linkedFavorite.totalCalories = meal.totalCalories
+            linkedFavorite.rawResponseJson = meal.rawResponseJson
+            linkedFavorite.updatedAt = Date()
+            
+            // Sync updated favorites to Firestore
+            Task {
+                await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+            }
         }
     }
 
@@ -730,6 +748,11 @@ struct MealEditView: View {
             try modelContext.save()
             didSaveToFavorites = true
             savedMealCreatedInSession = savedMeal
+            
+            // Sync to cloud
+            Task {
+                await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+            }
         } catch {
             print("DEBUG: Error saving favorite meal: \(error)")
         }
@@ -746,6 +769,11 @@ struct MealEditView: View {
             }
             didSaveToFavorites = false
             savedMealPendingDeletion = nil
+            
+            // Sync to cloud
+            Task {
+                await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+            }
         } catch {
             print("DEBUG: Error deleting saved meal: \(error)")
         }
@@ -794,6 +822,8 @@ struct MealEditView: View {
             editedCalories = refined.totalCalories
             modifiedResponse = refined
             caloriesManuallyOverridden = false
+            updateLinkedFavoriteIfNeeded()
+            try? modelContext.save()
             quickEditPrompt = ""
             withAnimation(.easeInOut(duration: 0.2)) {
                 showQuickEdit = false

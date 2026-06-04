@@ -484,5 +484,95 @@ struct FirestoreService {
             throw AppError.unknown(error)
         }
     }
+    
+    /// Save all favorites/saved meals to the user's document in Firestore
+    func saveSavedMealsToCloud(_ meals: [SavedMeal]) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, skipping favorites save")
+            return
+        }
+        
+        let mealsData = meals.map { meal -> [String: Any] in
+            var dict: [String: Any] = [
+                "id": meal.id.uuidString,
+                "title": meal.title,
+                "foodText": meal.foodText,
+                "mealType": meal.mealType,
+                "totalCalories": meal.totalCalories,
+                "rawResponseJson": meal.rawResponseJson
+            ]
+            if let sourceId = meal.sourceMealId {
+                dict["sourceMealId"] = sourceId.uuidString
+            }
+            return dict
+        }
+        
+        let userData: [String: Any] = [
+            "savedMeals": mealsData,
+            "updatedAt": Timestamp(date: Date())
+        ]
+        
+        do {
+            try await db.collection("users").document(userId).setData(userData, merge: true)
+            print("DEBUG: Successfully saved \(meals.count) favorites to cloud")
+        } catch {
+            print("DEBUG: Error saving favorites to cloud: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
+    /// Fetch all favorites/saved meals from the user's document in Firestore
+    func fetchSavedMealsFromCloud() async throws -> [SavedMeal] {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, cannot fetch favorites")
+            return []
+        }
+        
+        print("DEBUG: Fetching favorites from Firestore for user: \(userId)")
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            
+            if document.exists {
+                let data = document.data()
+                if let mealsArray = data?["savedMeals"] as? [[String: Any]] {
+                    var savedMeals: [SavedMeal] = []
+                    for dict in mealsArray {
+                        guard let idString = dict["id"] as? String,
+                              let id = UUID(uuidString: idString),
+                              let title = dict["title"] as? String,
+                              let foodText = dict["foodText"] as? String,
+                              let mealType = dict["mealType"] as? String,
+                              let totalCalories = dict["totalCalories"] as? Double,
+                              let rawResponseJson = dict["rawResponseJson"] as? String else {
+                            continue
+                        }
+                        
+                        let sourceMealId = (dict["sourceMealId"] as? String).flatMap { UUID(uuidString: $0) }
+                        
+                        let meal = SavedMeal(
+                            id: id,
+                            title: title,
+                            foodText: foodText,
+                            mealType: mealType,
+                            totalCalories: totalCalories,
+                            rawResponseJson: rawResponseJson,
+                            sourceMealId: sourceMealId
+                        )
+                        savedMeals.append(meal)
+                    }
+                    print("DEBUG: Fetched \(savedMeals.count) favorites from cloud")
+                    return savedMeals
+                }
+                print("DEBUG: No favorites found in user document")
+                return []
+            } else {
+                print("DEBUG: User document does not exist, no favorites to fetch")
+                return []
+            }
+        } catch {
+            print("DEBUG: Error fetching favorites from Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
 }
 

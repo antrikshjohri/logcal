@@ -155,8 +155,30 @@ class CloudSyncService: ObservableObject {
                 
                 // Another small delay to ensure the view refresh happens
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-            } else {
-                print("DEBUG: No new meals to add from cloud")
+            }
+            
+            // Fetch favorites from cloud and merge locally
+            do {
+                let cloudFavs = try await firestoreService.fetchSavedMealsFromCloud()
+                print("DEBUG: Fetched \(cloudFavs.count) favorites from cloud")
+                
+                let favDescriptor = FetchDescriptor<SavedMeal>()
+                let localFavs = try modelContext.fetch(favDescriptor)
+                let localFavIds = Set(localFavs.map { $0.id })
+                
+                var addedFavsCount = 0
+                for cloudFav in cloudFavs {
+                    if !localFavIds.contains(cloudFav.id) {
+                        modelContext.insert(cloudFav)
+                        addedFavsCount += 1
+                    }
+                }
+                if addedFavsCount > 0 {
+                    try modelContext.save()
+                    print("DEBUG: Added \(addedFavsCount) favorites from cloud to local storage")
+                }
+            } catch {
+                print("DEBUG: Error syncing favorites from cloud (non-blocking): \(error.localizedDescription)")
             }
             
             isSyncing = false
@@ -200,6 +222,14 @@ class CloudSyncService: ObservableObject {
                 print("DEBUG: Migrating daily goal to cloud: \(localDailyGoal)")
                 try await firestoreService.saveDailyGoal(localDailyGoal)
                 print("DEBUG: Successfully migrated daily goal to cloud")
+            }
+            
+            // Also migrate local favorites to cloud
+            let favDescriptor = FetchDescriptor<SavedMeal>()
+            if let localFavs = try? modelContext.fetch(favDescriptor), !localFavs.isEmpty {
+                print("DEBUG: Migrating \(localFavs.count) local favorites to cloud")
+                try await firestoreService.saveSavedMealsToCloud(localFavs)
+                print("DEBUG: Successfully migrated \(localFavs.count) favorites to cloud")
             }
             
             isSyncing = false
@@ -253,18 +283,26 @@ class CloudSyncService: ObservableObject {
                 let bgContext = ModelContext(container)
                 bgContext.autosaveEnabled = false
                 
+                // 1. Delete all MealEntry records
                 let descriptor = FetchDescriptor<MealEntry>()
-                let localMeals = try bgContext.fetch(descriptor)
-                guard !localMeals.isEmpty else {
-                    print("DEBUG: No local meals to delete")
-                    return
+                if let localMeals = try? bgContext.fetch(descriptor) {
+                    print("DEBUG: Found \(localMeals.count) local meals to delete (background thread)")
+                    for meal in localMeals {
+                        bgContext.delete(meal)
+                    }
                 }
-                print("DEBUG: Found \(localMeals.count) local meals to delete (background thread)")
-                for meal in localMeals {
-                    bgContext.delete(meal)
+                
+                // 2. Delete all SavedMeal records
+                let favDescriptor = FetchDescriptor<SavedMeal>()
+                if let localFavs = try? bgContext.fetch(favDescriptor) {
+                    print("DEBUG: Found \(localFavs.count) local favorites to delete (background thread)")
+                    for fav in localFavs {
+                        bgContext.delete(fav)
+                    }
                 }
+                
                 try bgContext.save()
-                print("DEBUG: Successfully cleared \(localMeals.count) local meals via background thread")
+                print("DEBUG: Successfully cleared local data via background thread")
             }.value
         } catch {
             print("DEBUG: Error clearing local meals: \(error)")
@@ -329,6 +367,25 @@ class CloudSyncService: ObservableObject {
             print("DEBUG: Error fetching daily goal from cloud: \(error)")
             syncError = "Failed to fetch daily goal from cloud: \(error.localizedDescription)"
             return nil
+        }
+    }
+    
+    /// Sync saved meals (favorites) to Firestore
+    func syncSavedMealsToCloud(modelContext: ModelContext) async {
+        // Only sync if user is signed in (not anonymous)
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else {
+            print("DEBUG: User is anonymous or not signed in, skipping cloud sync for favorites")
+            return
+        }
+        
+        do {
+            let descriptor = FetchDescriptor<SavedMeal>()
+            let localFavs = try modelContext.fetch(descriptor)
+            try await firestoreService.saveSavedMealsToCloud(localFavs)
+            print("DEBUG: Successfully synced \(localFavs.count) favorites to cloud")
+        } catch {
+            print("DEBUG: Error syncing favorites to cloud: \(error)")
+            syncError = "Failed to sync favorites to cloud: \(error.localizedDescription)"
         }
     }
 }

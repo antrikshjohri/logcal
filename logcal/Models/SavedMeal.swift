@@ -95,8 +95,7 @@ enum SavedMealMatcher {
             return true
         }
 
-        return savedMeal.sourceMealId == nil
-            && savedMeal.foodText == meal.foodText
+        return savedMeal.foodText == meal.foodText
             && savedMeal.mealType == meal.mealType
             && savedMeal.rawResponseJson == meal.rawResponseJson
             && abs(savedMeal.totalCalories - meal.totalCalories) < 0.01

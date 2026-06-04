@@ -1113,6 +1113,7 @@ private struct SavedMealLogSheet: View {
     let onEdit: () -> Void
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var cloudSyncService: CloudSyncService
     @State private var servingMultiplier = 1.0
     @State private var isRenaming = false
     @State private var renameText = ""
@@ -1173,7 +1174,7 @@ private struct SavedMealLogSheet: View {
                     .pickerStyle(.segmented)
                 }
 
-                if let response = scaledResponse ?? savedMeal.response {
+                if let response = scaledResponse ?? savedMeal.response, !response.items.isEmpty {
                     VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
                         Text("Items")
                             .font(.headline)
@@ -1250,6 +1251,10 @@ private struct SavedMealLogSheet: View {
         savedMeal.title = String(trimmed.prefix(140))
         savedMeal.updatedAt = Date()
         try? modelContext.save()
+        
+        Task {
+            await cloudSyncService.syncSavedMealsToCloud(modelContext: modelContext)
+        }
     }
 }
 
