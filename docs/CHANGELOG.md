@@ -53,3 +53,15 @@ This changelog tracks notable project changes from the point we adopted the new 
 - Defaulted the History view to expand the two most recent logging days automatically for better quality of life
 - Improved meal logging speed by approximately 50% through service optimization
 
+## 2026-06-07 (v1.8)
+
+- Bumped iOS app marketing version to `1.8` (build `9`)
+- Added in-app feedback feature (`FeedbackSheet`) with Firestore persistence and updated security rules
+- Added feedback entry points in Profile screen ("Send Feedback" row) and Log screen (bottom link)
+- Renamed "WhatsApp Integration" section header in ProfileView to "Shortcuts"
+- Fixed History sort order so future-dated meals appear above today instead of below
+- Log Meal button now floats above the keyboard when the text input is focused; returns inline when keyboard is dismissed
+- Added `.scrollDismissesKeyboard(.interactively)` for natural swipe-to-dismiss on the Log screen
+- Added offline/network disconnected user-facing error message
+- Implemented 100% tap-event analytics coverage for ProfileView, LinkWhatsAppView, DailyGoalView, and DietStyleHelperView
+- Added 30+ new Firebase Analytics events across the above screens
