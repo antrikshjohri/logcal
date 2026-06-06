@@ -239,13 +239,10 @@ struct HomeView: View {
             .padding(.vertical)
         }
         .background(Theme.backgroundColor(colorScheme: colorScheme))
-        .background(
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                }
-        )
+        .onTapGesture {
+            isTextFieldFocused = false
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .dismissDropdownOnScroll(show: $showMealTypeDropdown)
     }
 

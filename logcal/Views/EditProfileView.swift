@@ -254,6 +254,9 @@ struct EditProfileView: View {
                 .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
             .frame(maxWidth: .infinity, alignment: .center)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .background(Theme.backgroundColor(colorScheme: colorScheme))
