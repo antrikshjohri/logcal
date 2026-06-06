@@ -14,6 +14,10 @@ struct SyncHandlerView: View {
     @ObservedObject var cloudSyncService: CloudSyncService
     @ObservedObject var authViewModel: AuthViewModel
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
+    @AppStorage("proteinGoal") private var proteinGoal: Double = 150
+    @AppStorage("carbsGoal") private var carbsGoal: Double = 200
+    @AppStorage("fatGoal") private var fatGoal: Double = 65
+    @AppStorage("dietStyle") private var dietStyle: String = DietStyle.balanced.rawValue
     @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
     @AppStorage("userCountry") private var userCountry: String = ""
     @State private var hasSyncedOnLaunch = false
@@ -287,22 +291,33 @@ struct SyncHandlerView: View {
             }
     }
     
-    /// Fetch daily goal from cloud and update AppStorage
+    /// Fetch daily goal and user preferences from cloud and update AppStorage
     private func fetchDailyGoalFromCloud() async {
         print("DEBUG: fetchDailyGoalFromCloud called, current local goal: \(dailyGoal)")
-        if let cloudGoal = await cloudSyncService.fetchDailyGoalFromCloud() {
-            print("DEBUG: Fetched goal from cloud: \(cloudGoal), current local: \(dailyGoal)")
-            // Always update if we got a value from cloud (even if same, to ensure sync)
-            // Only skip if cloudGoal is 0 or invalid
-            if cloudGoal > 0 {
-                print("DEBUG: Updating daily goal from cloud: \(cloudGoal) (was \(dailyGoal))")
-                dailyGoal = cloudGoal
-                print("DEBUG: Daily goal updated to: \(dailyGoal)")
-            } else {
-                print("DEBUG: Cloud goal is invalid (\(cloudGoal)), not updating")
+        if let prefs = await cloudSyncService.fetchUserPreferencesFromCloud() {
+            print("DEBUG: Fetched preferences from cloud: Goal=\(prefs.dailyGoal), P=\(prefs.proteinGoal ?? 0), C=\(prefs.carbsGoal ?? 0), F=\(prefs.fatGoal ?? 0), Style=\(prefs.dietStyle ?? "nil")")
+            if prefs.dailyGoal > 0 {
+                dailyGoal = prefs.dailyGoal
+            }
+            if let protein = prefs.proteinGoal, protein > 0 {
+                proteinGoal = protein
+            }
+            if let carbs = prefs.carbsGoal, carbs > 0 {
+                carbsGoal = carbs
+            }
+            if let fat = prefs.fatGoal, fat > 0 {
+                fatGoal = fat
+            }
+            if let style = prefs.dietStyle, !style.isEmpty {
+                dietStyle = style
             }
         } else {
-            print("DEBUG: No goal fetched from cloud (returned nil)")
+            // Fallback to fetch just the calorie goal if older client configuration or if fetch preferences failed
+            if let cloudGoal = await cloudSyncService.fetchDailyGoalFromCloud() {
+                if cloudGoal > 0 {
+                    dailyGoal = cloudGoal
+                }
+            }
         }
     }
     

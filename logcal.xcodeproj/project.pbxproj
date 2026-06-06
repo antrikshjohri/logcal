@@ -34,12 +34,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		2C88D45160A287CD2A3C3D54 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = text.plist; lastKnownFileType = text.plist; name = "GoogleService-Info.plist"; path = "logcal/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		2C88D45160A287CD2A3C3D54 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = text.plist; name = "GoogleService-Info.plist"; path = "logcal/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9B2C80E32EFB4C6100707824 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -52,7 +52,7 @@
 		9B2C7FC62EEF6FE400707824 /* logcal */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				9B2C80E32EFB4C6100707824 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */,
 			);
 			path = logcal;
 			sourceTree = "<group>";
@@ -371,9 +371,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.7;
-				OTHER_LDFLAGS = (
-					"-ObjC",
-				);
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -417,9 +415,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.7;
-				OTHER_LDFLAGS = (
-					"-ObjC",
-				);
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

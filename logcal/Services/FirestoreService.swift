@@ -189,21 +189,40 @@ struct FirestoreService {
         }
     }
     
-    /// Save daily goal to Firestore
-    func saveDailyGoal(_ goal: Double) async throws {
+    /// Save daily goal and macro targets to Firestore
+    func saveDailyGoal(
+        _ goal: Double,
+        proteinGoal: Double? = nil,
+        carbsGoal: Double? = nil,
+        fatGoal: Double? = nil,
+        dietStyle: String? = nil
+    ) async throws {
         guard let userId = Auth.auth().currentUser?.uid else {
             print("DEBUG: No authenticated user, skipping Firestore save for daily goal")
             return
         }
         
-        let userData: [String: Any] = [
+        var userData: [String: Any] = [
             "dailyGoal": goal,
             "updatedAt": Timestamp(date: Date())
         ]
         
+        if let proteinGoal = proteinGoal {
+            userData["proteinGoal"] = proteinGoal
+        }
+        if let carbsGoal = carbsGoal {
+            userData["carbsGoal"] = carbsGoal
+        }
+        if let fatGoal = fatGoal {
+            userData["fatGoal"] = fatGoal
+        }
+        if let dietStyle = dietStyle {
+            userData["dietStyle"] = dietStyle
+        }
+        
         do {
             try await db.collection("users").document(userId).setData(userData, merge: true)
-            print("DEBUG: Successfully saved daily goal to Firestore: \(goal)")
+            print("DEBUG: Successfully saved daily goal and preferences to Firestore: \(goal) kcal")
         } catch {
             print("DEBUG: Error saving daily goal to Firestore: \(error)")
             throw AppError.unknown(error)
@@ -425,6 +444,88 @@ struct FirestoreService {
             }
         } catch {
             print("DEBUG: Error fetching daily goal from Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+    
+    /// User preferences structure
+    struct UserPreferences {
+        let dailyGoal: Double
+        let proteinGoal: Double?
+        let carbsGoal: Double?
+        let fatGoal: Double?
+        let dietStyle: String?
+    }
+    
+    /// Fetch user preferences (daily goals & macros) from Firestore
+    func fetchUserPreferences() async throws -> UserPreferences? {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No authenticated user, cannot fetch preferences from Firestore")
+            return nil
+        }
+        
+        print("DEBUG: Fetching user preferences from Firestore for user: \(userId)")
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            
+            if document.exists {
+                let data = document.data()
+                
+                // Parse daily goal (try Double first, then Int)
+                var dailyGoal: Double = 2000
+                if let goalDouble = data?["dailyGoal"] as? Double {
+                    dailyGoal = goalDouble
+                } else if let goalInt = data?["dailyGoal"] as? Int {
+                    dailyGoal = Double(goalInt)
+                } else if let goalNumber = data?["dailyGoal"] as? NSNumber {
+                    dailyGoal = goalNumber.doubleValue
+                }
+                
+                // Parse proteinGoal (try Double first, then Int)
+                var proteinGoal: Double? = nil
+                if let proteinDouble = data?["proteinGoal"] as? Double {
+                    proteinGoal = proteinDouble
+                } else if let proteinInt = data?["proteinGoal"] as? Int {
+                    proteinGoal = Double(proteinInt)
+                } else if let proteinNumber = data?["proteinGoal"] as? NSNumber {
+                    proteinGoal = proteinNumber.doubleValue
+                }
+                
+                // Parse carbsGoal (try Double first, then Int)
+                var carbsGoal: Double? = nil
+                if let carbsDouble = data?["carbsGoal"] as? Double {
+                    carbsGoal = carbsDouble
+                } else if let carbsInt = data?["carbsGoal"] as? Int {
+                    carbsGoal = Double(carbsInt)
+                } else if let carbsNumber = data?["carbsGoal"] as? NSNumber {
+                    carbsGoal = carbsNumber.doubleValue
+                }
+                
+                // Parse fatGoal (try Double first, then Int)
+                var fatGoal: Double? = nil
+                if let fatDouble = data?["fatGoal"] as? Double {
+                    fatGoal = fatDouble
+                } else if let fatInt = data?["fatGoal"] as? Int {
+                    fatGoal = Double(fatInt)
+                } else if let fatNumber = data?["fatGoal"] as? NSNumber {
+                    fatGoal = fatNumber.doubleValue
+                }
+                
+                let dietStyle = data?["dietStyle"] as? String
+                
+                return UserPreferences(
+                    dailyGoal: dailyGoal,
+                    proteinGoal: proteinGoal,
+                    carbsGoal: carbsGoal,
+                    fatGoal: fatGoal,
+                    dietStyle: dietStyle
+                )
+            } else {
+                print("DEBUG: User document does not exist in Firestore")
+                return nil
+            }
+        } catch {
+            print("DEBUG: Error fetching user preferences from Firestore: \(error)")
             throw AppError.unknown(error)
         }
     }

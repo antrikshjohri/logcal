@@ -225,13 +225,24 @@ class CloudSyncService: ObservableObject {
                 print("DEBUG: Successfully migrated \(localMeals.count) meals to cloud")
             }
             
-            // Also migrate daily goal if it exists in UserDefaults
+            // Also migrate daily goal and macros if they exist in UserDefaults
             // Note: We can't access @AppStorage here, so we'll read from UserDefaults directly
             let localDailyGoal = UserDefaults.standard.double(forKey: "dailyGoal")
-            if localDailyGoal > 0 && localDailyGoal != 2000 { // Only migrate if it's been changed from default
-                print("DEBUG: Migrating daily goal to cloud: \(localDailyGoal)")
-                try await firestoreService.saveDailyGoal(localDailyGoal)
-                print("DEBUG: Successfully migrated daily goal to cloud")
+            let localProteinGoal = UserDefaults.standard.double(forKey: "proteinGoal")
+            let localCarbsGoal = UserDefaults.standard.double(forKey: "carbsGoal")
+            let localFatGoal = UserDefaults.standard.double(forKey: "fatGoal")
+            let localDietStyle = UserDefaults.standard.string(forKey: "dietStyle")
+            
+            if localDailyGoal > 0 {
+                print("DEBUG: Migrating preferences to cloud: Goal=\(localDailyGoal), P=\(localProteinGoal), C=\(localCarbsGoal), F=\(localFatGoal), Style=\(localDietStyle ?? "nil")")
+                try await firestoreService.saveDailyGoal(
+                    localDailyGoal,
+                    proteinGoal: localProteinGoal > 0 ? localProteinGoal : nil,
+                    carbsGoal: localCarbsGoal > 0 ? localCarbsGoal : nil,
+                    fatGoal: localFatGoal > 0 ? localFatGoal : nil,
+                    dietStyle: localDietStyle
+                )
+                print("DEBUG: Successfully migrated preferences to cloud")
             }
             
             // Also migrate local favorites to cloud
@@ -361,6 +372,35 @@ class CloudSyncService: ObservableObject {
         }
     }
     
+    /// Sync daily goal and macro targets to Firestore
+    func syncUserPreferencesToCloud(
+        dailyGoal: Double,
+        proteinGoal: Double,
+        carbsGoal: Double,
+        fatGoal: Double,
+        dietStyle: String
+    ) async {
+        // Only sync if user is signed in (not anonymous)
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else {
+            print("DEBUG: User is anonymous or not signed in, skipping cloud sync for preferences")
+            return
+        }
+        
+        do {
+            try await firestoreService.saveDailyGoal(
+                dailyGoal,
+                proteinGoal: proteinGoal,
+                carbsGoal: carbsGoal,
+                fatGoal: fatGoal,
+                dietStyle: dietStyle
+            )
+            print("DEBUG: Successfully synced user preferences to cloud: Goal=\(dailyGoal) kcal, Style=\(dietStyle)")
+        } catch {
+            print("DEBUG: Error syncing user preferences to cloud: \(error)")
+            syncError = "Failed to sync user preferences to cloud: \(error.localizedDescription)"
+        }
+    }
+    
     /// Fetch daily goal from Firestore
     func fetchDailyGoalFromCloud() async -> Double? {
         // Only fetch if user is signed in (not anonymous)
@@ -377,6 +417,25 @@ class CloudSyncService: ObservableObject {
         } catch {
             print("DEBUG: Error fetching daily goal from cloud: \(error)")
             syncError = "Failed to fetch daily goal from cloud: \(error.localizedDescription)"
+            return nil
+        }
+    }
+    
+    /// Fetch user preferences (daily goals & macros) from Firestore
+    func fetchUserPreferencesFromCloud() async -> FirestoreService.UserPreferences? {
+        // Only fetch if user is signed in (not anonymous)
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else {
+            print("DEBUG: User is anonymous or not signed in, skipping cloud fetch for preferences")
+            return nil
+        }
+        
+        print("DEBUG: Fetching user preferences from cloud for user: \(user.uid)")
+        do {
+            let preferences = try await firestoreService.fetchUserPreferences()
+            return preferences
+        } catch {
+            print("DEBUG: Error fetching user preferences from cloud: \(error)")
+            syncError = "Failed to fetch user preferences from cloud: \(error.localizedDescription)"
             return nil
         }
     }
