@@ -46,10 +46,17 @@ struct HistoryView: View {
             return (date: date, meals: sortedMeals, totalCalories: total)
         }
         .sorted { date1, date2 in
-            // Today always comes first
+            let now = Date()
+            let isFuture1 = date1.date > Calendar.current.startOfDay(for: now) && !Calendar.current.isDateInToday(date1.date)
+            let isFuture2 = date2.date > Calendar.current.startOfDay(for: now) && !Calendar.current.isDateInToday(date2.date)
+            // Future dates come first (newest future first)
+            if isFuture1 && isFuture2 { return date1.date > date2.date }
+            if isFuture1 { return true }
+            if isFuture2 { return false }
+            // Today comes before all past dates
             if isToday(date1.date) { return true }
             if isToday(date2.date) { return false }
-            // Then sort by newest first
+            // Past dates: newest first
             return date1.date > date2.date
         }
     }
@@ -100,8 +107,17 @@ struct HistoryView: View {
         
         // Ensure Today is always first
         return dates.sorted { date1, date2 in
+            let now = Date()
+            let isFuture1 = date1.date > Calendar.current.startOfDay(for: now) && !Calendar.current.isDateInToday(date1.date)
+            let isFuture2 = date2.date > Calendar.current.startOfDay(for: now) && !Calendar.current.isDateInToday(date2.date)
+            // Future dates come first (newest future first)
+            if isFuture1 && isFuture2 { return date1.date > date2.date }
+            if isFuture1 { return true }
+            if isFuture2 { return false }
+            // Today comes before all past dates
             if isToday(date1.date) { return true }
             if isToday(date2.date) { return false }
+            // Past dates: newest first
             return date1.date > date2.date
         }
     }
