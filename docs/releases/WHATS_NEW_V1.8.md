@@ -2,29 +2,20 @@
 
 ## What's New (App Store Release Notes)
 
+### WhatsApp Logging Improvements
+Log meals by chatting naturally on WhatsApp. Setup directly from Profile.
+
 ### Try Without Signing In
-Start tracking calories immediately with a Guest account — no sign-up required. Upgrade to a full account at any time to back up and sync your data to the cloud without losing your history.
+Start tracking calories immediately with a Guest account — no sign-up required. Upgrade to a full account at any time to back up and sync your data to cloud.
 
 ### Custom Macro Goals
 Set personalised protein, carbs, and fat targets alongside your daily calorie goal. Not sure what to aim for? Use the new "Help Me Choose" guided questionnaire to get a recommended macro split based on your diet style.
 
-### Log Meals via WhatsApp
-You can now log meals directly from WhatsApp — no app required. Just send a message and LogCal handles the rest. Set it up under Shortcuts in your Profile.
-
-### Favourites Sync to Cloud
-Your saved favourite meals are now backed up to the cloud and sync across devices automatically. Reorder them on the Log screen to match your logging habits.
-
 ### Send Feedback
-Share thoughts directly from the app. Tap "Send Feedback" in your Profile or use the quick link at the bottom of the Log screen — we read every message.
-
-### Smarter History
-Meals logged for future dates now correctly appear above today in your History — exactly where you'd expect them.
-
-### Keyboard-Friendly Logging
-The "Log Meal" button now stays visible above the keyboard when you're typing, so you never lose track of how to submit.
+You can now share feedback directly from within the app. Tap "Send Feedback" in your Profile or use the quick link at the bottom of the Log screen — we read every message.
 
 ### Bug Fixes & Polish
-Offline mode now shows a clear message when there's no internet connection. Various stability and performance improvements across the app.
+Various stability and performance improvements across the app.
 
 ---
 
