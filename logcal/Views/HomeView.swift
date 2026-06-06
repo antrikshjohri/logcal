@@ -234,7 +234,11 @@ struct HomeView: View {
                     
                     foodTextInputCard
                     
-                    logMealButton
+                    // Show inline when keyboard is hidden; hidden when keyboard is up (shown in safeAreaInset instead)
+                    if !isTextFieldFocused {
+                        logMealButton
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
                     
                     resultCardSection
                     
@@ -244,8 +248,23 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical)
+            .padding(.bottom, isTextFieldFocused ? 8 : 0)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isTextFieldFocused {
+                logMealButton
+                    .padding(.vertical, 12)
+                    .background(
+                        Theme.backgroundColor(colorScheme: colorScheme)
+                            .shadow(color: Theme.shadowColor(colorScheme: colorScheme), radius: 8, x: 0, y: -4)
+                            .ignoresSafeArea(edges: .bottom)
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: isTextFieldFocused)
         .onTapGesture {
             isTextFieldFocused = false
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
