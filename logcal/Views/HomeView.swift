@@ -253,9 +253,31 @@ struct HomeView: View {
         HStack(spacing: 12) {
             // Date picker
             VStack(alignment: .leading, spacing: 6) {
-                Text("DATE")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                HStack {
+                    Text("DATE")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    
+                    Spacer()
+                    
+                    if !Calendar.current.isDateInToday(viewModel.selectedDate) {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                viewModel.selectedDate = Date()
+                            }
+                        }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .font(.system(size: 9, weight: .bold))
+                                Text("Today")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                            }
+                            .foregroundColor(Theme.primaryGreen)
+                        }
+                        .transition(.opacity.combined(with: .scale))
+                    }
+                }
+                .frame(height: 14)
                 
                 HStack(spacing: 0) {
                     // Left arrow - previous day
@@ -275,7 +297,7 @@ struct HomeView: View {
                         viewModel.showDatePicker = true
                     }) {
                         HStack(spacing: 4) {
-                            Text(DateFormatterCache.formatDate(viewModel.selectedDate))
+                            Text(DateFormatterCache.formatDateHeader(viewModel.selectedDate))
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)

@@ -102,6 +102,23 @@ class LogViewModel: ObservableObject {
                 self?.speechErrorMessage = message
             }
             .store(in: &cancellables)
+        
+        // Listen to application willEnterForeground and day change notifications
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .merge(with: NotificationCenter.default.publisher(for: NSNotification.Name.NSCalendarDayChanged))
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                Task { @MainActor in
+                    self.checkAndResetSelectedDateIfNeeded()
+                }
+            }
+            .store(in: &cancellables)
+            
+        // Initial setup of last active date
+        let now = Date()
+        if UserDefaults.standard.object(forKey: "lastActiveDate") == nil {
+            UserDefaults.standard.set(now, forKey: "lastActiveDate")
+        }
     }
     
     private var cancellables = Set<AnyCancellable>()
@@ -541,5 +558,25 @@ class LogViewModel: ObservableObject {
             }
             print("DEBUG: [LogViewModel] quickRefineLoggedMeal error: \(error)")
         }
+    }
+    
+    func checkAndResetSelectedDateIfNeeded() {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        let lastActiveDate = UserDefaults.standard.object(forKey: "lastActiveDate") as? Date ?? now
+        
+        // If the selectedDate matches the lastActiveDate calendar day, it means
+        // the user was viewing "today" during the last active session.
+        if calendar.isDate(selectedDate, inSameDayAs: lastActiveDate) {
+            // If the day has rolled over (selectedDate is not today anymore),
+            // reset selectedDate to the new today.
+            if !calendar.isDate(selectedDate, inSameDayAs: now) {
+                selectedDate = now
+            }
+        }
+        
+        // Update the last active date to today
+        UserDefaults.standard.set(now, forKey: "lastActiveDate")
     }
 }

@@ -185,6 +185,26 @@ struct DashboardView: View {
         }
     }
 
+    private func checkAndResetSelectedDateIfNeeded() {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        let lastActiveDate = UserDefaults.standard.object(forKey: "lastActiveDateDashboard") as? Date ?? now
+        
+        // If the selectedDate matches the lastActiveDate calendar day, it means
+        // the user was viewing "today" during the last active session.
+        if calendar.isDate(selectedDate, inSameDayAs: lastActiveDate) {
+            // If the day has rolled over (selectedDate is not today anymore),
+            // reset selectedDate to the new today.
+            if !calendar.isDate(selectedDate, inSameDayAs: now) {
+                selectedDate = now
+            }
+        }
+        
+        // Update the last active date to today
+        UserDefaults.standard.set(now, forKey: "lastActiveDateDashboard")
+    }
+
     private var isOverGoal: Bool { todayCalories > dailyGoal }
     private var remainingUnderGoal: Double { max(0, dailyGoal - todayCalories) }
     private var amountOverGoal: Double { max(0, todayCalories - dailyGoal) }
@@ -528,11 +548,22 @@ struct DashboardView: View {
                 // #region agent log
                 DebugLogger.log(location: "DashboardView.swift:onAppear", message: "DashboardView appeared", data: ["mealCount": meals.count], hypothesisId: "B")
                 // #endregion
+                let now = Date()
+                if UserDefaults.standard.object(forKey: "lastActiveDateDashboard") == nil {
+                    UserDefaults.standard.set(now, forKey: "lastActiveDateDashboard")
+                }
+                checkAndResetSelectedDateIfNeeded()
             }
             .onChange(of: meals.count) { oldValue, newValue in
                 // #region agent log
                 DebugLogger.log(location: "DashboardView.swift:onChange", message: "Meals count changed", data: ["oldCount": oldValue, "newCount": newValue], hypothesisId: "B")
                 // #endregion
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                checkAndResetSelectedDateIfNeeded()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSCalendarDayChanged)) { _ in
+                checkAndResetSelectedDateIfNeeded()
             }
         }
     }

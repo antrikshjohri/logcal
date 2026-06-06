@@ -61,6 +61,8 @@ enum DateFormatterCache {
             return "Today"
         } else if calendar.isDateInYesterday(date) {
             return "Yesterday"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Tomorrow"
         } else {
             return shortDateHeader().string(from: date)
         }
