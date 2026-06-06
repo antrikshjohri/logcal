@@ -142,6 +142,13 @@ struct LinkWhatsAppView: View {
     @ViewBuilder
     private var unlinkedStateView: some View {
         VStack(spacing: 24) {
+            // WhatsApp Icon representation using our custom asset
+            Image("WhatsAppIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 64, height: 64)
+                .padding(.top, 16)
+
             VStack(spacing: 8) {
                 Text("Log via WhatsApp")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
@@ -153,54 +160,20 @@ struct LinkWhatsAppView: View {
                     .multilineTextAlignment(.center)
             }
             
-            VStack(alignment: .leading, spacing: 20) {
-                stepRow(number: "1", text: "Generate a secure, single-use linkage code below.")
-                stepRow(number: "2", text: "Tap the connect button to open WhatsApp chat with our bot.")
-                stepRow(number: "3", text: "Send the prefilled code message. Your account will link instantly!")
-            }
-            .padding()
-            .background(Theme.cardBackground(colorScheme: colorScheme))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-            )
+            // Visual Guide with the active linkage code (or a placeholder if empty)
+            WhatsAppVisualGuideView(code: linkageCode.isEmpty ? "<code>" : linkageCode)
             
-            if !linkageCode.isEmpty {
-                VStack(spacing: 8) {
-                    Text("YOUR LINKING CODE")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                    
-                    Text(linkageCode)
-                        .font(.system(size: 36, weight: .black, design: .monospaced))
-                        .foregroundColor(Theme.primaryGreen)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 24)
-                        .background(Theme.softAccentBackground(colorScheme: colorScheme))
-                        .cornerRadius(12)
-                    
-                    if let expiry = linkageExpiry {
-                        Text("Expires in \(formattedRemainingTime(from: expiry))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Theme.warningAmber)
+            if linkageCode.isEmpty {
+                Button(action: {
+                    Task {
+                        await linkWithWhatsAppFlow()
                     }
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Theme.cardBackground(colorScheme: colorScheme))
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                )
-                
-                Button(action: openWhatsAppToLink) {
+                }) {
                     HStack {
                         Spacer()
                         Image(systemName: "arrow.up.right.circle.fill")
                             .font(.system(size: 18))
-                        Text("Open WhatsApp & Link")
+                        Text("Link with WhatsApp")
                             .font(.system(size: 16, weight: .bold))
                         Spacer()
                     }
@@ -211,13 +184,13 @@ struct LinkWhatsAppView: View {
                 }
             } else {
                 Button(action: {
-                    Task {
-                        await generateNewLinkageCode()
-                    }
+                    openWhatsAppToLink(with: linkageCode)
                 }) {
                     HStack {
                         Spacer()
-                        Text("Generate Linking Code")
+                        Image(systemName: "arrow.up.right.circle.fill")
+                            .font(.system(size: 18))
+                        Text("Open WhatsApp to Link")
                             .font(.system(size: 16, weight: .bold))
                         Spacer()
                     }
@@ -226,22 +199,45 @@ struct LinkWhatsAppView: View {
                     .background(Theme.primaryGreen)
                     .cornerRadius(12)
                 }
-            }
-            
-            if !linkageCode.isEmpty {
-                Button(action: {
-                    Task {
-                        await loadWhatsAppStatus()
+                
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Text("Code:")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        
+                        Text(linkageCode)
+                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .foregroundColor(Theme.primaryGreen)
+                        
+                        if let expiry = linkageExpiry {
+                            Text("(\(formattedRemainingTime(from: expiry)))")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Theme.warningAmber)
+                        }
                     }
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.clockwise")
-                        Text("Check Linkage Status")
-                            .font(.system(size: 14, weight: .semibold))
+                    
+                    Button(action: {
+                        Task {
+                            await loadWhatsAppStatus()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.clockwise")
+                            Text("Check Linkage Status")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(Theme.primaryGreen)
                     }
-                    .foregroundColor(Theme.primaryGreen)
                 }
-                .padding(.top, 8)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Theme.cardBackground(colorScheme: colorScheme).opacity(0.5))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                )
             }
             
             if let error = errorMessage {
@@ -250,22 +246,6 @@ struct LinkWhatsAppView: View {
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
             }
-        }
-    }
-    
-    @ViewBuilder
-    private func stepRow(number: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(number)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 20, height: 20)
-                .background(Theme.primaryGreen)
-                .clipShape(Circle())
-            
-            Text(text)
-                .font(.system(size: 14, weight: .regular))
-                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
         }
     }
     
@@ -288,7 +268,7 @@ struct LinkWhatsAppView: View {
         }
     }
     
-    private func generateNewLinkageCode() async {
+    private func linkWithWhatsAppFlow() async {
         isLoading = true
         errorMessage = nil
         
@@ -300,11 +280,14 @@ struct LinkWhatsAppView: View {
             try await firestoreService.saveWhatsAppLinkageCode(code, expiry: expiry)
             linkageCode = code
             linkageExpiry = expiry
+            isLoading = false
+            
+            // Open WhatsApp immediately after saving code
+            openWhatsAppToLink(with: code)
         } catch {
-            errorMessage = "Failed to generate code: \(error.localizedDescription)"
+            errorMessage = "Failed to start linking: \(error.localizedDescription)"
+            isLoading = false
         }
-        
-        isLoading = false
     }
     
     private func unlinkWhatsApp() async {
@@ -321,8 +304,8 @@ struct LinkWhatsAppView: View {
         isLoading = false
     }
     
-    private func openWhatsAppToLink() {
-        let msg = "link \(linkageCode)"
+    private func openWhatsAppToLink(with code: String) {
+        let msg = "Please link my LogCal account with code: \(code)"
         let encodedMsg = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let waUrlString = "https://wa.me/\(Constants.WhatsApp.botPhoneNumber)?text=\(encodedMsg)"
         
@@ -340,6 +323,155 @@ struct LinkWhatsAppView: View {
     }
 }
 
+// MARK: - WhatsApp Visual Guide View
+struct WhatsAppVisualGuideView: View {
+    let code: String
+    @State private var isPulsing = false
+    @State private var isBouncing = false
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("WHAT TO DO IN WHATSAPP")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+            
+            VStack(spacing: 0) {
+                // Mock WhatsApp Navigation Header
+                HStack(spacing: 8) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.blue)
+                    
+                    Circle()
+                        .fill(Theme.primaryGreen)
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            Image(systemName: "calendar")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white)
+                        )
+                    
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("LogCal Bot")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 5, height: 5)
+                            Text("online")
+                                .font(.system(size: 10))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "video")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                    Image(systemName: "phone")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                        .padding(.leading, 8)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(colorScheme == .dark ? Color(red: 0.08, green: 0.11, blue: 0.10) : Color(red: 0.96, green: 0.96, blue: 0.96))
+                
+                Divider()
+                
+                // Mock WhatsApp Chat Background Area (Empty chat area)
+                VStack(spacing: 12) {
+                    Spacer()
+                }
+                .frame(height: 80)
+                .frame(maxWidth: .infinity)
+                .background(colorScheme == .dark ? Color(red: 0.04, green: 0.06, blue: 0.05) : Color(red: 0.90, green: 0.88, blue: 0.84))
+                
+                Divider()
+                
+                // Mock Input Bar with Pulsing Send Button
+                HStack(spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14))
+                            .foregroundColor(.blue)
+                        
+                        Text("Please link my LogCal account with code: \(code)")
+                            .font(.system(size: 11))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .lineLimit(1)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(colorScheme == .dark ? Color(red: 0.10, green: 0.12, blue: 0.11) : Color.white)
+                    .cornerRadius(16)
+                    
+                    // Pulsing Send Button
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.3))
+                            .frame(width: 38, height: 38)
+                            .scaleEffect(isPulsing ? 1.5 : 1.0)
+                            .opacity(isPulsing ? 0.0 : 1.0)
+                        
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 28, height: 28)
+                        
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .rotationEffect(.degrees(45))
+                            .offset(x: -1, y: 0)
+                    }
+                    .overlay(
+                        // Bouncing Pointer Icon
+                        Image(systemName: "hand.point.up.left.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.red)
+                            .shadow(color: .black.opacity(0.3), radius: 1, x: 0.5, y: 0.5)
+                            .offset(x: -12, y: isBouncing ? 12 : 20)
+                    )
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
+                .background(colorScheme == .dark ? Color(red: 0.08, green: 0.11, blue: 0.10) : Color(red: 0.96, green: 0.96, blue: 0.96))
+            }
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+            )
+            .onAppear {
+                withAnimation(Animation.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                    isPulsing = true
+                }
+                withAnimation(Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                    isBouncing = true
+                }
+            }
+            
+            Text("Once WhatsApp opens, the text will be automatically filled for you. Simply tap the green Send button to finish connecting!")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                .padding(.horizontal, 4)
+        }
+        .padding()
+        .background(Theme.cardBackground(colorScheme: colorScheme))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+        )
+    }
+}
+
 #Preview {
     LinkWhatsAppView()
 }
+

@@ -1072,6 +1072,140 @@ function sendWhatsAppMessage(to: string, text: string, phoneNumberId: string, ac
   });
 }
 
+function sendWhatsAppTypingIndicator(messageId: string, phoneNumberId: string, accessToken: string): Promise<void> {
+  return new Promise((resolve) => {
+    const data = JSON.stringify({
+      messaging_product: "whatsapp",
+      status: "read",
+      message_id: messageId,
+      typing_indicator: {
+        type: "text"
+      }
+    });
+
+    const options = {
+      hostname: "graph.facebook.com",
+      port: 443,
+      path: `/v17.0/${phoneNumberId}/messages`,
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = "";
+      res.on("data", (chunk) => body += chunk);
+      res.on("end", () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          console.log("DEBUG: WhatsApp typing indicator sent successfully:", body);
+        } else {
+          console.warn("WARN: WhatsApp typing indicator failed with status", res.statusCode, body);
+        }
+        resolve();
+      });
+    });
+
+    req.on("error", (e) => {
+      console.warn("WARN: WhatsApp typing indicator network error:", e);
+      resolve();
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
+
+function sendWhatsAppButtons(
+  to: string, 
+  bodyText: string, 
+  buttons: { id: string; title: string }[], 
+  phoneNumberId: string, 
+  accessToken: string,
+  headerText?: string,
+  footerText?: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        ...(headerText ? { header: { type: "text", text: headerText } } : {}),
+        body: {
+          text: bodyText
+        },
+        ...(footerText ? { footer: { text: footerText } } : {}),
+        action: {
+          buttons: buttons.map(btn => ({
+            type: "reply",
+            reply: {
+              id: btn.id,
+              title: btn.title.substring(0, 20) // Ensure max 20 chars limit is strictly respected
+            }
+          }))
+        }
+      }
+    });
+
+    const options = {
+      hostname: "graph.facebook.com",
+      port: 443,
+      path: `/v17.0/${phoneNumberId}/messages`,
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = "";
+      res.on("data", (chunk) => body += chunk);
+      res.on("end", () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          console.log("DEBUG: WhatsApp buttons sent successfully:", body);
+          resolve();
+        } else {
+          console.error("ERROR: WhatsApp buttons failed with status", res.statusCode, body);
+          reject(new Error(`WhatsApp API error status ${res.statusCode}: ${body}`));
+        }
+      });
+    });
+
+    req.on("error", (e) => {
+      console.error("ERROR: WhatsApp request network error:", e);
+      reject(e);
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
+
+function getISTDayBounds(): { start: Date; end: Date } {
+  const nowSystem = new Date();
+  const nowKolkata = new Date(nowSystem.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  
+  const start = new Date(nowKolkata);
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(nowKolkata);
+  end.setHours(23, 59, 59, 999);
+  
+  const diffMs = nowKolkata.getTime() - nowSystem.getTime();
+  
+  return {
+    start: new Date(start.getTime() - diffMs),
+    end: new Date(end.getTime() - diffMs)
+  };
+}
+
 /**
  * WhatsApp chatbot webhook to log meals directly via text message.
  */
@@ -1122,7 +1256,14 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
     }
 
     const from = message.from; // Sender's phone number
-    const text = message.text?.body; // Message text
+    
+    // Parse message text from either direct text message or interactive button reply
+    let text = "";
+    if (message.type === "text") {
+      text = message.text?.body;
+    } else if (message.type === "interactive") {
+      text = message.interactive?.button_reply?.id || message.interactive?.button_reply?.title;
+    }
 
     if (!from || !text) {
       res.status(200).send("EVENT_RECEIVED");
@@ -1131,9 +1272,17 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
 
     console.log(`DEBUG: Received message from ${from}: "${text}"`);
 
+    // Fire typing indicator in background (non-blocking)
+    const messageId = message.id;
+    if (messageId) {
+      sendWhatsAppTypingIndicator(messageId, phoneNumberId, accessToken).catch((err) => {
+        console.warn("WARN: Failed to send typing indicator:", err);
+      });
+    }
+
     try {
-      // 1. Account linking check (case-insensitive link/ /link command)
-      const linkRegex = /^(?:link|\/link)\s+([a-zA-Z0-9]{6})$/i;
+      // 1. Account linking check (handles custom sentence like "Please link my LogCal account with code: A1B2C3" or "link A1B2C3" or code in quotes)
+      const linkRegex = /(?:(?:link|\/link|code)\s+|code\s*:\s*)"?([a-zA-Z0-9]{6})"?\b/i;
       const match = text.trim().match(linkRegex);
 
       if (match) {
@@ -1166,7 +1315,16 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
           whatsappLinkageExpiry: admin.firestore.FieldValue.delete()
         });
 
-        await sendWhatsAppMessage(from, "✅ LogCal Account linked successfully! You can now log meals simply by texting them here.", phoneNumberId, accessToken);
+        await sendWhatsAppButtons(
+          from,
+          "✅ *LogCal Account Linked!*\n\nYou can now log meals simply by typing them here (e.g. \"2 bananas\").",
+          [
+            { id: "summary", title: "Today's Progress" },
+            { id: "menu", title: "Main Menu" }
+          ],
+          phoneNumberId,
+          accessToken
+        );
         res.status(200).send("EVENT_RECEIVED");
         return;
       }
@@ -1177,15 +1335,117 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
 
       if (snapshot.empty) {
         // WhatsApp number is not linked to any user
-        await sendWhatsAppMessage(from, "👋 Welcome to LogCal! To log meals via WhatsApp, you need to link your account.\n\nOpen LogCal > Profile > WhatsApp Logging, generate a linking code, and send it back here as: 'link CODE'.", phoneNumberId, accessToken);
+        const onboardText = `👋 *Welcome to LogCal!*\n\n` +
+          `To log your meals directly through WhatsApp, please link your phone number.\n\n` +
+          `*How to link:*\n` +
+          `1. Open the *LogCal* app.\n` +
+          `2. Go to *Profile* > *WhatsApp Logging*.\n` +
+          `3. Tap *Link with WhatsApp* to open this chat automatically with your secure link message.\n` +
+          `4. Send the pre-filled message (or reply here with *link CODE* if you have one).\n\n` +
+          `_Don't have the app yet? Download it on the App Store:_\n` +
+          `https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315`;
+        await sendWhatsAppMessage(from, onboardText, phoneNumberId, accessToken);
         res.status(200).send("EVENT_RECEIVED");
         return;
       }
 
       const userDoc = snapshot.docs[0];
       const uid = userDoc.id;
+      const lowerText = text.trim().toLowerCase();
 
-      // 3. User is found! Process the meal text.
+      // ==========================================
+      // COMMAND ROUTING
+      // ==========================================
+
+      // A. HELP / MENU FLOW
+      if (lowerText === "help" || lowerText === "menu" || lowerText === "hi") {
+        const welcomeText = `🤖 *LogCal Assistant*\n\n` +
+          `• *Direct Log:* Type what you ate to log it instantly.\n` +
+          `• *Summary:* View your progress/goals for today.\n` +
+          `• *Unlink:* Disconnect this WhatsApp number.`;
+        await sendWhatsAppButtons(
+          from,
+          welcomeText,
+          [
+            { id: "summary", title: "Today's Progress" },
+            { id: "unlink", title: "Unlink Account" }
+          ],
+          phoneNumberId,
+          accessToken
+        );
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+
+      // B. UNLINK FLOW
+      if (lowerText === "unlink" || lowerText === "/unlink") {
+        await userDoc.ref.update({
+          whatsappPhoneNumber: admin.firestore.FieldValue.delete()
+        });
+        await sendWhatsAppMessage(from, "🔌 Your WhatsApp number has been successfully unlinked from LogCal.", phoneNumberId, accessToken);
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+
+      // C. TODAY'S SUMMARY FLOW
+      if (lowerText === "summary" || lowerText === "today" || lowerText === "progress") {
+        console.log(`DEBUG: Calculating today's summary for user ${uid}`);
+        try {
+          const bounds = getISTDayBounds();
+          const mealsSnapshot = await admin.firestore().collection("users").doc(uid).collection("meals")
+            .where("timestamp", ">=", admin.firestore.Timestamp.fromDate(bounds.start))
+            .where("timestamp", "<=", admin.firestore.Timestamp.fromDate(bounds.end))
+            .get();
+            
+          let totalCalories = 0;
+          let totalProtein = 0;
+          let totalCarbs = 0;
+          let totalFat = 0;
+          
+          mealsSnapshot.forEach((doc: any) => {
+            const data = doc.data();
+            totalCalories += data.totalCalories || 0;
+            
+            if (data.rawResponseJson) {
+              try {
+                const resJson = JSON.parse(data.rawResponseJson);
+                totalProtein += resJson.protein || 0;
+                totalCarbs += resJson.carbs || 0;
+                totalFat += resJson.fat || 0;
+              } catch (e) {
+                // Ignore
+              }
+            }
+          });
+          
+          const userData = userDoc.data() || {};
+          const dailyGoal = userData.dailyGoal || 2000;
+          const proteinGoal = userData.proteinGoal || 150;
+          const carbsGoal = userData.carbsGoal || 200;
+          const fatGoal = userData.fatGoal || 65;
+          
+          const summaryText = `📊 *Today's Progress (IST)*\n\n` +
+            `🔥 Calories: *${totalCalories.toFixed(0)} / ${dailyGoal.toFixed(0)} kcal*\n` +
+            `💪 Protein: *${totalProtein.toFixed(0)}g / ${proteinGoal.toFixed(0)}g*\n` +
+            `🍞 Carbs: *${totalCarbs.toFixed(0)}g / ${carbsGoal.toFixed(0)}g*\n` +
+            `🥑 Fat: *${totalFat.toFixed(0)}g / ${fatGoal.toFixed(0)}g*`;
+            
+          await sendWhatsAppButtons(
+            from, 
+            summaryText, 
+            [{ id: "menu", title: "Main Menu" }], 
+            phoneNumberId, 
+            accessToken
+          );
+        } catch (err) {
+          console.error("ERROR: Failed to generate today's summary:", err);
+          await sendWhatsAppMessage(from, "⚠️ Failed to fetch today's summary. Please try again later.", phoneNumberId, accessToken);
+        }
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+
+      // D. MEAL LOGGING FLOW (DEFAULT)
       // Infer the meal type based on current hour in IST (Asia/Kolkata timezone)
       const dateInKolkata = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
       const hour = dateInKolkata.getHours();
@@ -1237,9 +1497,18 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
       const carbs = openaiResponse.carbs || 0;
       const fat = openaiResponse.fat || 0;
 
-      const replyMessage = `🍳 Logged **${mealName}**:\n"${text.trim()}"\n\n🔥 **${calories} kcal**\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*`;
+      const replyMessage = `🍳 Logged *${mealName}*:\n"${text.trim()}"\n\n🔥 *${calories} kcal*\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*`;
       
-      await sendWhatsAppMessage(from, replyMessage, phoneNumberId, accessToken);
+      await sendWhatsAppButtons(
+        from,
+        replyMessage,
+        [
+          { id: "summary", title: "Today's Progress" },
+          { id: "menu", title: "Main Menu" }
+        ],
+        phoneNumberId,
+        accessToken
+      );
       
     } catch (err: any) {
       console.error("ERROR: Error processing WhatsApp message:", err);

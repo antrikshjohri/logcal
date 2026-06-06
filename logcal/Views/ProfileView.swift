@@ -180,13 +180,26 @@ struct ProfileView: View {
                                 .buttonStyle(PlainButtonStyle())
                                 
                                 Divider()
-                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                                    .padding(.leading, 56)
-                                
+                            }
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        }
+                        
+                        // WhatsApp Section
+                        VStack(alignment: .leading, spacing: 6) {
+                            settingsGroupHeader("WHATSAPP INTEGRATION")
+                            
+                            VStack(spacing: 0) {
                                 SettingsGroupButtonRow(
-                                    icon: "message.fill",
-                                    iconColor: Theme.primaryGreen,
-                                    title: "WhatsApp Logging",
+                                    icon: "WhatsAppIcon",
+                                    isCustomIcon: true,
+                                    iconColor: .clear,
+                                    title: "Log using Whatsapp",
                                     trailingValue: isWhatsAppLinked ? "Linked" : "Not Linked"
                                 ) {
                                     showWhatsAppSettings = true
@@ -324,12 +337,14 @@ struct ProfileView: View {
 private struct SettingsGroupRow: View {
     @Environment(\.colorScheme) var colorScheme
     let icon: String
+    let isCustomIcon: Bool
     let iconColor: Color
     let title: String
     let trailingValue: String?
     
-    init(icon: String, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil) {
+    init(icon: String, isCustomIcon: Bool = false, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil) {
         self.icon = icon
+        self.isCustomIcon = isCustomIcon
         self.iconColor = iconColor
         self.title = title
         self.trailingValue = trailingValue
@@ -337,10 +352,18 @@ private struct SettingsGroupRow: View {
     
     var body: some View {
         HStack(spacing: Constants.Spacing.regular) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundColor(iconColor)
-                .frame(width: 24, height: 24)
+            if isCustomIcon {
+                Image(icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .cornerRadius(4)
+            } else {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(iconColor)
+                    .frame(width: 24, height: 24)
+            }
             
             Text(title)
                 .font(.system(size: 17, weight: .regular))
@@ -365,6 +388,7 @@ private struct SettingsGroupRow: View {
 
 private struct SettingsGroupButtonRow: View {
     let icon: String
+    var isCustomIcon: Bool = false
     let iconColor: Color
     let title: String
     let trailingValue: String?
@@ -372,7 +396,7 @@ private struct SettingsGroupButtonRow: View {
     
     var body: some View {
         Button(action: action) {
-            SettingsGroupRow(icon: icon, iconColor: iconColor, title: title, trailingValue: trailingValue)
+            SettingsGroupRow(icon: icon, isCustomIcon: isCustomIcon, iconColor: iconColor, title: title, trailingValue: trailingValue)
         }
         .buttonStyle(PlainButtonStyle())
     }
