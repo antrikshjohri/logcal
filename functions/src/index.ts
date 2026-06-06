@@ -1,5 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import * as https from "https";
+import * as crypto from "crypto";
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -1020,4 +1022,237 @@ export const healthCheck = functions.region(FUNCTIONS_REGION).https.onRequest((r
     timestamp: new Date().toISOString(),
     service: "logcal-functions",
   });
+});
+
+function sendWhatsAppMessage(to: string, text: string, phoneNumberId: string, accessToken: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "text",
+      text: {
+        body: text
+      }
+    });
+
+    const options = {
+      hostname: "graph.facebook.com",
+      port: 443,
+      path: `/v17.0/${phoneNumberId}/messages`,
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = "";
+      res.on("data", (chunk) => body += chunk);
+      res.on("end", () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          console.log("DEBUG: WhatsApp message sent successfully:", body);
+          resolve();
+        } else {
+          console.error("ERROR: WhatsApp message failed with status", res.statusCode, body);
+          reject(new Error(`WhatsApp API error status ${res.statusCode}: ${body}`));
+        }
+      });
+    });
+
+    req.on("error", (e) => {
+      console.error("ERROR: WhatsApp request network error:", e);
+      reject(e);
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
+
+/**
+ * WhatsApp chatbot webhook to log meals directly via text message.
+ */
+export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
+  secrets: ["OPENAI_API_KEY", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
+}).https.onRequest(async (req, res) => {
+  const method = req.method;
+
+  if (method === "GET") {
+    // Webhook verification from Meta
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+    const configuredVerifyToken = process.env.WHATSAPP_VERIFY_TOKEN ? process.env.WHATSAPP_VERIFY_TOKEN.trim() : undefined;
+
+    if (mode === "subscribe" && token === configuredVerifyToken) {
+      console.log("DEBUG: Webhook verified successfully!");
+      res.status(200).send(challenge);
+    } else {
+      console.error("ERROR: Webhook verification failed. Tokens mismatch. Configured:", configuredVerifyToken, "Received:", token);
+      res.status(403).send("Forbidden");
+    }
+    return;
+  }
+
+  if (method === "POST") {
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN ? process.env.WHATSAPP_ACCESS_TOKEN.trim() : undefined;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ? process.env.WHATSAPP_PHONE_NUMBER_ID.trim() : undefined;
+
+    if (!accessToken || !phoneNumberId) {
+      console.error("ERROR: WhatsApp configuration secrets missing.");
+      res.status(500).send("Internal Server Error");
+      return;
+    }
+
+    const body = req.body;
+    console.log("DEBUG: Received WhatsApp webhook payload:", JSON.stringify(body));
+
+    const entry = body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const message = value?.messages?.[0];
+
+    if (!message) {
+      // Not a message event (likely a status update or delivery receipt)
+      res.status(200).send("EVENT_RECEIVED");
+      return;
+    }
+
+    const from = message.from; // Sender's phone number
+    const text = message.text?.body; // Message text
+
+    if (!from || !text) {
+      res.status(200).send("EVENT_RECEIVED");
+      return;
+    }
+
+    console.log(`DEBUG: Received message from ${from}: "${text}"`);
+
+    try {
+      // 1. Account linking check (case-insensitive link/ /link command)
+      const linkRegex = /^(?:link|\/link)\s+([a-zA-Z0-9]{6})$/i;
+      const match = text.trim().match(linkRegex);
+
+      if (match) {
+        const code = match[1].toUpperCase();
+        console.log(`DEBUG: Attempting to link code "${code}" for phone "${from}"`);
+
+        const usersRef = admin.firestore().collection("users");
+        const snapshot = await usersRef.where("whatsappLinkageCode", "==", code).get();
+
+        if (snapshot.empty) {
+          await sendWhatsAppMessage(from, "❌ Invalid or expired linking code. Please check the code in the LogCal app settings and try again.", phoneNumberId, accessToken);
+          res.status(200).send("EVENT_RECEIVED");
+          return;
+        }
+
+        const userDoc = snapshot.docs[0];
+        const userData = userDoc.data();
+        const expiry = userData.whatsappLinkageExpiry?.toDate();
+
+        if (expiry && expiry < new Date()) {
+          await sendWhatsAppMessage(from, "❌ That linking code has expired. Please generate a new one in the app and try again.", phoneNumberId, accessToken);
+          res.status(200).send("EVENT_RECEIVED");
+          return;
+        }
+
+        // Code matches and is valid! Update the user doc to link WhatsApp number
+        await userDoc.ref.update({
+          whatsappPhoneNumber: from,
+          whatsappLinkageCode: admin.firestore.FieldValue.delete(),
+          whatsappLinkageExpiry: admin.firestore.FieldValue.delete()
+        });
+
+        await sendWhatsAppMessage(from, "✅ LogCal Account linked successfully! You can now log meals simply by texting them here.", phoneNumberId, accessToken);
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+
+      // 2. Fetch linked user
+      const usersRef = admin.firestore().collection("users");
+      const snapshot = await usersRef.where("whatsappPhoneNumber", "==", from).get();
+
+      if (snapshot.empty) {
+        // WhatsApp number is not linked to any user
+        await sendWhatsAppMessage(from, "👋 Welcome to LogCal! To log meals via WhatsApp, you need to link your account.\n\nOpen LogCal > Profile > WhatsApp Logging, generate a linking code, and send it back here as: 'link CODE'.", phoneNumberId, accessToken);
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+
+      const userDoc = snapshot.docs[0];
+      const uid = userDoc.id;
+
+      // 3. User is found! Process the meal text.
+      // Infer the meal type based on current hour in IST (Asia/Kolkata timezone)
+      const dateInKolkata = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const hour = dateInKolkata.getHours();
+      
+      let inferredMealType = "Snack";
+      if (hour >= 5 && hour < 11) {
+        inferredMealType = "Breakfast";
+      } else if (hour >= 11 && hour < 16) {
+        inferredMealType = "Lunch";
+      } else if (hour >= 16 && hour < 19) {
+        inferredMealType = "Snack";
+      } else if (hour >= 19 && hour < 24) {
+        inferredMealType = "Dinner";
+      }
+
+      // Call OpenAI to parse meal (assume India as default country)
+      const openaiResponse = await callOpenAI(text.trim(), inferredMealType, undefined, undefined, "India", undefined);
+      
+      // Save meal to user's collection in Firestore (UUID v4 format for client-side SwiftData UUID compatibility)
+      const mealId = crypto.randomUUID().toUpperCase(); 
+      
+      const mealData = {
+        id: mealId,
+        timestamp: admin.firestore.Timestamp.now(),
+        createdAt: admin.firestore.Timestamp.now(),
+        foodText: text.trim(),
+        mealType: openaiResponse.meal_type || inferredMealType,
+        totalCalories: openaiResponse.total_calories || 0,
+        rawResponseJson: JSON.stringify(openaiResponse),
+        hasImage: false
+      };
+
+      await userDoc.ref.collection("meals").doc(mealId).set(mealData);
+
+      // Save to mealLogs collection (for sync)
+      await admin.firestore().collection("mealLogs").doc(mealId).set({
+        uid: uid,
+        foodText: text.trim(),
+        mealType: openaiResponse.meal_type || inferredMealType,
+        totalCalories: openaiResponse.total_calories || 0,
+        hasImage: false,
+        timestamp: admin.firestore.Timestamp.now()
+      });
+
+      // Construct a confirmation reply showing the logged macros
+      const mealName = openaiResponse.meal_type || inferredMealType;
+      const calories = openaiResponse.total_calories || 0;
+      const protein = openaiResponse.protein || 0;
+      const carbs = openaiResponse.carbs || 0;
+      const fat = openaiResponse.fat || 0;
+
+      const replyMessage = `🍳 Logged **${mealName}**:\n"${text.trim()}"\n\n🔥 **${calories} kcal**\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*`;
+      
+      await sendWhatsAppMessage(from, replyMessage, phoneNumberId, accessToken);
+      
+    } catch (err: any) {
+      console.error("ERROR: Error processing WhatsApp message:", err);
+      try {
+        await sendWhatsAppMessage(from, "⚠️ Sorry, I had trouble processing that meal description. Please try describing it differently.", phoneNumberId, accessToken);
+      } catch (sendErr) {
+        console.error("ERROR: Failed to send error message back:", sendErr);
+      }
+    }
+
+    res.status(200).send("EVENT_RECEIVED");
+    return;
+  }
+
+  res.status(405).send("Method Not Allowed");
 });

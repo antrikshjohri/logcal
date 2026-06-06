@@ -8,8 +8,9 @@ service cloud.firestore {
     
     // Users can only read/write their own meal logs (old structure - for backward compatibility)
     match /mealLogs/{logId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
     }
     
     // Users can only read/write their own user document (for daily goal and other user settings)

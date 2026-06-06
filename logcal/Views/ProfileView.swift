@@ -18,6 +18,9 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showLinkSheet = false
     @State private var profileImage: UIImage?
+    @State private var showWhatsAppSettings = false
+    @State private var isWhatsAppLinked = false
+    private let firestoreService = FirestoreService()
     
     // User info
     private var userName: String {
@@ -175,6 +178,19 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
+                                SettingsGroupButtonRow(
+                                    icon: "message.fill",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "WhatsApp Logging",
+                                    trailingValue: isWhatsAppLinked ? "Linked" : "Not Linked"
+                                ) {
+                                    showWhatsAppSettings = true
+                                }
                             }
                             .background(Theme.cardBackground(colorScheme: colorScheme))
                             .cornerRadius(12)
@@ -228,8 +244,17 @@ struct ProfileView: View {
                     .environmentObject(authViewModel)
                     .environmentObject(toastManager)
             }
+            .sheet(isPresented: $showWhatsAppSettings) {
+                LinkWhatsAppView()
+            }
             .onAppear {
                 loadProfileImage()
+                fetchWhatsAppStatus()
+            }
+            .onChange(of: showWhatsAppSettings) { oldValue, newValue in
+                if oldValue && !newValue {
+                    fetchWhatsAppStatus()
+                }
             }
             .onChange(of: authViewModel.currentUser) { oldValue, newValue in
                 loadProfileImage()
@@ -278,6 +303,19 @@ struct ProfileView: View {
                 }
             } catch {
                 print("DEBUG: Failed to load profile image: \(error)")
+            }
+        }
+    }
+    
+    private func fetchWhatsAppStatus() {
+        Task {
+            do {
+                let info = try await firestoreService.fetchWhatsAppLinkageInfo()
+                await MainActor.run {
+                    isWhatsAppLinked = (info.phoneNumber != nil)
+                }
+            } catch {
+                print("DEBUG: Error checking WhatsApp status: \(error)")
             }
         }
     }

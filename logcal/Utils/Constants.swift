@@ -117,4 +117,10 @@ enum Constants {
     enum Audio {
         static let bufferSize: AVAudioFrameCount = 1024
     }
+    
+    // MARK: - WhatsApp Integration
+    enum WhatsApp {
+        /// The WhatsApp Business / Bot phone number (digits only, e.g. "15551234567")
+        static let botPhoneNumber = "919319929923"
+    }
 }

@@ -8,10 +8,28 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import CryptoKit
 
 @MainActor
 struct FirestoreService {
     private let db = Firestore.firestore()
+    
+    private func getUUIDFromString(_ string: String) -> UUID {
+        if let uuid = UUID(uuidString: string) {
+            return uuid
+        }
+        // Fallback: Hash the string deterministically to a UUID.
+        // MD5 produces 16 bytes (128 bits), which is exactly the size of a UUID.
+        let inputData = Data(string.utf8)
+        let hashed = Insecure.MD5.hash(data: inputData)
+        let bytes = Array(hashed)
+        return UUID(uuid: (
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15]
+        ))
+    }
     
     /// Save a meal entry to Firestore
     func saveMealEntry(_ entry: MealEntry) async throws {
@@ -79,7 +97,6 @@ struct FirestoreService {
                 let data = document.data()
                 
                 guard let idString = data["id"] as? String,
-                      let id = UUID(uuidString: idString),
                       let timestamp = (data["timestamp"] as? Timestamp)?.dateValue(),
                       let foodText = data["foodText"] as? String,
                       let mealType = data["mealType"] as? String,
@@ -88,6 +105,8 @@ struct FirestoreService {
                     print("DEBUG: Skipping invalid meal document: \(document.documentID)")
                     continue
                 }
+                
+                let id = getUUIDFromString(idString)
                 
                 let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
                 let hasImage = data["hasImage"] as? Bool // Optional - nil if not present
@@ -125,10 +144,17 @@ struct FirestoreService {
             return
         }
         
+        let idStringUpper = entry.id.uuidString
+        let idStringLower = entry.id.uuidString.lowercased()
+        
         do {
-            try await db.collection("users").document(userId).collection("meals").document(entry.id.uuidString).delete()
+            // Delete both uppercase and lowercase document IDs to be robust (e.g. client vs backend UUID generation)
+            try await db.collection("users").document(userId).collection("meals").document(idStringUpper).delete()
+            try await db.collection("users").document(userId).collection("meals").document(idStringLower).delete()
             print("DEBUG: Successfully deleted meal entry from Firestore: \(entry.id)")
-            try? await db.collection("mealLogs").document(entry.id.uuidString).delete()
+            
+            try? await db.collection("mealLogs").document(idStringUpper).delete()
+            try? await db.collection("mealLogs").document(idStringLower).delete()
         } catch {
             print("DEBUG: Error deleting meal from Firestore: \(error)")
             throw AppError.unknown(error)
@@ -684,6 +710,59 @@ struct FirestoreService {
             print("DEBUG: Error fetching favorites from Firestore: \(error)")
             throw AppError.unknown(error)
         }
+    }
+
+    // MARK: - WhatsApp Linkage Helpers
+    
+    struct WhatsAppLinkageInfo {
+        let phoneNumber: String?
+        let linkageCode: String?
+        let linkageExpiry: Date?
+    }
+    
+    func saveWhatsAppLinkageCode(_ code: String, expiry: Date) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw AppError.unknown(NSError(domain: "FirestoreService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]))
+        }
+        
+        let userData: [String: Any] = [
+            "whatsappLinkageCode": code.uppercased(),
+            "whatsappLinkageExpiry": Timestamp(date: expiry)
+        ]
+        
+        try await db.collection("users").document(userId).setData(userData, merge: true)
+    }
+    
+    func fetchWhatsAppLinkageInfo() async throws -> WhatsAppLinkageInfo {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw AppError.unknown(NSError(domain: "FirestoreService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]))
+        }
+        
+        let document = try await db.collection("users").document(userId).getDocument()
+        guard document.exists else {
+            return WhatsAppLinkageInfo(phoneNumber: nil, linkageCode: nil, linkageExpiry: nil)
+        }
+        
+        let data = document.data() ?? [:]
+        let phoneNumber = data["whatsappPhoneNumber"] as? String
+        let linkageCode = data["whatsappLinkageCode"] as? String
+        let linkageExpiry = (data["whatsappLinkageExpiry"] as? Timestamp)?.dateValue()
+        
+        return WhatsAppLinkageInfo(phoneNumber: phoneNumber, linkageCode: linkageCode, linkageExpiry: linkageExpiry)
+    }
+    
+    func unlinkWhatsApp() async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw AppError.unknown(NSError(domain: "FirestoreService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]))
+        }
+        
+        let updates: [String: Any] = [
+            "whatsappPhoneNumber": FieldValue.delete(),
+            "whatsappLinkageCode": FieldValue.delete(),
+            "whatsappLinkageExpiry": FieldValue.delete()
+        ]
+        
+        try await db.collection("users").document(userId).updateData(updates)
     }
 }
 

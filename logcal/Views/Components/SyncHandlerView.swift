@@ -289,6 +289,19 @@ struct SyncHandlerView: View {
                     }
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                guard let user = Auth.auth().currentUser, !user.isAnonymous else { return }
+                guard !cloudSyncService.isSyncing else {
+                    print("DEBUG: Already syncing, skipping foreground sync trigger")
+                    return
+                }
+                print("DEBUG: App entered foreground, triggering cloud sync...")
+                Task {
+                    await cloudSyncService.syncFromCloud(modelContext: modelContext)
+                    await fetchDailyGoalFromCloud()
+                    await fetchUserCountryFromCloud()
+                }
+            }
     }
     
     /// Fetch daily goal and user preferences from cloud and update AppStorage
