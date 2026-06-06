@@ -240,6 +240,183 @@ struct AnalyticsService {
         #endif
     }
     
+    // MARK: - WhatsApp Integration Events
+    
+    /// Track when user starts the WhatsApp linking flow (generates code)
+    static func trackWhatsAppLinkingStarted() {
+        logEvent("whatsapp_linking_started", parameters: nil)
+    }
+    
+    /// Track when user deep links to WhatsApp
+    static func trackWhatsAppOpened() {
+        logEvent("whatsapp_opened", parameters: nil)
+    }
+    
+    /// Track when user unlinks their WhatsApp account
+    static func trackWhatsAppUnlinked() {
+        logEvent("whatsapp_unlinked", parameters: nil)
+    }
+    
+    // MARK: - Diet & Goal Configuration Events
+    
+    /// Track when user opens the Diet Style Helper onboarding flow
+    static func trackDietStyleHelperOpened() {
+        logEvent("diet_style_helper_opened", parameters: nil)
+    }
+    
+    /// Track when user completes the Diet Style Helper and selects a style
+    static func trackDietStyleHelperCompleted(recommendedStyle: String) {
+        logEvent("diet_style_helper_completed", parameters: [
+            "recommended_style": recommendedStyle
+        ])
+    }
+    
+    /// Track when user changes their target diet style
+    static func trackDietStyleChanged(styleName: String) {
+        logEvent("diet_style_changed", parameters: [
+            "style_name": styleName
+        ])
+    }
+    
+    // MARK: - Feedback Events
+    
+    /// Track when user successfully submits app feedback
+    static func trackFeedbackSubmitted() {
+        logEvent("feedback_submitted", parameters: nil)
+    }
+    
+    // MARK: - Detailed Interactive Tap Tracking (100% Coverage)
+    
+    /// Track user tapping "Close" on the WhatsApp linking view
+    static func trackWhatsAppCloseTapped() {
+        logEvent("whatsapp_close_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Check Linkage Status"
+    static func trackWhatsAppCheckStatusTapped() {
+        logEvent("whatsapp_check_status_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Link with WhatsApp"
+    static func trackWhatsAppLinkTapped() {
+        logEvent("whatsapp_link_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Open WhatsApp to Link"
+    static func trackWhatsAppOpenWATapped() {
+        logEvent("whatsapp_open_wa_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Unlink Account"
+    static func trackWhatsAppUnlinkTapped() {
+        logEvent("whatsapp_unlink_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping the minus button to decrement calorie goal
+    static func trackCalorieDecrementTapped(currentGoal: Double) {
+        logEvent("daily_goal_calories_decremented", parameters: ["current_goal": currentGoal])
+    }
+    
+    /// Track user tapping the plus button to increment calorie goal
+    static func trackCalorieIncrementTapped(currentGoal: Double) {
+        logEvent("daily_goal_calories_incremented", parameters: ["current_goal": currentGoal])
+    }
+    
+    /// Track user tapping a diet style macro split option
+    static func trackDietStyleSelectionTapped(styleName: String) {
+        logEvent("daily_goal_style_tapped", parameters: ["style_name": styleName])
+    }
+    
+    /// Track user tapping "Help Me Choose"
+    static func trackHelpMeChooseTapped() {
+        logEvent("daily_goal_help_me_choose_tapped", parameters: nil)
+    }
+    
+    /// Track user stepping macros in Custom split mode
+    static func trackCustomMacroStepperTapped(macroName: String, newValue: Double) {
+        logEvent("daily_goal_custom_macro_stepper_tapped", parameters: [
+            "macro_name": macroName,
+            "new_value": newValue
+        ])
+    }
+    
+    /// Track user tapping "Save Goal"
+    static func trackSaveGoalTapped() {
+        logEvent("daily_goal_save_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Cancel" on the Diet Style Helper
+    static func trackDietStyleHelperCancelTapped() {
+        logEvent("diet_style_helper_cancel_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Back" in the Diet Style Helper steps
+    static func trackDietStyleHelperBackTapped(currentStep: Int) {
+        logEvent("diet_style_helper_back_tapped", parameters: ["current_step": currentStep])
+    }
+    
+    /// Track user tapping "Next" in the Diet Style Helper steps
+    static func trackDietStyleHelperNextTapped(currentStep: Int) {
+        logEvent("diet_style_helper_next_tapped", parameters: ["current_step": currentStep])
+    }
+    
+    /// Track user selecting an option row in the Diet Style Helper questionnaire
+    static func trackDietStyleHelperOptionSelected(optionName: String) {
+        logEvent("diet_style_helper_option_selected", parameters: ["option_name": optionName])
+    }
+    
+    /// Track user tapping "Retake Questionnaire" in the Diet Style Helper
+    static func trackDietStyleHelperRetakeTapped() {
+        logEvent("diet_style_helper_retake_tapped", parameters: nil)
+    }
+    
+    // MARK: - Profile Screen Events
+    
+    /// Track user tapping "Sign In to Sync" on the guest banner
+    static func trackProfileSignInToSyncTapped() {
+        logEvent("profile_sign_in_to_sync_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Edit Profile" on the profile card
+    static func trackProfileEditProfileTapped() {
+        logEvent("profile_edit_profile_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Daily Goal" settings row
+    static func trackProfileDailyGoalTapped() {
+        logEvent("profile_daily_goal_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Favourite Meals" settings row
+    static func trackProfileFavouriteMealsTapped() {
+        logEvent("profile_favourite_meals_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Theme" settings row
+    static func trackProfileThemeTapped() {
+        logEvent("profile_theme_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Meal Reminders" settings row
+    static func trackProfileMealRemindersTapped() {
+        logEvent("profile_meal_reminders_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Log using WhatsApp" settings row
+    static func trackProfileLogWhatsAppTapped() {
+        logEvent("profile_log_whatsapp_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Help & FAQ" settings row
+    static func trackProfileHelpFAQTapped() {
+        logEvent("profile_help_faq_tapped", parameters: nil)
+    }
+    
+    /// Track user tapping "Send Feedback" settings row
+    static func trackProfileSendFeedbackTapped() {
+        logEvent("profile_send_feedback_tapped", parameters: nil)
+    }
+    
     // MARK: - Private Helper
     
     /// Internal method to log events with Firebase Analytics

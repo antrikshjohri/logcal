@@ -89,6 +89,7 @@ struct ProfileView: View {
                                 }
                                 
                                 Button(action: {
+                                    AnalyticsService.trackProfileSignInToSyncTapped()
                                     showLinkSheet = true
                                 }) {
                                     HStack {
@@ -121,6 +122,7 @@ struct ProfileView: View {
                             profileImage: profileImage,
                             isAnonymous: authViewModel.isAnonymous,
                             onEditProfile: {
+                                AnalyticsService.trackProfileEditProfileTapped()
                                 showEditProfile = true
                             }
                         )
@@ -140,6 +142,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileDailyGoalTapped()
+                                })
                                 
                                 Divider()
                                     .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
@@ -153,6 +158,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileFavouriteMealsTapped()
+                                })
                                 
                                 Divider()
                                     .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
@@ -164,6 +172,7 @@ struct ProfileView: View {
                                     title: "Theme",
                                     trailingValue: themeDisplayName
                                 ) {
+                                    AnalyticsService.trackProfileThemeTapped()
                                     showThemeSelector = true
                                 }
                                 
@@ -179,6 +188,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileMealRemindersTapped()
+                                })
                                 
                                 Divider()
                             }
@@ -203,6 +215,7 @@ struct ProfileView: View {
                                     title: "Log using Whatsapp",
                                     trailingValue: isWhatsAppLinked ? "Linked" : "Not Linked"
                                 ) {
+                                    AnalyticsService.trackProfileLogWhatsAppTapped()
                                     showWhatsAppSettings = true
                                 }
                             }
@@ -228,6 +241,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileHelpFAQTapped()
+                                })
                                 
                                 Divider()
                                     .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
@@ -238,6 +254,7 @@ struct ProfileView: View {
                                     iconColor: Theme.primaryGreen,
                                     title: "Send Feedback"
                                 ) {
+                                    AnalyticsService.trackProfileSendFeedbackTapped()
                                     showFeedbackSheet = true
                                 }
                             }

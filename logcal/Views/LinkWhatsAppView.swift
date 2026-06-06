@@ -49,6 +49,7 @@ struct LinkWhatsAppView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Close") {
+                        AnalyticsService.trackWhatsAppCloseTapped()
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -116,6 +117,7 @@ struct LinkWhatsAppView: View {
             Spacer()
             
             Button(action: {
+                AnalyticsService.trackWhatsAppUnlinkTapped()
                 Task {
                     await unlinkWhatsApp()
                 }
@@ -165,6 +167,7 @@ struct LinkWhatsAppView: View {
             
             if linkageCode.isEmpty {
                 Button(action: {
+                    AnalyticsService.trackWhatsAppLinkTapped()
                     Task {
                         await linkWithWhatsAppFlow()
                     }
@@ -184,6 +187,7 @@ struct LinkWhatsAppView: View {
                 }
             } else {
                 Button(action: {
+                    AnalyticsService.trackWhatsAppOpenWATapped()
                     openWhatsAppToLink(with: linkageCode)
                 }) {
                     HStack {
@@ -218,6 +222,7 @@ struct LinkWhatsAppView: View {
                     }
                     
                     Button(action: {
+                        AnalyticsService.trackWhatsAppCheckStatusTapped()
                         Task {
                             await loadWhatsAppStatus()
                         }
@@ -278,6 +283,7 @@ struct LinkWhatsAppView: View {
         
         do {
             try await firestoreService.saveWhatsAppLinkageCode(code, expiry: expiry)
+            AnalyticsService.trackWhatsAppLinkingStarted()
             linkageCode = code
             linkageExpiry = expiry
             isLoading = false
@@ -295,6 +301,7 @@ struct LinkWhatsAppView: View {
         errorMessage = nil
         do {
             try await firestoreService.unlinkWhatsApp()
+            AnalyticsService.trackWhatsAppUnlinked()
             linkedPhoneNumber = nil
             linkageCode = ""
             linkageExpiry = nil
@@ -305,6 +312,7 @@ struct LinkWhatsAppView: View {
     }
     
     private func openWhatsAppToLink(with code: String) {
+        AnalyticsService.trackWhatsAppOpened()
         let msg = "Please link my LogCal account with code: \(code)"
         let encodedMsg = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let waUrlString = "https://wa.me/\(Constants.WhatsApp.botPhoneNumber)?text=\(encodedMsg)"

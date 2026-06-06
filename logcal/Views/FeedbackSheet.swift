@@ -138,6 +138,7 @@ struct FeedbackSheet: View {
                 }
             }
             .onAppear {
+                AnalyticsService.trackViewOpened(viewName: "feedback_form")
                 if let currentUser = Auth.auth().currentUser, let email = currentUser.email, !currentUser.isAnonymous {
                     contactEmail = email
                 }
@@ -157,6 +158,8 @@ struct FeedbackSheet: View {
                 text: trimmedText,
                 email: trimmedEmail.isEmpty ? nil : trimmedEmail
             )
+            
+            AnalyticsService.trackFeedbackSubmitted()
             
             toastManager.show(ToastMessage(
                 title: "Feedback Sent",

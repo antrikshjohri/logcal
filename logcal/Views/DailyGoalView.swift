@@ -74,6 +74,7 @@ struct DailyGoalView: View {
                     VStack(spacing: Constants.Spacing.small) {
                         HStack(spacing: Constants.Spacing.regular) {
                             Button(action: {
+                                AnalyticsService.trackCalorieDecrementTapped(currentGoal: currentGoal - 50)
                                 if currentGoal > 100 {
                                     currentGoal -= 50
                                 }
@@ -92,6 +93,7 @@ struct DailyGoalView: View {
                             .tint(Theme.accentBlue)
                             
                             Button(action: {
+                                AnalyticsService.trackCalorieIncrementTapped(currentGoal: currentGoal + 50)
                                 if currentGoal < 5000 {
                                     currentGoal += 50
                                 }
@@ -142,6 +144,7 @@ struct DailyGoalView: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                         ForEach(DietStyle.allCases) { style in
                             Button(action: {
+                                AnalyticsService.trackDietStyleSelectionTapped(styleName: style.rawValue)
                                 withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
                                     currentDietStyle = style
                                 }
@@ -172,6 +175,7 @@ struct DailyGoalView: View {
                     
                     // Help Finder Button
                     Button(action: {
+                        AnalyticsService.trackHelpMeChooseTapped()
                         showHelperSheet = true
                     }) {
                         HStack {
@@ -323,6 +327,7 @@ struct DailyGoalView: View {
                 let isCustomValid = currentDietStyle != .custom || (currentProteinPercent + currentCarbsPercent + currentFatPercent == 100)
                 
                 PrimaryButton(title: isSaving ? "Saving..." : "Save Goal") {
+                    AnalyticsService.trackSaveGoalTapped()
                     Task {
                         isSaving = true
                         
@@ -353,6 +358,7 @@ struct DailyGoalView: View {
                         )
                         
                         AnalyticsService.trackDailyGoalChanged(newGoal: currentGoal)
+                        AnalyticsService.trackDietStyleChanged(styleName: currentDietStyle.rawValue)
                         
                         isSaving = false
                         dismiss()
@@ -384,6 +390,15 @@ struct DailyGoalView: View {
                     currentFatPercent = customFatPercent
                 }
             }
+        }
+        .onChange(of: currentProteinPercent) { _, newValue in
+            AnalyticsService.trackCustomMacroStepperTapped(macroName: "Protein", newValue: newValue)
+        }
+        .onChange(of: currentCarbsPercent) { _, newValue in
+            AnalyticsService.trackCustomMacroStepperTapped(macroName: "Carbs", newValue: newValue)
+        }
+        .onChange(of: currentFatPercent) { _, newValue in
+            AnalyticsService.trackCustomMacroStepperTapped(macroName: "Fat", newValue: newValue)
         }
     }
     
