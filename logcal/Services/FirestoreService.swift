@@ -764,5 +764,23 @@ struct FirestoreService {
         
         try await db.collection("users").document(userId).updateData(updates)
     }
+    
+    /// Submits user feedback to Firestore
+    func submitFeedback(text: String, email: String?) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw AppError.unknown(NSError(domain: "FirestoreService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]))
+        }
+        
+        let feedbackData: [String: Any] = [
+            "userId": userId,
+            "feedbackText": text,
+            "contactEmail": email ?? "",
+            "timestamp": FieldValue.serverTimestamp(),
+            "device": "iOS",
+            "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+        ]
+        
+        try await db.collection("feedback").addDocument(data: feedbackData)
+    }
 }
 

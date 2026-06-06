@@ -20,6 +20,7 @@ struct ProfileView: View {
     @State private var profileImage: UIImage?
     @State private var showWhatsAppSettings = false
     @State private var isWhatsAppLinked = false
+    @State private var showFeedbackSheet = false
     private let firestoreService = FirestoreService()
     
     // User info
@@ -227,6 +228,18 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
+                                SettingsGroupButtonRow(
+                                    icon: "message",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "Send Feedback"
+                                ) {
+                                    showFeedbackSheet = true
+                                }
                             }
                             .background(Theme.cardBackground(colorScheme: colorScheme))
                             .cornerRadius(12)
@@ -251,6 +264,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showEditProfile) {
                 EditProfileView()
+            }
+            .sheet(isPresented: $showFeedbackSheet) {
+                FeedbackSheet()
             }
             .sheet(isPresented: $showLinkSheet) {
                 LinkAccountView()
@@ -388,11 +404,20 @@ private struct SettingsGroupRow: View {
 
 private struct SettingsGroupButtonRow: View {
     let icon: String
-    var isCustomIcon: Bool = false
+    let isCustomIcon: Bool
     let iconColor: Color
     let title: String
     let trailingValue: String?
     let action: () -> Void
+    
+    init(icon: String, isCustomIcon: Bool = false, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil, action: @escaping () -> Void) {
+        self.icon = icon
+        self.isCustomIcon = isCustomIcon
+        self.iconColor = iconColor
+        self.title = title
+        self.trailingValue = trailingValue
+        self.action = action
+    }
     
     var body: some View {
         Button(action: action) {

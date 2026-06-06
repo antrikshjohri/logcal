@@ -41,6 +41,7 @@ struct HomeView: View {
     @State private var mealBeingSavedAndRenamed: SavedMeal?
     @State private var renameText = ""
     @State private var favoritePendingDeletion: SavedMeal?
+    @State private var showFeedbackSheet = false
     
     private var linkedFavoriteForLatestMeal: SavedMeal? {
         guard let latestMealId = viewModel.lastLoggedMealId else { return nil }
@@ -140,6 +141,10 @@ struct HomeView: View {
                         .environmentObject(authViewModel)
                         .environmentObject(toastManager)
                 }
+                .sheet(isPresented: $showFeedbackSheet) {
+                    FeedbackSheet()
+                        .environmentObject(toastManager)
+                }
                 .alert("Rename Favourite Meal", isPresented: Binding(
                     get: { mealBeingSavedAndRenamed != nil },
                     set: { if !$0 { mealBeingSavedAndRenamed = nil } }
@@ -232,6 +237,8 @@ struct HomeView: View {
                     logMealButton
                     
                     resultCardSection
+                    
+                    feedbackLink
                 }
                 .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
@@ -960,6 +967,20 @@ struct HomeView: View {
                 AnalyticsService.trackMealSummaryViewed()
             }
         }
+    }
+    
+    private var feedbackLink: some View {
+        Button(action: {
+            showFeedbackSheet = true
+        }) {
+            Text("Send feedback")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                .underline()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var savedMealsSection: some View {
