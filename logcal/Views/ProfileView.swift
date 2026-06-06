@@ -205,7 +205,7 @@ struct ProfileView: View {
                         
                         // WhatsApp Section
                         VStack(alignment: .leading, spacing: 6) {
-                            settingsGroupHeader("WHATSAPP INTEGRATION")
+                            settingsGroupHeader("SHORTCUTS")
                             
                             VStack(spacing: 0) {
                                 SettingsGroupButtonRow(
