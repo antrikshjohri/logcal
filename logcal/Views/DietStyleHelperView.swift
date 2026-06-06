@@ -149,6 +149,7 @@ struct DietStyleHelperView: View {
                     HStack {
                         if currentStep > 0 {
                             Button("Back") {
+                                AnalyticsService.trackDietStyleHelperBackTapped(currentStep: currentStep - 1)
                                 withAnimation {
                                     currentStep -= 1
                                 }
@@ -160,6 +161,7 @@ struct DietStyleHelperView: View {
                         Spacer()
                         
                         Button("Next") {
+                            AnalyticsService.trackDietStyleHelperNextTapped(currentStep: currentStep + 1)
                             withAnimation {
                                 currentStep += 1
                             }
@@ -182,12 +184,16 @@ struct DietStyleHelperView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Cancel") {
+                        AnalyticsService.trackDietStyleHelperCancelTapped()
                         dismiss()
                     }
                     .foregroundColor(Theme.primaryGreen)
                 }
             }
             .background(Theme.backgroundColor(colorScheme: colorScheme))
+            .onAppear {
+                AnalyticsService.trackDietStyleHelperOpened()
+            }
         }
     }
     
@@ -356,11 +362,13 @@ struct DietStyleHelperView: View {
                 // Buttons
                 VStack(spacing: 12) {
                     PrimaryButton(title: "Apply & Save") {
+                        AnalyticsService.trackDietStyleHelperCompleted(recommendedStyle: recommendedStyle.rawValue)
                         onApply(recommendedStyle)
                         dismiss()
                     }
                     
                     Button("Retake Questionnaire") {
+                        AnalyticsService.trackDietStyleHelperRetakeTapped()
                         withAnimation {
                             currentStep = 0
                         }
@@ -400,7 +408,10 @@ struct DietStyleHelperView: View {
         isSelected: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        Button(action: {
+            AnalyticsService.trackDietStyleHelperOptionSelected(optionName: title)
+            action()
+        }) {
             HStack(spacing: Constants.Spacing.large) {
                 ZStack {
                     Circle()

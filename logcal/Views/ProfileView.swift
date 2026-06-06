@@ -20,6 +20,7 @@ struct ProfileView: View {
     @State private var profileImage: UIImage?
     @State private var showWhatsAppSettings = false
     @State private var isWhatsAppLinked = false
+    @State private var showFeedbackSheet = false
     private let firestoreService = FirestoreService()
     
     // User info
@@ -88,6 +89,7 @@ struct ProfileView: View {
                                 }
                                 
                                 Button(action: {
+                                    AnalyticsService.trackProfileSignInToSyncTapped()
                                     showLinkSheet = true
                                 }) {
                                     HStack {
@@ -120,6 +122,7 @@ struct ProfileView: View {
                             profileImage: profileImage,
                             isAnonymous: authViewModel.isAnonymous,
                             onEditProfile: {
+                                AnalyticsService.trackProfileEditProfileTapped()
                                 showEditProfile = true
                             }
                         )
@@ -139,6 +142,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileDailyGoalTapped()
+                                })
                                 
                                 Divider()
                                     .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
@@ -152,6 +158,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileFavouriteMealsTapped()
+                                })
                                 
                                 Divider()
                                     .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
@@ -163,6 +172,7 @@ struct ProfileView: View {
                                     title: "Theme",
                                     trailingValue: themeDisplayName
                                 ) {
+                                    AnalyticsService.trackProfileThemeTapped()
                                     showThemeSelector = true
                                 }
                                 
@@ -178,6 +188,9 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileMealRemindersTapped()
+                                })
                                 
                                 Divider()
                             }
@@ -192,7 +205,7 @@ struct ProfileView: View {
                         
                         // WhatsApp Section
                         VStack(alignment: .leading, spacing: 6) {
-                            settingsGroupHeader("WHATSAPP INTEGRATION")
+                            settingsGroupHeader("SHORTCUTS")
                             
                             VStack(spacing: 0) {
                                 SettingsGroupButtonRow(
@@ -202,6 +215,7 @@ struct ProfileView: View {
                                     title: "Log using Whatsapp",
                                     trailingValue: isWhatsAppLinked ? "Linked" : "Not Linked"
                                 ) {
+                                    AnalyticsService.trackProfileLogWhatsAppTapped()
                                     showWhatsAppSettings = true
                                 }
                             }
@@ -227,6 +241,22 @@ struct ProfileView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    AnalyticsService.trackProfileHelpFAQTapped()
+                                })
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
+                                SettingsGroupButtonRow(
+                                    icon: "message",
+                                    iconColor: Theme.primaryGreen,
+                                    title: "Send Feedback"
+                                ) {
+                                    AnalyticsService.trackProfileSendFeedbackTapped()
+                                    showFeedbackSheet = true
+                                }
                             }
                             .background(Theme.cardBackground(colorScheme: colorScheme))
                             .cornerRadius(12)
@@ -251,6 +281,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showEditProfile) {
                 EditProfileView()
+            }
+            .sheet(isPresented: $showFeedbackSheet) {
+                FeedbackSheet()
             }
             .sheet(isPresented: $showLinkSheet) {
                 LinkAccountView()
@@ -388,11 +421,20 @@ private struct SettingsGroupRow: View {
 
 private struct SettingsGroupButtonRow: View {
     let icon: String
-    var isCustomIcon: Bool = false
+    let isCustomIcon: Bool
     let iconColor: Color
     let title: String
     let trailingValue: String?
     let action: () -> Void
+    
+    init(icon: String, isCustomIcon: Bool = false, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil, action: @escaping () -> Void) {
+        self.icon = icon
+        self.isCustomIcon = isCustomIcon
+        self.iconColor = iconColor
+        self.title = title
+        self.trailingValue = trailingValue
+        self.action = action
+    }
     
     var body: some View {
         Button(action: action) {

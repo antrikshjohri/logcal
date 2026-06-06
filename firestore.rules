@@ -29,6 +29,15 @@ service cloud.firestore {
       allow write: if false; // Only admins can write (set via Firebase Console)
     }
     
+    // Feedback collection - write-only for authenticated users
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null 
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.feedbackText is string
+                    && request.resource.data.feedbackText.size() <= 5000;
+      allow read, update, delete: if false;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

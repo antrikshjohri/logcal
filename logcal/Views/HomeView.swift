@@ -41,6 +41,7 @@ struct HomeView: View {
     @State private var mealBeingSavedAndRenamed: SavedMeal?
     @State private var renameText = ""
     @State private var favoritePendingDeletion: SavedMeal?
+    @State private var showFeedbackSheet = false
     
     private var linkedFavoriteForLatestMeal: SavedMeal? {
         guard let latestMealId = viewModel.lastLoggedMealId else { return nil }
@@ -140,6 +141,10 @@ struct HomeView: View {
                         .environmentObject(authViewModel)
                         .environmentObject(toastManager)
                 }
+                .sheet(isPresented: $showFeedbackSheet) {
+                    FeedbackSheet()
+                        .environmentObject(toastManager)
+                }
                 .alert("Rename Favourite Meal", isPresented: Binding(
                     get: { mealBeingSavedAndRenamed != nil },
                     set: { if !$0 { mealBeingSavedAndRenamed = nil } }
@@ -229,16 +234,37 @@ struct HomeView: View {
                     
                     foodTextInputCard
                     
-                    logMealButton
+                    // Show inline when keyboard is hidden; hidden when keyboard is up (shown in safeAreaInset instead)
+                    if !isTextFieldFocused {
+                        logMealButton
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
                     
                     resultCardSection
+                    
+                    feedbackLink
                 }
                 .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical)
+            .padding(.bottom, isTextFieldFocused ? 8 : 0)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isTextFieldFocused {
+                logMealButton
+                    .padding(.vertical, 12)
+                    .background(
+                        Theme.backgroundColor(colorScheme: colorScheme)
+                            .shadow(color: Theme.shadowColor(colorScheme: colorScheme), radius: 8, x: 0, y: -4)
+                            .ignoresSafeArea(edges: .bottom)
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: isTextFieldFocused)
         .onTapGesture {
             isTextFieldFocused = false
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -960,6 +986,20 @@ struct HomeView: View {
                 AnalyticsService.trackMealSummaryViewed()
             }
         }
+    }
+    
+    private var feedbackLink: some View {
+        Button(action: {
+            showFeedbackSheet = true
+        }) {
+            Text("Send feedback")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                .underline()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var savedMealsSection: some View {
