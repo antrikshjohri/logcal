@@ -85,6 +85,11 @@ class CloudSyncService: ObservableObject {
         // Persist user ID to UserDefaults to detect account switches after sign out
         userDefaults.set(newUserId, forKey: lastUserIdKey)
         
+        guard !isSyncing else {
+            print("DEBUG: syncFromCloud called but already syncing, skipping duplicate sync.")
+            return
+        }
+        
         isSyncing = true
         syncError = nil
         

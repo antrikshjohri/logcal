@@ -307,7 +307,7 @@ struct HistoryView: View {
                 MealEditView(meal: meal)
             }
             .overlay {
-                if cloudSyncService.isSyncing {
+                if cloudSyncService.isSyncing && activeMeals.isEmpty {
                     VStack(spacing: Constants.Spacing.medium) {
                         ProgressView()
                             .scaleEffect(1.5)
