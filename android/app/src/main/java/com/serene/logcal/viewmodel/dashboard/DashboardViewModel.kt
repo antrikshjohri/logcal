@@ -5,12 +5,17 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.serene.logcal.data.local.HistoryMeal
+import com.serene.logcal.data.local.PreferenceManager
 import com.serene.logcal.data.repository.AppGraph
+import com.serene.logcal.service.CloudSyncService
 import com.serene.logcal.util.DebugLogger
+import com.serene.logcal.model.DietStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -45,63 +50,124 @@ data class DashboardUiState(
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val localRepo = AppGraph.localMealRepository(application)
-    private val prefs = application.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    private val prefManager = AppGraph.preferenceManager(application)
+    private val syncService = AppGraph.cloudSyncService(application)
+
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+    
     private val _uiState = MutableStateFlow(
-        DashboardUiState(dailyGoal = prefs.getInt(KEY_DAILY_GOAL, DEFAULT_DAILY_GOAL))
+        DashboardUiState(
+            dailyGoal = prefManager.dailyGoal.roundToInt(),
+            remainingCalories = prefManager.dailyGoal.roundToInt()
+        )
     )
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
         DebugLogger.d("DEBUG: [DashboardViewModel] init()")
         observeMeals()
+        
+        // Initial setup of last active date
+        if (prefManager.lastActiveDateDashboard.isNullOrBlank()) {
+            prefManager.lastActiveDateDashboard = LocalDate.now().toString()
+        }
+    }
+
+    fun changeDate(byDays: Int) {
+        val next = _selectedDate.value.plusDays(byDays.toLong())
+        DebugLogger.d("DEBUG: [DashboardViewModel] changeDate() from=${_selectedDate.value} to=$next")
+        _selectedDate.value = next
+    }
+
+    fun setSelectedDate(date: LocalDate) {
+        DebugLogger.d("DEBUG: [DashboardViewModel] setSelectedDate() to=$date")
+        _selectedDate.value = date
+    }
+
+    fun checkAndResetSelectedDateIfNeeded() {
+        val now = LocalDate.now()
+        val lastActiveStr = prefManager.lastActiveDateDashboard
+        val lastActive = if (!lastActiveStr.isNullOrBlank()) {
+            try { LocalDate.parse(lastActiveStr) } catch (e: Exception) { now }
+        } else {
+            now
+        }
+
+        if (_selectedDate.value == lastActive) {
+            if (_selectedDate.value != now) {
+                DebugLogger.d("DEBUG: [DashboardViewModel] Day rolled over, resetting selectedDate to $now")
+                _selectedDate.value = now
+            }
+        }
+        prefManager.lastActiveDateDashboard = now.toString()
     }
 
     fun setDailyGoal(newGoal: Int) {
         val goal = newGoal.coerceIn(500, 10000)
-        prefs.edit().putInt(KEY_DAILY_GOAL, goal).apply()
+        prefManager.dailyGoal = goal.toDouble()
+        
+        val style = DietStyle.fromRawValue(prefManager.dietStyle)
+        if (style != DietStyle.CUSTOM) {
+            val (pPercent, cPercent, fPercent) = style.macroPercentages
+            val (pGrams, cGrams, fGrams) = DietStyle.calculateGrams(goal.toDouble(), pPercent, cPercent, fPercent)
+            prefManager.proteinGoal = pGrams
+            prefManager.carbsGoal = cGrams
+            prefManager.fatGoal = fGrams
+        }
+        
         DebugLogger.d("DEBUG: [DashboardViewModel] setDailyGoal() goal=$goal")
-        _uiState.update { it.copy(dailyGoal = goal) }
+        
+        viewModelScope.launch {
+            syncService.syncDailyGoalToCloud(goal.toDouble())
+            val meals = localRepo.observeHistoryMeals().first()
+            _uiState.update { computeDashboardStats(meals, goal, _selectedDate.value) }
+        }
     }
 
     private fun observeMeals() {
         viewModelScope.launch {
-            localRepo.observeHistoryMeals().collect { meals ->
-                val dashboard = computeDashboardStats(meals, _uiState.value.dailyGoal)
+            combine(localRepo.observeHistoryMeals(), _selectedDate) { meals, date ->
+                Pair(meals, date)
+            }.collect { (meals, date) ->
+                val currentGoal = prefManager.dailyGoal.roundToInt()
+                val dashboard = computeDashboardStats(meals, currentGoal, date)
                 DebugLogger.d(
-                    "DEBUG: [DashboardViewModel] observeMeals() count=${meals.size} todayCalories=${dashboard.todayCalories} goal=${dashboard.dailyGoal}"
+                    "DEBUG: [DashboardViewModel] observeMeals() count=${meals.size} date=$date todayCalories=${dashboard.todayCalories} goal=${dashboard.dailyGoal}"
                 )
                 _uiState.value = dashboard.copy(isLoading = false, errorMessage = null)
             }
         }
     }
 
-    private fun computeDashboardStats(meals: List<HistoryMeal>, goal: Int): DashboardUiState {
-        val today = LocalDate.now()
+    private fun computeDashboardStats(meals: List<HistoryMeal>, goal: Int, date: LocalDate): DashboardUiState {
         val zone = ZoneId.systemDefault()
 
         val mealsByDate: Map<LocalDate, List<HistoryMeal>> = meals.groupBy { meal ->
             Instant.ofEpochMilli(meal.timestampMillis).atZone(zone).toLocalDate()
         }
 
-        val todayMeals = mealsByDate[today].orEmpty()
-        val todayCalories = todayMeals.sumOf { it.totalCalories }.roundToInt()
-        val protein = todayMeals.sumOf { it.response.protein ?: 0.0 }.roundToInt()
-        val carbs = todayMeals.sumOf { it.response.carbs ?: 0.0 }.roundToInt()
-        val fat = todayMeals.sumOf { it.response.fat ?: 0.0 }.roundToInt()
+        val dayMeals = mealsByDate[date].orEmpty()
+        val todayCalories = dayMeals.sumOf { it.totalCalories }.roundToInt()
+        val protein = dayMeals.sumOf { it.response.protein ?: 0.0 }.roundToInt()
+        val carbs = dayMeals.sumOf { it.response.carbs ?: 0.0 }.roundToInt()
+        val fat = dayMeals.sumOf { it.response.fat ?: 0.0 }.roundToInt()
         val remainingCalories = (goal - todayCalories).coerceAtLeast(0)
 
+        // Weekly stats centered around the selected date (7 days ending at selected date)
         val weekly = (6 downTo 0).map { offset ->
-            val date = today.minusDays(offset.toLong())
-            val dayCalories = mealsByDate[date].orEmpty().sumOf { it.totalCalories }.roundToInt()
-            WeeklyDayStat(date = date, calories = dayCalories)
+            val d = date.minusDays(offset.toLong())
+            val dayCalories = mealsByDate[d].orEmpty().sumOf { it.totalCalories }.roundToInt()
+            WeeklyDayStat(date = d, calories = dayCalories)
         }
         val weeklyAverage = if (weekly.isNotEmpty()) weekly.map { it.calories }.average().roundToInt() else 0
+        
+        val today = LocalDate.now()
         val streakDays = calculateStreakDays(today, mealsByDate)
 
-        // Target macros based on a basic 30/40/30 split of daily goal.
-        val proteinTarget = ((goal * 0.30) / 4.0).roundToInt().coerceAtLeast(1)
-        val carbsTarget = ((goal * 0.40) / 4.0).roundToInt().coerceAtLeast(1)
-        val fatTarget = ((goal * 0.30) / 9.0).roundToInt().coerceAtLeast(1)
+        val proteinTarget = prefManager.proteinGoal.roundToInt().coerceAtLeast(1)
+        val carbsTarget = prefManager.carbsGoal.roundToInt().coerceAtLeast(1)
+        val fatTarget = prefManager.fatGoal.roundToInt().coerceAtLeast(1)
 
         return DashboardUiState(
             isLoading = false,
@@ -128,7 +194,18 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         var cursor = today
         while (true) {
             val hasMeals = mealsByDate[cursor].orEmpty().isNotEmpty()
-            if (!hasMeals) break
+            if (!hasMeals) {
+                // If it's today, it might be that they haven't logged today yet but had a streak yesterday.
+                if (cursor == today) {
+                    val yesterday = today.minusDays(1)
+                    val yesterdayHasMeals = mealsByDate[yesterday].orEmpty().isNotEmpty()
+                    if (yesterdayHasMeals) {
+                        cursor = yesterday
+                        continue
+                    }
+                }
+                break
+            }
             streak += 1
             cursor = cursor.minusDays(1)
         }

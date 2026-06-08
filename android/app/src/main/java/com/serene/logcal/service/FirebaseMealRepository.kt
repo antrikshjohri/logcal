@@ -9,7 +9,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.Json
 
 class FirebaseMealRepository(
-    private val functions: FirebaseFunctions = FirebaseFunctions.getInstance(),
+    private val functions: FirebaseFunctions = FirebaseFunctions.getInstance("asia-southeast1"),
     private val gson: Gson = Gson(),
 ) {
     private val json = Json {
@@ -51,6 +51,44 @@ class FirebaseMealRepository(
             Result.success(decoded)
         } catch (t: Throwable) {
             DebugLogger.e("DEBUG: [FirebaseMealRepository] logMeal() failed", t)
+            Result.failure(t)
+        }
+    }
+
+    suspend fun refineMealLog(
+        foodText: String,
+        mealType: MealType,
+        previousEstimate: MealLogResponse,
+        correctionPrompt: String,
+        country: String? = null
+    ): Result<MealLogResponse> {
+        DebugLogger.d(
+            "DEBUG: [FirebaseMealRepository] refineMealLog() start foodTextLen=${foodText.length} mealType=${mealType.rawValue} correctionPromptLen=${correctionPrompt.length}"
+        )
+        return try {
+            val prevJson = gson.toJson(previousEstimate)
+            val prevMap = gson.fromJson(prevJson, Map::class.java)
+
+            val payload = hashMapOf<String, Any>(
+                "foodText" to foodText,
+                "mealType" to mealType.rawValue,
+                "correctionPrompt" to correctionPrompt,
+                "previousEstimate" to prevMap
+            )
+            if (!country.isNullOrBlank()) {
+                payload["country"] = country
+            }
+
+            val callable = functions.getHttpsCallable("refineMealLog")
+            val response = callable.call(payload).await()
+
+            val responseJson = gson.toJson(response.data)
+            DebugLogger.d("DEBUG: [FirebaseMealRepository] refineMealLog() responseJson=${responseJson.take(500)}")
+
+            val decoded = json.decodeFromString(MealLogResponse.serializer(), responseJson)
+            Result.success(decoded)
+        } catch (t: Throwable) {
+            DebugLogger.e("DEBUG: [FirebaseMealRepository] refineMealLog() failed", t)
             Result.failure(t)
         }
     }

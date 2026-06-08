@@ -52,3 +52,7 @@ web/out/
 android/.tmp_gradle/
 android/.gradle/
 android/local.properties
+android/build/
+android/app/build/
+android/.idea/
+android/.kotlin/

@@ -1,41 +1,74 @@
 package com.serene.logcal.viewmodel
 
 import android.app.Application
+import android.content.Intent
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.gson.Gson
+import com.serene.logcal.data.local.SavedMealEntity
+import com.serene.logcal.data.local.PreferenceManager
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
+import com.serene.logcal.service.CloudSyncService
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.MealImageEncoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
+import java.util.UUID
 
 data class LogUiState(
     val isAuthReady: Boolean = false,
     val isLoading: Boolean = false,
+    val isRefiningMeal: Boolean = false,
     val selectedDate: LocalDate = LocalDate.now(),
     val selectedMealType: MealType = MealType.BREAKFAST,
+    val isMealTypeManuallySet: Boolean = false,
     val foodText: String = "",
     val attachedImageUri: String? = null,
     val latestResult: MealLogResponse? = null,
+    val lastLoggedMealId: String? = null,
     val errorMessage: String? = null,
+    val isListening: Boolean = false,
+    val isTranscribingSpeech: Boolean = false,
+    val speechErrorMessage: String? = null,
+    val waveformSamples: List<Float> = List(64) { 0.08f }
 )
 
 class LogViewModel(application: Application) : AndroidViewModel(application) {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val repo: FirebaseMealRepository = FirebaseMealRepository()
     private val localRepo = AppGraph.localMealRepository(application)
+    private val favRepo = AppGraph.localSavedMealsRepository(application)
+    private val syncService = AppGraph.cloudSyncService(application)
+    private val prefManager = AppGraph.preferenceManager(application)
 
     private val _uiState = MutableStateFlow(LogUiState())
     val uiState: StateFlow<LogUiState> = _uiState
+
+    // Observe saved meals from local db for favorites carousel
+    val savedMeals: StateFlow<List<SavedMealEntity>> = favRepo.observeAll()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    private var speechRecognizer: SpeechRecognizer? = null
 
     init {
         DebugLogger.d("DEBUG: [LogViewModel] init() start")
@@ -71,43 +104,297 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             foodText = newText,
             latestResult = null
         )
+        if (!_uiState.value.isMealTypeManuallySet) {
+            updateInferredMealType(newText)
+        }
+    }
+
+    private fun updateInferredMealType(text: String) {
+        val lowercase = text.lowercase()
+        val inferred = when {
+            lowercase.contains("egg") || lowercase.contains("toast") || lowercase.contains("oat") || lowercase.contains("pancake") || lowercase.contains("breakfast") -> MealType.BREAKFAST
+            lowercase.contains("sandwich") || lowercase.contains("salad") || lowercase.contains("soup") || lowercase.contains("lunch") -> MealType.LUNCH
+            lowercase.contains("dinner") || lowercase.contains("steak") || lowercase.contains("salmon") || lowercase.contains("chicken") || lowercase.contains("roti") || lowercase.contains("rice") -> MealType.DINNER
+            else -> MealType.SNACK
+        }
+        if (inferred != _uiState.value.selectedMealType) {
+            _uiState.value = _uiState.value.copy(selectedMealType = inferred)
+        }
     }
 
     fun appendFoodText(recognizedText: String) {
         val incoming = recognizedText.trim()
         if (incoming.isEmpty()) {
-            DebugLogger.w("DEBUG: [LogViewModel] appendFoodText skipped because recognized text is empty")
             return
         }
         val current = _uiState.value.foodText.trim()
         val next = if (current.isEmpty()) incoming else "$current $incoming"
-        DebugLogger.d("DEBUG: [LogViewModel] appendFoodText appendedLength=${incoming.length} newTotalLength=${next.length}")
         _uiState.value = _uiState.value.copy(foodText = next, latestResult = null)
+        if (!_uiState.value.isMealTypeManuallySet) {
+            updateInferredMealType(next)
+        }
     }
 
     fun setAttachedImageUri(uri: String?) {
-        DebugLogger.d("DEBUG: [LogViewModel] setAttachedImageUri uriPresent=${!uri.isNullOrBlank()}")
         _uiState.value = _uiState.value.copy(attachedImageUri = uri, latestResult = null)
     }
 
     fun clearAttachedImage() {
-        DebugLogger.d("DEBUG: [LogViewModel] clearAttachedImage")
         _uiState.value = _uiState.value.copy(attachedImageUri = null, latestResult = null)
     }
 
-    fun setMealType(newMealType: MealType) {
-        _uiState.value = _uiState.value.copy(selectedMealType = newMealType, latestResult = null)
+    fun setMealType(newMealType: MealType, isManual: Boolean = true) {
+        _uiState.value = _uiState.value.copy(
+            selectedMealType = newMealType,
+            isMealTypeManuallySet = isManual,
+            latestResult = null
+        )
     }
 
     fun setSelectedDate(newDate: LocalDate) {
         _uiState.value = _uiState.value.copy(selectedDate = newDate, latestResult = null)
     }
 
+    fun clearLatestResult() {
+        _uiState.value = _uiState.value.copy(latestResult = null)
+    }
+
+    // --- Favourites/Saved Meals ---
+
+    fun saveLatestMealAsFavorite(renameTitle: String? = null): SavedMealEntity? {
+        val result = _uiState.value.latestResult ?: return null
+        val foodText = _uiState.value.foodText.ifBlank {
+            result.items.firstOrNull()?.name ?: "Photo meal"
+        }
+        val suggestedTitle = renameTitle?.trim()?.ifBlank { null }
+            ?: result.items.firstOrNull()?.name ?: "Fav Meal"
+
+        val savedMeal = SavedMealEntity(
+            id = UUID.randomUUID().toString(),
+            title = suggestedTitle,
+            foodText = foodText,
+            mealType = result.mealType,
+            totalCalories = result.totalCalories,
+            rawResponseJson = Gson().toJson(result),
+            sourceMealId = _uiState.value.lastLoggedMealId,
+            displayOrder = savedMeals.value.size
+        )
+
+        viewModelScope.launch {
+            favRepo.save(savedMeal)
+            syncService.syncSavedMealsToCloud()
+        }
+        return savedMeal
+    }
+
+    fun logSavedMealAsIs(savedMeal: SavedMealEntity, servingMultiplier: Double = 1.0) {
+        val rawJson = savedMeal.rawResponseJson
+        val response = try {
+            val decoded = Gson().fromJson(rawJson, MealLogResponse::class.java)
+            if (servingMultiplier != 1.0) {
+                // Scale protein, carbs, fat, items calories
+                val scaledItems = decoded.items.map {
+                    it.copy(calories = it.calories * servingMultiplier)
+                }
+                decoded.copy(
+                    totalCalories = decoded.totalCalories * servingMultiplier,
+                    protein = decoded.protein?.let { it * servingMultiplier },
+                    carbs = decoded.carbs?.let { it * servingMultiplier },
+                    fat = decoded.fat?.let { it * servingMultiplier },
+                    items = scaledItems
+                )
+            } else {
+                decoded
+            }
+        } catch (e: Exception) {
+            null
+        }
+
+        val totalCalories = response?.totalCalories ?: (savedMeal.totalCalories * servingMultiplier)
+        val logFoodText = if (servingMultiplier == 1.0) {
+            savedMeal.foodText
+        } else {
+            "${savedMeal.foodText} (${if (servingMultiplier % 1.0 == 0.0) servingMultiplier.toInt().toString() else String.format(Locale.US, "%.1f", servingMultiplier)}x serving)"
+        }
+
+        val entryId = UUID.randomUUID().toString()
+        val timestamp = _uiState.value.selectedDate
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+        viewModelScope.launch {
+            try {
+                localRepo.saveMeal(
+                    timestampMillis = timestamp,
+                    foodText = logFoodText,
+                    mealType = savedMeal.mealType,
+                    response = response ?: MealLogResponse(
+                        mealType = savedMeal.mealType,
+                        totalCalories = totalCalories,
+                        protein = response?.protein,
+                        carbs = response?.carbs,
+                        fat = response?.fat,
+                        items = emptyList(),
+                        needsClarification = false,
+                        clarifyingQuestion = null
+                    ),
+                    hasImage = false,
+                    id = entryId
+                )
+                // Sync to Cloud
+                val mealEntry = localRepo.getMealEntryById(entryId)
+                if (mealEntry != null) {
+                    syncService.syncMealToCloud(mealEntry)
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    latestResult = response,
+                    lastLoggedMealId = entryId,
+                    foodText = "",
+                    attachedImageUri = null
+                )
+            } catch (e: Exception) {
+                DebugLogger.e("DEBUG: [LogViewModel] logSavedMealAsIs failed", e)
+                _uiState.value = _uiState.value.copy(errorMessage = "Failed to log favorite meal.")
+            }
+        }
+    }
+
+    fun deleteFavoriteMeal(id: String) {
+        viewModelScope.launch {
+            favRepo.delete(id)
+            syncService.syncSavedMealsToCloud()
+        }
+    }
+
+    fun renameFavoriteMeal(id: String, newName: String) {
+        viewModelScope.launch {
+            val item = favRepo.getById(id)
+            if (item != null) {
+                favRepo.save(item.copy(title = newName, updatedAtMillis = System.currentTimeMillis()))
+                syncService.syncSavedMealsToCloud()
+            }
+        }
+    }
+
+    fun prepareSavedMealForEditing(savedMeal: SavedMealEntity) {
+        _uiState.value = _uiState.value.copy(
+            foodText = savedMeal.foodText,
+            selectedMealType = try { MealType.valueOf(savedMeal.mealType.uppercase()) } catch(e: Exception) { MealType.BREAKFAST },
+            isMealTypeManuallySet = true,
+            attachedImageUri = null,
+            latestResult = null,
+            lastLoggedMealId = null
+        )
+    }
+
+    // --- Speech Recognition ---
+
+    fun toggleSpeechRecognition() {
+        if (_uiState.value.isTranscribingSpeech) return
+
+        if (_uiState.value.isListening) {
+            stopSpeechRecognition()
+        } else {
+            startSpeechRecognition()
+        }
+    }
+
+    private fun startSpeechRecognition() {
+        _uiState.value = _uiState.value.copy(
+            isListening = true,
+            speechErrorMessage = null,
+            waveformSamples = List(64) { 0.08f }
+        )
+
+        val context = getApplication<Application>()
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        try {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {
+                        val amplitude = ((rmsdB + 2f) / 12f).coerceIn(0.08f, 1.0f)
+                        val current = _uiState.value.waveformSamples
+                        val next = current.drop(1) + amplitude
+                        _uiState.value = _uiState.value.copy(waveformSamples = next)
+                    }
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {
+                        _uiState.value = _uiState.value.copy(isTranscribingSpeech = true, isListening = false)
+                    }
+                    override fun onError(error: Int) {
+                        val message = when (error) {
+                            SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected."
+                            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error."
+                            SpeechRecognizer.ERROR_NETWORK -> "Network error."
+                            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout."
+                            else -> "Voice input failed."
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            isListening = false,
+                            isTranscribingSpeech = false,
+                            speechErrorMessage = message
+                        )
+                    }
+                    override fun onResults(results: Bundle?) {
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull().orEmpty()
+                        if (text.isNotBlank()) {
+                            appendFoodText(text)
+                        }
+                        _uiState.value = _uiState.value.copy(isTranscribingSpeech = false)
+                    }
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+                startListening(intent)
+            }
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                isListening = false,
+                speechErrorMessage = "Could not initialize voice input."
+            )
+        }
+    }
+
+    fun stopSpeechRecognition() {
+        if (!_uiState.value.isListening) return
+        speechRecognizer?.stopListening()
+        _uiState.value = _uiState.value.copy(isListening = false, isTranscribingSpeech = true)
+    }
+
+    fun cancelSpeechRecognition() {
+        if (!_uiState.value.isListening) return
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        _uiState.value = _uiState.value.copy(
+            isListening = false,
+            isTranscribingSpeech = false,
+            waveformSamples = List(64) { 0.08f }
+        )
+    }
+
+    // --- Logging ---
+
     fun logMeal() {
         val state = _uiState.value
         if (!state.isAuthReady) {
             _uiState.value = state.copy(errorMessage = "Not signed in yet.")
             return
+        }
+
+        // Cancel and merge voice in progress if any
+        if (state.isListening) {
+            stopSpeechRecognition()
         }
 
         val trimmed = state.foodText.trim()
@@ -140,7 +427,8 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             val result = repo.logMeal(
                 foodText = trimmed,
                 mealType = state.selectedMealType,
-                imageBase64 = imageBase64
+                imageBase64 = imageBase64,
+                country = prefManager.userCountry.takeIf { it.isNotBlank() }
             )
             result.fold(
                 onSuccess = { response ->
@@ -148,27 +436,34 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     val storedLabel = trimmed.ifBlank {
                         response.items.firstOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Photo meal"
                     }
-                    viewModelScope.launch {
-                        try {
-                            val timestampMillis = state.selectedDate
-                                .atStartOfDay(ZoneId.systemDefault())
-                                .toInstant()
-                                .toEpochMilli()
-                            localRepo.saveMeal(
-                                timestampMillis = timestampMillis,
-                                foodText = storedLabel,
-                                mealType = response.mealType,
-                                response = response,
-                                hasImage = imageBase64 != null,
-                            )
-                            DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
-                        } catch (t: Throwable) {
-                            DebugLogger.e("DEBUG: [LogViewModel] Failed to save meal to local DB", t)
+                    val timestampMillis = state.selectedDate
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+                    val entryId = UUID.randomUUID().toString()
+
+                    try {
+                        localRepo.saveMeal(
+                            timestampMillis = timestampMillis,
+                            foodText = storedLabel,
+                            mealType = response.mealType,
+                            response = response,
+                            hasImage = imageBase64 != null,
+                            id = entryId
+                        )
+                        val mealEntry = localRepo.getMealEntryById(entryId)
+                        if (mealEntry != null) {
+                            syncService.syncMealToCloud(mealEntry)
                         }
+                        DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
+                    } catch (t: Throwable) {
+                        DebugLogger.e("DEBUG: [LogViewModel] Failed to save meal to local DB", t)
                     }
+
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         latestResult = response,
+                        lastLoggedMealId = entryId,
                         errorMessage = null,
                         foodText = "",
                         attachedImageUri = null
@@ -185,5 +480,84 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
-}
 
+    fun quickRefineLoggedMeal(prompt: String) {
+        val state = _uiState.value
+        val mealId = state.lastLoggedMealId
+        val prevResult = state.latestResult
+        if (mealId == null || prevResult == null) {
+            _uiState.value = state.copy(errorMessage = "Could not find the logged meal to update.")
+            return
+        }
+
+        _uiState.value = state.copy(isRefiningMeal = true, errorMessage = null)
+
+        viewModelScope.launch {
+            val result = repo.refineMealLog(
+                foodText = state.foodText,
+                mealType = state.selectedMealType,
+                previousEstimate = prevResult,
+                correctionPrompt = prompt,
+                country = prefManager.userCountry.takeIf { it.isNotBlank() }
+            )
+            result.fold(
+                onSuccess = { response ->
+                    try {
+                        val mealEntry = localRepo.getMealById(mealId)
+                        if (mealEntry != null) {
+                            localRepo.saveMeal(
+                                timestampMillis = mealEntry.timestampMillis,
+                                foodText = mealEntry.foodText,
+                                mealType = response.mealType,
+                                response = response,
+                                hasImage = mealEntry.hasImage,
+                                id = mealId
+                            )
+                            val updated = localRepo.getMealEntryById(mealId)
+                            if (updated != null) {
+                                syncService.syncMealToCloud(updated)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        DebugLogger.e("DEBUG: [LogViewModel] Failed to update refined meal in DB", e)
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        isRefiningMeal = false,
+                        latestResult = response,
+                        errorMessage = null
+                    )
+                },
+                onFailure = { t ->
+                    _uiState.value = _uiState.value.copy(
+                        isRefiningMeal = false,
+                        errorMessage = "Failed to update meal. Please try again."
+                    )
+                }
+            )
+        }
+    }
+
+    fun checkAndResetSelectedDateIfNeeded() {
+        val now = LocalDate.now()
+        val lastActiveStr = prefManager.lastActiveDateLog
+        val lastActive = if (!lastActiveStr.isNullOrBlank()) {
+            try { LocalDate.parse(lastActiveStr) } catch (e: Exception) { now }
+        } else {
+            now
+        }
+
+        // If the selectedDate matches the lastActiveDate, check if date has rolled over
+        if (_uiState.value.selectedDate == lastActive) {
+            if (_uiState.value.selectedDate != now) {
+                _uiState.value = _uiState.value.copy(selectedDate = now, latestResult = null)
+            }
+        }
+        prefManager.lastActiveDateLog = now.toString()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        speechRecognizer?.destroy()
+    }
+}

@@ -1,62 +1,87 @@
 package com.serene.logcal.ui.history
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.google.firebase.auth.FirebaseAuth
 import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.HistoryDaySection
 import com.serene.logcal.util.buildDaySections
 import com.serene.logcal.viewmodel.history.HistoryViewModel
+import com.serene.logcal.ui.theme.LogCalTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -66,7 +91,7 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
-    onNavigateToLogTab: () -> Unit = {},
+    onNavigateToLogTab: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "history_list") {
@@ -75,20 +100,19 @@ fun HistoryScreen(
                 viewModel = viewModel,
                 onNavigateToLogTab = onNavigateToLogTab,
                 onMealClick = { mealId ->
-                    DebugLogger.d("DEBUG: [HistoryScreen] navigate to detail mealId=$mealId")
-                    navController.navigate("meal_detail/$mealId")
-                },
+                    navController.navigate("meal_edit/$mealId")
+                }
             )
         }
         composable(
-            route = "meal_detail/{mealId}",
-            arguments = listOf(navArgument("mealId") { type = NavType.StringType }),
+            route = "meal_edit/{mealId}",
+            arguments = listOf(navArgument("mealId") { type = NavType.StringType })
         ) { entry ->
             val mealId = entry.arguments?.getString("mealId") ?: return@composable
-            MealDetailScreen(
+            MealEditScreen(
                 mealId = mealId,
                 viewModel = viewModel,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
     }
@@ -99,17 +123,45 @@ fun HistoryScreen(
 private fun HistoryListScreen(
     viewModel: HistoryViewModel,
     onNavigateToLogTab: () -> Unit,
-    onMealClick: (String) -> Unit,
+    onMealClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var lastErrorShown: String? by remember { mutableStateOf(null) }
+    val colors = LogCalTheme.colors
+    var lastErrorShown by remember { mutableStateOf<String?>(null) }
 
     var editMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
+
+    var searchText by remember { mutableStateOf("") }
+
+    val zone = ZoneId.systemDefault()
+    val sections = remember(uiState.meals, searchText) {
+        val filtered = if (searchText.isBlank()) {
+            uiState.meals
+        } else {
+            uiState.meals.filter { it.foodText.contains(searchText, ignoreCase = true) }
+        }
+        buildDaySections(filtered, zone)
+    }
+
+    // Default expand logic: first two dates expanded by default, rest collapsed
     var collapsedDates by remember { mutableStateOf(setOf<String>()) }
-    var showClearAllDialog by remember { mutableStateOf(false) }
-    var showBulkDeleteDialog by remember { mutableStateOf(false) }
+    var hasInitializedCollapsed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(sections) {
+        if (!hasInitializedCollapsed && sections.isNotEmpty()) {
+            val initialCollapsed = sections.drop(2).map { it.date.toString() }.toSet()
+            collapsedDates = initialCollapsed
+            hasInitializedCollapsed = true
+        }
+    }
+
+    LaunchedEffect(editMode) {
+        if (editMode) {
+            collapsedDates = emptySet()
+        }
+    }
 
     LaunchedEffect(uiState.errorMessage) {
         val msg = uiState.errorMessage
@@ -119,130 +171,185 @@ private fun HistoryListScreen(
         }
     }
 
-    val zone = ZoneId.systemDefault()
-    val sections = remember(uiState.meals) { buildDaySections(uiState.meals, zone) }
-
-    LaunchedEffect(editMode) {
-        if (editMode) {
-            DebugLogger.d("DEBUG: [HistoryListScreen] editMode=true expand all sections")
-            collapsedDates = emptySet()
-        }
-    }
+    var showClearAllDialog by remember { mutableStateOf(false) }
+    var showBulkDeleteDialog by remember { mutableStateOf(false) }
+    val isAnonymous = FirebaseAuth.getInstance().currentUser?.isAnonymous == true
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("History") },
+                title = { Text("History", fontWeight = FontWeight.Bold) },
                 actions = {
                     if (!editMode) {
                         IconButton(
                             onClick = { showClearAllDialog = true },
-                            enabled = uiState.meals.isNotEmpty(),
+                            enabled = uiState.meals.isNotEmpty()
                         ) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear all")
+                            Icon(
+                                Icons.Default.DeleteSweep,
+                                contentDescription = "Clear all",
+                                tint = colors.dangerRed
+                            )
                         }
                         TextButton(
                             onClick = {
                                 editMode = true
                                 selectedIds = emptySet()
-                                DebugLogger.d("DEBUG: [HistoryListScreen] entered edit mode")
                             },
-                            enabled = uiState.meals.isNotEmpty(),
-                        ) { Text("Edit") }
+                            enabled = uiState.meals.isNotEmpty()
+                        ) {
+                            Text("Edit", color = colors.primaryGreen, fontWeight = FontWeight.Bold)
+                        }
                     } else {
                         TextButton(
                             onClick = {
                                 editMode = false
                                 selectedIds = emptySet()
-                                DebugLogger.d("DEBUG: [HistoryListScreen] cancelled edit mode")
-                            },
-                        ) { Text("Cancel") }
+                            }
+                        ) {
+                            Text("Cancel", color = colors.primaryText)
+                        }
                         TextButton(
                             onClick = {
                                 if (selectedIds.isNotEmpty()) showBulkDeleteDialog = true
                             },
-                            enabled = selectedIds.isNotEmpty(),
-                        ) { Text("Delete (${selectedIds.size})") }
+                            enabled = selectedIds.isNotEmpty()
+                        ) {
+                            Text(
+                                text = "Delete (${selectedIds.size})",
+                                color = if (selectedIds.isNotEmpty()) colors.dangerRed else colors.mutedText,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background, titleContentColor = colors.primaryText)
             )
         },
+        containerColor = colors.background
     ) { padding ->
-        if (uiState.isLoading) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .background(Color(0xFFF2F2F6)),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
-
-        if (uiState.meals.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .background(Color(0xFFF2F2F6))
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("No meals logged yet", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Log meals from the Log tab and they will appear here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Button(
-                    onClick = {
-                        DebugLogger.d("DEBUG: [HistoryListScreen] empty CTA -> Log tab")
-                        onNavigateToLogTab()
-                    },
-                    modifier = Modifier.padding(top = 16.dp),
-                ) { Text("Log your first meal") }
-            }
-            return@Scaffold
-        }
-
-        LazyColumn(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFF2F2F6))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .fillMaxSize()
+                .background(colors.background)
         ) {
-            items(sections, key = { it.date.toString() }) { section ->
-                DaySectionCard(
-                    section = section,
-                    zone = zone,
-                    expanded = !collapsedDates.contains(section.date.toString()),
-                    onToggleExpand = {
-                        val key = section.date.toString()
-                        collapsedDates = if (collapsedDates.contains(key)) {
-                            collapsedDates - key
-                        } else {
-                            collapsedDates + key
-                        }
-                        DebugLogger.d("DEBUG: [HistoryListScreen] toggle day=$key collapsed=${collapsedDates.contains(key)}")
-                    },
-                    editMode = editMode,
-                    selectedIds = selectedIds,
-                    onToggleSelect = { id ->
-                        selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
-                        DebugLogger.d("DEBUG: [HistoryListScreen] select toggle id=$id count=${selectedIds.size}")
-                    },
-                    onMealClick = onMealClick,
-                )
+            // Search field
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                placeholder = { Text("Search meals...", color = colors.quietText) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.mutedText) },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.primaryGreen,
+                    unfocusedBorderColor = colors.cardBorder,
+                    focusedContainerColor = colors.cardBackground,
+                    unfocusedContainerColor = colors.cardBackground
+                ),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
+            )
+
+            // Anonymous guest mode warning card
+            if (isAnonymous) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.cardBackground)
+                        .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = colors.warningAmber,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        "Cloud backup is disabled in Guest Mode.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.primaryText,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = colors.primaryGreen)
+                }
+                return@Scaffold
+            }
+
+            if (uiState.meals.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("No meals logged yet", style = MaterialTheme.typography.titleMedium, color = colors.primaryText)
+                    Text(
+                        "Log meals from the Log tab and they will appear here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText,
+                        modifier = Modifier.padding(top = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    Button(
+                        onClick = onNavigateToLogTab,
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
+                        modifier = Modifier.padding(top = 16.dp),
+                        shape = RoundedCornerShape(22.dp)
+                    ) {
+                        Text("Log your first meal", color = Color.White)
+                    }
+                }
+                return@Scaffold
+            }
+
+            // History sections list
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(sections, key = { it.date.toString() }) { section ->
+                    DaySectionCard(
+                        section = section,
+                        zone = zone,
+                        expanded = !collapsedDates.contains(section.date.toString()),
+                        onToggleExpand = {
+                            val key = section.date.toString()
+                            collapsedDates = if (collapsedDates.contains(key)) {
+                                collapsedDates - key
+                            } else {
+                                collapsedDates + key
+                            }
+                        },
+                        editMode = editMode,
+                        selectedIds = selectedIds,
+                        onToggleSelect = { id ->
+                            selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
+                        },
+                        onMealClick = onMealClick
+                    )
+                }
             }
         }
     }
 
+    // Confirmation dialogs
     if (showClearAllDialog) {
         AlertDialog(
             onDismissRequest = { showClearAllDialog = false },
@@ -254,14 +361,13 @@ private fun HistoryListScreen(
                         showClearAllDialog = false
                         editMode = false
                         selectedIds = emptySet()
-                        DebugLogger.d("DEBUG: [HistoryListScreen] clear all confirmed")
                         viewModel.deleteAllMeals()
-                    },
-                ) { Text("Clear all") }
+                    }
+                ) { Text("Clear all", color = colors.dangerRed) }
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllDialog = false }) { Text("Cancel") }
-            },
+            }
         )
     }
 
@@ -276,15 +382,14 @@ private fun HistoryListScreen(
                         val ids = selectedIds.toList()
                         showBulkDeleteDialog = false
                         editMode = false
-                        DebugLogger.d("DEBUG: [HistoryListScreen] bulk delete count=${ids.size}")
                         viewModel.deleteMeals(ids)
                         selectedIds = emptySet()
-                    },
-                ) { Text("Delete") }
+                    }
+                ) { Text("Delete", color = colors.dangerRed) }
             },
             dismissButton = {
                 TextButton(onClick = { showBulkDeleteDialog = false }) { Text("Cancel") }
-            },
+            }
         )
     }
 }
@@ -298,49 +403,66 @@ private fun DaySectionCard(
     editMode: Boolean,
     selectedIds: Set<String>,
     onToggleSelect: (String) -> Unit,
-    onMealClick: (String) -> Unit,
+    onMealClick: (String) -> Unit
 ) {
+    val colors = LogCalTheme.colors
     val title = daySectionTitle(section.date, zone)
+
+    // Calculate sum macros for header
+    val sumProtein = section.meals.mapNotNull { it.response.protein }.sum()
+    val sumCarbs = section.meals.mapNotNull { it.response.carbs }.sum()
+    val sumFat = section.meals.mapNotNull { it.response.fat }.sum()
+    val showMacros = sumProtein > 0 || sumCarbs > 0 || sumFat > 0
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
+        border = BorderStroke(1.dp, colors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onToggleExpand() },
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "${section.totalCalories.toInt()} cal total",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            "${section.totalCalories.toInt()} cal",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primaryGreen
+                        )
+                        if (showMacros) {
+                            Text(
+                                "· P: ${sumProtein.toInt()}g C: ${sumCarbs.toInt()}g F: ${sumFat.toInt()}g",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.mutedText
+                            )
+                        }
+                    }
                 }
                 Icon(
                     if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    contentDescription = null,
+                    tint = colors.mutedText
                 )
             }
+
             if (expanded) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = colors.cardBorder)
                 if (section.meals.isEmpty()) {
                     Text(
-                        if (section.isToday) "No meals logged today yet."
-                        else "No meals on this day.",
+                        if (section.isToday) "No meals logged today yet." else "No meals logged on this day.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.mutedText,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    if (section.isToday) {
-                        Text(
-                            "Tap Log to add one.",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
                 } else {
                     section.meals.forEachIndexed { index, meal ->
                         HistoryMealRow(
@@ -349,25 +471,15 @@ private fun DaySectionCard(
                             editMode = editMode,
                             selected = selectedIds.contains(meal.id),
                             onToggleSelect = { onToggleSelect(meal.id) },
-                            onOpen = { onMealClick(meal.id) },
+                            onOpen = { onMealClick(meal.id) }
                         )
                         if (index < section.meals.lastIndex) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = colors.cardBorder.copy(alpha = 0.5f))
                         }
                     }
                 }
             }
         }
-    }
-}
-
-private fun daySectionTitle(date: LocalDate, zone: ZoneId): String {
-    val today = LocalDate.now(zone)
-    val fmt = DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault())
-    return when (date) {
-        today -> "Today"
-        today.minusDays(1) -> "Yesterday"
-        else -> date.format(fmt)
     }
 }
 
@@ -378,10 +490,12 @@ private fun HistoryMealRow(
     editMode: Boolean,
     selected: Boolean,
     onToggleSelect: () -> Unit,
-    onOpen: () -> Unit,
+    onOpen: () -> Unit
 ) {
-    val timeFmt = remember { DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()) }
+    val colors = LogCalTheme.colors
+    val timeFmt = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val timeText = Instant.ofEpochMilli(meal.timestampMillis).atZone(zone).toLocalTime().format(timeFmt)
+
     val p = meal.response.protein
     val c = meal.response.carbs
     val f = meal.response.fat
@@ -401,60 +515,92 @@ private fun HistoryMealRow(
                     onOpen()
                 }
             }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (editMode) {
-            Checkbox(checked = selected, onCheckedChange = null)
+            Checkbox(
+                checked = selected,
+                onCheckedChange = { onToggleSelect() },
+                colors = CheckboxDefaults.colors(checkedColor = colors.primaryGreen)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
         }
+
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 if (meal.hasImage) {
                     Icon(
                         Icons.Default.Image,
-                        contentDescription = "Photo",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = colors.primaryGreen
                     )
                 }
                 Text(
                     meal.foodText,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    color = colors.primaryText
                 )
             }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Row(
-                modifier = Modifier.padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    color = Color(0xFFE8F0FE),
-                    shape = MaterialTheme.shapes.small,
+                Box(
+                    modifier = Modifier
+                        .background(colors.softAccentBackground, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         meal.mealType.replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        color = colors.primaryGreen,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-                Text(timeText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                Text(
+                    timeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.mutedText
+                )
+
                 if (macroCompact.isNotEmpty()) {
                     Text(
                         macroCompact,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.quietText
                     )
                 }
             }
         }
+
         Text(
             "${meal.totalCalories.toInt()}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF007AFF),
+            color = colors.primaryGreen
         )
+    }
+}
+
+private fun daySectionTitle(date: LocalDate, zone: ZoneId): String {
+    val today = LocalDate.now(zone)
+    val fmt = DateTimeFormatter.ofPattern("EEEE, MMM d")
+    return when (date) {
+        today -> "Today"
+        today.minusDays(1) -> "Yesterday"
+        today.plusDays(1) -> "Tomorrow"
+        else -> date.format(fmt)
     }
 }

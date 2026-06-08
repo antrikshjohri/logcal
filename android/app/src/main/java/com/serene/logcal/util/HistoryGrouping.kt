@@ -7,7 +7,7 @@ import java.time.ZoneId
 
 /**
  * Groups meals by calendar day (device zone). Today is always included when there is at least one meal
- * (parity with iOS History): today appears first, then newer days first.
+ * (parity with iOS History): future meals first, then today, then past days.
  */
 data class HistoryDaySection(
     val date: LocalDate,
@@ -29,8 +29,12 @@ fun buildDaySections(
     val dates = (byDay.keys + today).distinct()
     val sortedDates = dates.sortedWith { a, b ->
         when {
-            a == today && b != today -> -1
-            b == today && a != today -> 1
+            a == today && b == today -> 0
+            a.isAfter(today) && b.isAfter(today) -> b.compareTo(a)
+            a.isAfter(today) -> -1
+            b.isAfter(today) -> 1
+            a == today -> -1
+            b == today -> 1
             else -> b.compareTo(a)
         }
     }
@@ -44,6 +48,6 @@ fun buildDaySections(
             isToday = date == today,
         )
     }
-    DebugLogger.d("DEBUG: [HistoryGrouping] buildDaySections() sections=${sections.size} todayIncluded=true")
+    DebugLogger.d("DEBUG: [HistoryGrouping] buildDaySections() sections=${sections.size} sorted correctly")
     return sections
 }

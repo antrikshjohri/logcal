@@ -3,14 +3,20 @@ package com.serene.logcal.viewmodel.history
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
 import com.serene.logcal.data.local.HistoryMeal
+import com.serene.logcal.data.local.MealEntryEntity
+import com.serene.logcal.data.local.SavedMealEntity
+import com.serene.logcal.data.local.PreferenceManager
 import com.serene.logcal.data.repository.AppGraph
+import com.serene.logcal.service.CloudSyncService
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class HistoryUiState(
     val isLoading: Boolean = true,
@@ -20,6 +26,10 @@ data class HistoryUiState(
 
 class HistoryViewModel(application: Application) : AndroidViewModel(application) {
     private val localRepo = AppGraph.localMealRepository(application)
+    private val favRepo = AppGraph.localSavedMealsRepository(application)
+    private val syncService = AppGraph.cloudSyncService(application)
+    private val gson = Gson()
+
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
@@ -46,6 +56,9 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     fun deleteMeal(id: String) {
         viewModelScope.launch {
             try {
+                // Trigger cloud delete
+                syncService.deleteMealFromCloud(id)
+                // Delete locally
                 localRepo.deleteMeal(id)
             } catch (t: Throwable) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] deleteMeal() failed id=$id", t)
@@ -59,6 +72,9 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 DebugLogger.d("DEBUG: [HistoryViewModel] deleteMeals() count=${ids.size}")
+                for (id in ids) {
+                    syncService.deleteMealFromCloud(id)
+                }
                 localRepo.deleteMeals(ids)
             } catch (t: Throwable) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] deleteMeals() failed", t)
@@ -71,6 +87,10 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 DebugLogger.d("DEBUG: [HistoryViewModel] deleteAllMeals()")
+                val currentMeals = _uiState.value.meals
+                for (meal in currentMeals) {
+                    syncService.deleteMealFromCloud(meal.id)
+                }
                 localRepo.deleteAllMeals()
             } catch (t: Throwable) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] deleteAllMeals() failed", t)
@@ -83,5 +103,86 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         DebugLogger.d("DEBUG: [HistoryViewModel] getMealById() id=$id")
         return localRepo.getMealById(id)
     }
-}
 
+    fun updateMeal(
+        mealId: String,
+        timestampMillis: Long,
+        mealType: String,
+        totalCalories: Double,
+        rawResponseJson: String
+    ) {
+        viewModelScope.launch {
+            try {
+                val existing = localRepo.getMealById(mealId)
+                if (existing != null) {
+                    val updated = MealEntryEntity(
+                        id = mealId,
+                        timestampMillis = timestampMillis,
+                        createdAtMillis = existing.createdAtMillis,
+                        foodText = existing.foodText,
+                        mealType = mealType,
+                        totalCalories = totalCalories,
+                        rawResponseJson = rawResponseJson,
+                        hasImage = existing.hasImage
+                    )
+                    localRepo.updateMeal(updated)
+                    syncService.syncMealToCloud(updated)
+
+                    // Also check if there's a linked favorite that needs updating
+                    val favorites = favRepo.getAll()
+                    val linked = favorites.find { it.sourceMealId == mealId }
+                    if (linked != null) {
+                        val updatedFav = linked.copy(
+                            mealType = mealType,
+                            totalCalories = totalCalories,
+                            rawResponseJson = rawResponseJson,
+                            updatedAtMillis = System.currentTimeMillis()
+                        )
+                        favRepo.save(updatedFav)
+                        syncService.syncSavedMealsToCloud()
+                    }
+                }
+            } catch (e: Exception) {
+                DebugLogger.e("DEBUG: [HistoryViewModel] updateMeal failed", e)
+            }
+        }
+    }
+
+    suspend fun getLinkedFavorite(mealId: String): SavedMealEntity? {
+        val favorites = favRepo.getAll()
+        return favorites.find { it.sourceMealId == mealId }
+    }
+
+    fun saveMealAsFavorite(mealId: String, suggestedTitle: String) {
+        viewModelScope.launch {
+            try {
+                val meal = localRepo.getMealById(mealId) ?: return@launch
+                val savedMeal = SavedMealEntity(
+                    id = UUID.randomUUID().toString(),
+                    title = suggestedTitle,
+                    foodText = meal.foodText,
+                    mealType = meal.mealType,
+                    totalCalories = meal.totalCalories,
+                    rawResponseJson = gson.toJson(meal.response),
+                    sourceMealId = meal.id,
+                    displayOrder = favRepo.getAll().size
+                )
+                favRepo.save(savedMeal)
+                syncService.syncSavedMealsToCloud()
+            } catch (e: Exception) {
+                DebugLogger.e("DEBUG: [HistoryViewModel] saveMealAsFavorite failed", e)
+            }
+        }
+    }
+
+    fun deleteFavoriteMeal(id: String) {
+        viewModelScope.launch {
+            try {
+                favRepo.delete(id)
+                syncService.syncSavedMealsToCloud()
+            } catch (e: Exception) {
+                DebugLogger.e("DEBUG: [HistoryViewModel] deleteFavoriteMeal failed", e)
+            }
+        }
+    }
+}

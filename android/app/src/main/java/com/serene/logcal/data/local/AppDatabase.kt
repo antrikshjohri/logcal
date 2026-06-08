@@ -8,12 +8,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MealEntryEntity::class],
-    version = 2,
+    entities = [MealEntryEntity::class, SavedMealEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun mealDao(): MealDao
+    abstract fun savedMealDao(): SavedMealDao
 
     companion object {
         @Volatile
@@ -27,6 +28,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `saved_meals` (" +
+                        "`id` TEXT NOT NULL, " +
+                        "`title` TEXT NOT NULL, " +
+                        "`foodText` TEXT NOT NULL, " +
+                        "`mealType` TEXT NOT NULL, " +
+                        "`totalCalories` REAL NOT NULL, " +
+                        "`rawResponseJson` TEXT NOT NULL, " +
+                        "`sourceMealId` TEXT, " +
+                        "`displayOrder` INTEGER NOT NULL DEFAULT 0, " +
+                        "`createdAtMillis` INTEGER NOT NULL, " +
+                        "`updatedAtMillis` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`)" +
+                    ")"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -34,7 +55,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "logcal_android.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build().also { instance ->
                     INSTANCE = instance
                 }

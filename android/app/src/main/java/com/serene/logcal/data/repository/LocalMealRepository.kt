@@ -53,15 +53,20 @@ class LocalMealRepository(
         meal
     }
 
+    suspend fun getMealEntryById(id: String): MealEntryEntity? = withContext(Dispatchers.IO) {
+        mealDao.getById(id)
+    }
+
     suspend fun saveMeal(
         timestampMillis: Long,
         foodText: String,
         mealType: String,
         response: MealLogResponse,
         hasImage: Boolean = false,
-    ) {
+        id: String? = null
+    ) = withContext(Dispatchers.IO) {
         val entity = MealEntryEntity(
-            id = UUID.randomUUID().toString(),
+            id = id ?: UUID.randomUUID().toString(),
             timestampMillis = timestampMillis,
             createdAtMillis = System.currentTimeMillis(),
             foodText = foodText,
@@ -74,6 +79,11 @@ class LocalMealRepository(
             "DEBUG: [LocalMealRepository] saveMeal() id=${entity.id} mealType=$mealType calories=${response.totalCalories} hasImage=$hasImage"
         )
         mealDao.insertMeal(entity)
+    }
+
+    suspend fun updateMeal(meal: MealEntryEntity) = withContext(Dispatchers.IO) {
+        DebugLogger.d("DEBUG: [LocalMealRepository] updateMeal() id=${meal.id}")
+        mealDao.insertMeal(meal) // insert with REPLACE strategy is effectively an update
     }
 
     suspend fun deleteMeal(id: String) {
@@ -90,5 +100,9 @@ class LocalMealRepository(
         DebugLogger.d("DEBUG: [LocalMealRepository] deleteAllMeals()")
         mealDao.deleteAll()
     }
-}
 
+    suspend fun insertMeals(meals: List<MealEntryEntity>) = withContext(Dispatchers.IO) {
+        DebugLogger.d("DEBUG: [LocalMealRepository] insertMeals() count=${meals.size}")
+        meals.forEach { mealDao.insertMeal(it) }
+    }
+}
