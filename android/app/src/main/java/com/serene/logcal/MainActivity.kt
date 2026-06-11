@@ -133,29 +133,29 @@ private fun AppRoot() {
                 NavigationBarItem(
                     selected = selectedTab == RootTab.HOME,
                     onClick = { selectedTab = RootTab.HOME },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(28.dp)) },
-                    label = { Text("Home", fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp)) },
+                    label = { Text("Home", fontWeight = FontWeight.ExtraBold) },
                     colors = navBarColors
                 )
                 NavigationBarItem(
                     selected = selectedTab == RootTab.LOG,
                     onClick = { selectedTab = RootTab.LOG },
-                    icon = { Icon(Icons.Default.AddCircle, contentDescription = "Log", modifier = Modifier.size(28.dp)) },
-                    label = { Text("Log", fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.AddCircle, contentDescription = "Log", modifier = Modifier.size(32.dp)) },
+                    label = { Text("Log", fontWeight = FontWeight.ExtraBold) },
                     colors = navBarColors
                 )
                 NavigationBarItem(
                     selected = selectedTab == RootTab.HISTORY,
                     onClick = { selectedTab = RootTab.HISTORY },
-                    icon = { Icon(Icons.Default.List, contentDescription = "History", modifier = Modifier.size(28.dp)) },
-                    label = { Text("History", fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.List, contentDescription = "History", modifier = Modifier.size(32.dp)) },
+                    label = { Text("History", fontWeight = FontWeight.ExtraBold) },
                     colors = navBarColors
                 )
                 NavigationBarItem(
                     selected = selectedTab == RootTab.PROFILE,
                     onClick = { selectedTab = RootTab.PROFILE },
-                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile", modifier = Modifier.size(28.dp)) },
-                    label = { Text("Profile", fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile", modifier = Modifier.size(32.dp)) },
+                    label = { Text("Profile", fontWeight = FontWeight.ExtraBold) },
                     colors = navBarColors
                 )
             }

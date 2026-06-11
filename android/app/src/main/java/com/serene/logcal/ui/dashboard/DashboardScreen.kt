@@ -48,6 +48,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.TextButton
+
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.graphics.Brush
@@ -184,10 +190,12 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                     }
                 )
             }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // 1. Date Header Navigation
+        var showDatePicker by remember { mutableStateOf(false) }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -195,35 +203,23 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Previous Day",
+                tint = LogCalTheme.colors.primaryGreen,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(LogCalTheme.colors.softAccentBackground)
-                    .clickable { viewModel.changeDate(-1) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronLeft,
-                    contentDescription = "Previous Day",
-                    tint = LogCalTheme.colors.primaryGreen,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+                    .clickable { viewModel.changeDate(-1) }
+                    .padding(8.dp)
+            )
 
             Spacer(modifier = Modifier.width(24.dp))
 
             Column(
                 modifier = Modifier
-                    .clickable {
-                        DatePickerDialog(
-                            context,
-                            { _, y, m, d -> viewModel.setSelectedDate(LocalDate.of(y, m + 1, d)) },
-                            selectedDate.year,
-                            selectedDate.monthValue - 1,
-                            selectedDate.dayOfMonth
-                        ).show()
-                    },
+                    .clickable { showDatePicker = true },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -234,7 +230,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 )
                 Text(
                     text = formattedDateText,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = LogCalTheme.colors.mutedText
                 )
             }
@@ -242,19 +238,46 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
             Spacer(modifier = Modifier.width(24.dp))
 
             val isToday = selectedDate == LocalDate.now()
-            Box(
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "Next Day",
+                tint = if (isToday) LogCalTheme.colors.mutedText.copy(alpha = 0.3f) else LogCalTheme.colors.primaryGreen,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(if (isToday) Color.Transparent else LogCalTheme.colors.softAccentBackground)
-                    .clickable(enabled = !isToday) { viewModel.changeDate(1) },
-                contentAlignment = Alignment.Center
+                    .clickable(enabled = !isToday) { viewModel.changeDate(1) }
+                    .padding(8.dp)
+            )
+        }
+
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = java.time.ZoneId.systemDefault().rules.getOffset(java.time.Instant.now()).totalSeconds * 1000L + selectedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val localDate = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
+                            viewModel.setSelectedDate(localDate)
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("Close", color = LogCalTheme.colors.primaryGreen, fontWeight = FontWeight.Bold)
+                    }
+                },
+                colors = DatePickerDefaults.colors(containerColor = LogCalTheme.colors.cardBackground)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = "Next Day",
-                    tint = if (isToday) LogCalTheme.colors.mutedText.copy(alpha = 0.3f) else LogCalTheme.colors.primaryGreen,
-                    modifier = Modifier.size(18.dp)
+                DatePicker(
+                    state = datePickerState,
+                    colors = DatePickerDefaults.colors(
+                        selectedDayContainerColor = LogCalTheme.colors.primaryGreen,
+                        selectedDayContentColor = Color.White,
+                        todayDateBorderColor = LogCalTheme.colors.primaryGreen,
+                        todayContentColor = LogCalTheme.colors.primaryGreen
+                    )
                 )
             }
         }
@@ -296,97 +319,21 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
             }
         }
 
-        // 3. Status Card
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(dailyStatusColor.copy(alpha = if (MaterialTheme.colorScheme.background.red < 0.5f) 0.15f else 0.08f))
-                .border(1.dp, dailyStatusColor.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(dailyStatusColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = statusCardTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = LogCalTheme.colors.primaryText
-                )
-                Text(
-                    text = statusCardSubtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = LogCalTheme.colors.mutedText
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Default.Eco,
-                contentDescription = null,
-                tint = dailyStatusColor.copy(alpha = 0.25f),
-                modifier = Modifier.size(28.dp)
-            )
-        }
-
-        // 4. Calories Card
+        // 3. Status & Calories Card
         AppCard {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = NumberUtils.formatNumber(uiState.todayCalories.toInt()),
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = LogCalTheme.colors.primaryText
-                    )
-                    Text("of ${NumberUtils.formatNumber(uiState.dailyGoal.toInt())} cal", style = MaterialTheme.typography.titleMedium, color = LogCalTheme.colors.mutedText)
-                }
-                RingProgress(
-                    progress = progress,
-                    percentageText = "${(progress * 100f).roundToInt()}%",
-                    size = 96.dp,
-                    stroke = 10.dp,
-                    progressColor = LogCalTheme.colors.primaryGreen,
-                    showLeaf = true
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            SeparatorLine()
-            Spacer(modifier = Modifier.height(10.dp))
-            
-            val diff = (uiState.todayCalories - uiState.dailyGoal).toInt()
-            val statusColor = if (isOverGoal) LogCalTheme.colors.warningAmber else LogCalTheme.colors.primaryGreen
-            val highlightText = if (isOverGoal) {
-                "${NumberUtils.formatNumber(diff.absoluteValue)} cal overdue"
-            } else {
-                "${NumberUtils.formatNumber(uiState.remainingCalories.toInt().coerceAtLeast(0))} cal remaining"
-            }
+            // Status Banner
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(statusColor.copy(alpha = 0.15f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(dailyStatusColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(statusColor, CircleShape),
+                        .background(dailyStatusColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -397,11 +344,83 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = statusCardTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = LogCalTheme.colors.primaryText
+                    )
+                    Text(
+                        text = statusCardSubtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = LogCalTheme.colors.mutedText
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Eco,
+                    contentDescription = null,
+                    tint = dailyStatusColor.copy(alpha = 0.3f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            // Calories Main Content
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = NumberUtils.formatNumber(uiState.todayCalories.toInt()),
+                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = LogCalTheme.colors.primaryText
+                    )
+                    Text("of ${NumberUtils.formatNumber(uiState.dailyGoal.toInt())} cal eaten", style = MaterialTheme.typography.titleMedium, color = LogCalTheme.colors.mutedText)
+                }
+                RingProgress(
+                    progress = progress,
+                    percentageText = "${(progress * 100f).roundToInt()}%",
+                    size = 96.dp,
+                    stroke = 10.dp,
+                    progressColor = dailyStatusColor,
+                    showLeaf = true
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            val diff = (uiState.todayCalories - uiState.dailyGoal).toInt()
+            val highlightText = if (isOverGoal) {
+                "${NumberUtils.formatNumber(diff.absoluteValue)} cal over target"
+            } else {
+                "${NumberUtils.formatNumber(uiState.remainingCalories.toInt().coerceAtLeast(0))} cal remaining"
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(dailyStatusColor.copy(alpha = 0.1f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(dailyStatusColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = highlightText,
-                    color = statusColor,
+                    color = dailyStatusColor,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -411,8 +430,8 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Macros",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
                     color = LogCalTheme.colors.primaryText
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -435,11 +454,15 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MacroCard("Protein", "${uiState.proteinGrams}g", uiState.macroProteinPercent, LogCalTheme.colors.protein)
-                MacroCard("Carbs", "${uiState.carbsGrams}g", uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
-                MacroCard("Fat", "${uiState.fatGrams}g", uiState.macroFatPercent, LogCalTheme.colors.fat)
+            Spacer(modifier = Modifier.height(16.dp))
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                val proteinGoal = if (uiState.macroProteinPercent > 0) (uiState.proteinGrams * 100 / uiState.macroProteinPercent) else 0
+                val carbsGoal = if (uiState.macroCarbsPercent > 0) (uiState.carbsGrams * 100 / uiState.macroCarbsPercent) else 0
+                val fatGoal = if (uiState.macroFatPercent > 0) (uiState.fatGrams * 100 / uiState.macroFatPercent) else 0
+                
+                MacroLinearRow("Protein", uiState.proteinGrams, proteinGoal, uiState.macroProteinPercent, LogCalTheme.colors.protein)
+                MacroLinearRow("Carbs", uiState.carbsGrams, carbsGoal, uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
+                MacroLinearRow("Fat", uiState.fatGrams, fatGoal, uiState.macroFatPercent, LogCalTheme.colors.fat)
             }
         }
 
@@ -449,17 +472,17 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 Text(
                     text = "Weekly trend",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = LogCalTheme.colors.primaryText
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Total calories",
+                    text = "Total Calories",
                     style = MaterialTheme.typography.bodySmall,
                     color = LogCalTheme.colors.mutedText
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             WeeklyBarChart(
                 values = uiState.weeklyStats.map { it.calories },
                 labels = uiState.weeklyStats.map { it.date.dayOfWeek.name.lowercase().replaceFirstChar { c -> c.uppercase() }.take(3) },
@@ -468,21 +491,9 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                     uiState.weeklyStats.getOrNull(idx)?.let { stat ->
                         viewModel.setSelectedDate(stat.date)
                     }
-                }
+                },
+                dailyGoal = uiState.dailyGoal.toInt()
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            SeparatorLine()
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text("Weekly Average", color = LogCalTheme.colors.mutedText, style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "${NumberUtils.formatNumber(uiState.weeklyAverageCalories.toInt())} cal",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = LogCalTheme.colors.primaryText
-                )
-            }
         }
 
         // 7. Daily Goal & Streak Tiles
@@ -627,61 +638,111 @@ private fun RingProgress(
 }
 
 @Composable
+private fun MacroLinearRow(label: String, current: Int, goal: Int, percent: Int, progressColor: Color) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = LogCalTheme.colors.primaryText)
+            Spacer(modifier = Modifier.weight(1f))
+            Text("$current/${goal}g", style = MaterialTheme.typography.bodyMedium, color = LogCalTheme.colors.mutedText)
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("${percent.coerceAtMost(999)}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = progressColor)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(LogCalTheme.colors.cardBorder)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction = (percent / 100f).coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(progressColor)
+            )
+        }
+    }
+}
+
+@Composable
 private fun WeeklyBarChart(
     values: List<Int>,
     labels: List<String>,
     selectedIdx: Int,
-    onBarSelected: (Int) -> Unit
+    onBarSelected: (Int) -> Unit,
+    dailyGoal: Int
 ) {
-    val max = values.maxOrNull()?.coerceAtLeast(1) ?: 1
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        values.forEachIndexed { idx, value ->
-            val heightDp = (value.toFloat() / max.toFloat() * 60f).coerceAtLeast(4f).dp
-            val isSelected = idx == selectedIdx
-            val barColor = if (isSelected) LogCalTheme.colors.primaryGreen else LogCalTheme.colors.mintGreen.copy(alpha = 0.5f)
+    val max = values.maxOrNull()?.coerceAtLeast(dailyGoal)?.coerceAtLeast(1) ?: 1
+    
+    Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+        // Goal Line
+        if (dailyGoal > 0) {
+            val chartTopPadding = 30.dp
+            val availableHeight = 160.dp - chartTopPadding - 30.dp // 30dp for bottom labels
+            val goalY = chartTopPadding + availableHeight - (availableHeight * (dailyGoal.toFloat() / max.toFloat()))
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawLine(
+                    color = Color.Gray.copy(alpha = 0.4f),
+                    start = Offset(0f, goalY.toPx()),
+                    end = Offset(size.width, goalY.toPx()),
+                    strokeWidth = 3f,
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            val chartTopPadding = 30.dp
+            val availableHeight = 160.dp - chartTopPadding - 30.dp
             
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onBarSelected(idx) },
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Calorie label above the bar (only if selected)
-                Box(
-                    modifier = Modifier.height(18.dp),
-                    contentAlignment = Alignment.Center
+            values.forEachIndexed { idx, value ->
+                val heightDp = if (value == 0) 4.dp else (value.toFloat() / max.toFloat() * availableHeight.value).coerceAtLeast(4f).dp
+                val isSelected = idx == selectedIdx
+                val isOverGoal = value > dailyGoal && dailyGoal > 0
+                val barColor = if (isOverGoal) Color(0xFFE57373) else LogCalTheme.colors.primaryGreen
+                val displayColor = if (isSelected) barColor else barColor.copy(alpha = 0.5f)
+                
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onBarSelected(idx) },
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (isSelected && value > 0) {
-                        Text(
-                            text = NumberUtils.formatNumber(value),
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                            fontWeight = FontWeight.Bold,
-                            color = LogCalTheme.colors.primaryText,
-                            maxLines = 1
+                    // Top label
+                    Box(modifier = Modifier.height(20.dp), contentAlignment = Alignment.BottomCenter) {
+                        if (value > 0) {
+                            Text(
+                                text = NumberUtils.formatNumber(value),
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) LogCalTheme.colors.primaryText else LogCalTheme.colors.mutedText,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Box(modifier = Modifier.height(availableHeight).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                        Box(
+                            modifier = Modifier
+                                .width(18.dp)
+                                .height(heightDp)
+                                .clip(CircleShape)
+                                .background(displayColor)
                         )
                     }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(modifier = Modifier.height(60.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(heightDp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(barColor)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = labels.getOrElse(idx) { "-" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) LogCalTheme.colors.primaryText else LogCalTheme.colors.mutedText
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = labels.getOrElse(idx) { "-" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) LogCalTheme.colors.primaryText else LogCalTheme.colors.mutedText
-                )
             }
         }
     }
