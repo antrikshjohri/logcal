@@ -83,6 +83,7 @@ import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
 import com.serene.logcal.ui.theme.LogCalTheme
+import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.history.HistoryViewModel
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -282,7 +283,7 @@ fun MealEditScreen(
                             }
                         } else {
                             Text(
-                                "${editedCalories.toInt()} cal",
+                                "${NumberUtils.formatNumber(editedCalories.toInt())} cal",
                                 style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
                                 color = colors.primaryText
                             )

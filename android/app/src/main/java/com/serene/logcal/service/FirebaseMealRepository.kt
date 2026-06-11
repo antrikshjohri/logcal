@@ -20,12 +20,12 @@ class FirebaseMealRepository(
     suspend fun logMeal(
         foodText: String,
         mealType: MealType,
-        imageBase64: String? = null,
+        imageBase64s: List<String> = emptyList(),
         country: String? = null,
     ): Result<MealLogResponse> {
-        val hasImage = !imageBase64.isNullOrBlank()
+        val hasImages = imageBase64s.isNotEmpty()
         DebugLogger.d(
-            "DEBUG: [FirebaseMealRepository] logMeal() start foodTextLen=${foodText.length} mealType=${mealType.rawValue} hasImage=$hasImage imageBase64Len=${imageBase64?.length ?: 0}"
+            "DEBUG: [FirebaseMealRepository] logMeal() start foodTextLen=${foodText.length} mealType=${mealType.rawValue} hasImages=$hasImages imageCount=${imageBase64s.size}"
         )
 
         return try {
@@ -33,8 +33,9 @@ class FirebaseMealRepository(
                 "foodText" to foodText,
                 "mealType" to mealType.rawValue
             )
-            if (hasImage) {
-                payload["imageBase64"] = imageBase64!!
+            if (hasImages) {
+                payload["imageBase64s"] = imageBase64s
+                payload["imageBase64"] = imageBase64s.first()
             }
             if (!country.isNullOrBlank()) {
                 payload["country"] = country

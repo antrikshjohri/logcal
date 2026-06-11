@@ -8,13 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -115,37 +119,54 @@ private fun AppRoot() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = LogCalTheme.colors.cardBackground
+            ) {
+                val navBarColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = LogCalTheme.colors.primaryGreen,
+                    selectedTextColor = LogCalTheme.colors.primaryGreen,
+                    indicatorColor = LogCalTheme.colors.softAccentBackground,
+                    unselectedIconColor = LogCalTheme.colors.mutedText,
+                    unselectedTextColor = LogCalTheme.colors.mutedText
+                )
+
                 NavigationBarItem(
                     selected = selectedTab == RootTab.HOME,
                     onClick = { selectedTab = RootTab.HOME },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                    label = { Text("Home") }
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Home", fontWeight = FontWeight.Bold) },
+                    colors = navBarColors
                 )
                 NavigationBarItem(
                     selected = selectedTab == RootTab.LOG,
                     onClick = { selectedTab = RootTab.LOG },
-                    icon = { Icon(Icons.Default.Restaurant, contentDescription = "Log") },
-                    label = { Text("Log") }
+                    icon = { Icon(Icons.Default.AddCircle, contentDescription = "Log", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Log", fontWeight = FontWeight.Bold) },
+                    colors = navBarColors
                 )
                 NavigationBarItem(
                     selected = selectedTab == RootTab.HISTORY,
                     onClick = { selectedTab = RootTab.HISTORY },
-                    icon = { Icon(Icons.Default.History, contentDescription = "History") },
-                    label = { Text("History") }
+                    icon = { Icon(Icons.Default.List, contentDescription = "History", modifier = Modifier.size(28.dp)) },
+                    label = { Text("History", fontWeight = FontWeight.Bold) },
+                    colors = navBarColors
                 )
                 NavigationBarItem(
                     selected = selectedTab == RootTab.PROFILE,
                     onClick = { selectedTab = RootTab.PROFILE },
-                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                    label = { Text("Profile") }
+                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Profile", fontWeight = FontWeight.Bold) },
+                    colors = navBarColors
                 )
             }
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (selectedTab) {
-                RootTab.HOME -> DashboardScreen(viewModel = dashboardViewModel)
+                RootTab.HOME -> DashboardScreen(
+                    viewModel = dashboardViewModel,
+                    onNavigateToHistory = { selectedTab = RootTab.HISTORY }
+                )
                 RootTab.LOG -> LogMealScreen(viewModel = logViewModel)
                 RootTab.HISTORY -> HistoryScreen(
                     viewModel = historyViewModel,

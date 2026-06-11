@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +82,7 @@ import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.HistoryDaySection
 import com.serene.logcal.util.buildDaySections
+import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.history.HistoryViewModel
 import com.serene.logcal.ui.theme.LogCalTheme
 import java.time.Instant
@@ -254,6 +257,7 @@ private fun HistoryListScreen(
             )
 
             // Anonymous guest mode warning card
+            // Anonymous guest mode warning card
             if (isAnonymous) {
                 Row(
                     modifier = Modifier
@@ -263,21 +267,30 @@ private fun HistoryListScreen(
                         .background(colors.cardBackground)
                         .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Warning,
+                        imageVector = Icons.Default.Warning,
                         contentDescription = "Warning",
                         tint = colors.warningAmber,
                         modifier = Modifier.size(18.dp)
                     )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Cloud backup is disabled in Guest Mode.",
+                        text = "Cloud backup is disabled in Guest Mode.",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = colors.primaryText,
                         modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "Sign In",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.primaryGreen,
+                        modifier = Modifier.clickable {
+                            FirebaseAuth.getInstance().signOut()
+                        }
                     )
                 }
             }
@@ -293,25 +306,48 @@ private fun HistoryListScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(32.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No meals logged yet", style = MaterialTheme.typography.titleMedium, color = colors.primaryText)
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(colors.primaryGreen.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            tint = colors.primaryGreen,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        "Log meals from the Log tab and they will appear here.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.mutedText,
-                        modifier = Modifier.padding(top = 8.dp),
+                        text = "No meals logged yet",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.primaryText,
                         textAlign = TextAlign.Center
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Log meals from the Log tab and they will appear here in your calendar history.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = onNavigateToLogTab,
                         colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
-                        modifier = Modifier.padding(top = 16.dp),
-                        shape = RoundedCornerShape(22.dp)
+                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier.height(48.dp).padding(horizontal = 16.dp)
                     ) {
-                        Text("Log your first meal", color = Color.White)
+                        Text("Go to Log Tab", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     }
                 }
                 return@Scaffold
@@ -415,7 +451,15 @@ private fun DaySectionCard(
     val showMacros = sumProtein > 0 || sumCarbs > 0 || sumFat > 0
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = colors.shadowColor,
+                spotColor = colors.shadowColor
+            ),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
         border = BorderStroke(1.dp, colors.cardBorder)
     ) {
@@ -433,7 +477,7 @@ private fun DaySectionCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "${section.totalCalories.toInt()} cal",
+                            "${NumberUtils.formatNumber(section.totalCalories.toInt())} cal",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
                             color = colors.primaryGreen
@@ -533,12 +577,20 @@ private fun HistoryMealRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (meal.hasImage) {
-                    Icon(
-                        Icons.Default.Image,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = colors.primaryGreen
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colors.softAccentBackground)
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = colors.primaryGreen
+                        )
+                    }
                 }
                 Text(
                     meal.foodText,
@@ -546,7 +598,8 @@ private fun HistoryMealRow(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = colors.primaryText
+                    color = colors.primaryText,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
             }
 
@@ -586,7 +639,7 @@ private fun HistoryMealRow(
         }
 
         Text(
-            "${meal.totalCalories.toInt()}",
+            NumberUtils.formatNumber(meal.totalCalories.toInt()),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = colors.primaryGreen

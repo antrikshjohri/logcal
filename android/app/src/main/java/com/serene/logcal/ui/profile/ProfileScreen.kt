@@ -6,6 +6,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -228,7 +231,13 @@ fun ProfileScreen() {
     AnimatedContent(
         targetState = activeScreen,
         transitionSpec = {
-            fadeIn() togetherWith fadeOut()
+            if (targetState.ordinal > initialState.ordinal) {
+                slideInHorizontally(initialOffsetX = { width -> width }) togetherWith
+                        slideOutHorizontally(targetOffsetX = { width -> -width })
+            } else {
+                slideInHorizontally(initialOffsetX = { width -> -width }) togetherWith
+                        slideOutHorizontally(targetOffsetX = { width -> width })
+            }
         },
         label = "ProfileTabNavigation"
     ) { screen ->
@@ -333,6 +342,12 @@ private fun MainProfileView(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(12.dp),
+                            ambientColor = colors.shadowColor,
+                            spotColor = colors.shadowColor
+                        )
                         .background(colors.cardBackground, RoundedCornerShape(12.dp))
                         .border(1.dp, colors.warningAmber.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                         .padding(16.dp),
@@ -375,6 +390,12 @@ private fun MainProfileView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        ambientColor = colors.shadowColor,
+                        spotColor = colors.shadowColor
+                    )
                     .background(colors.cardBackground, RoundedCornerShape(16.dp))
                     .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
                     .padding(20.dp),
@@ -430,6 +451,12 @@ private fun MainProfileView(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(12.dp),
+                            ambientColor = colors.shadowColor,
+                            spotColor = colors.shadowColor
+                        )
                         .background(colors.cardBackground, RoundedCornerShape(12.dp))
                         .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                 ) {
@@ -474,6 +501,12 @@ private fun MainProfileView(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(12.dp),
+                            ambientColor = colors.shadowColor,
+                            spotColor = colors.shadowColor
+                        )
                         .background(colors.cardBackground, RoundedCornerShape(12.dp))
                         .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                 ) {
@@ -492,6 +525,12 @@ private fun MainProfileView(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(12.dp),
+                            ambientColor = colors.shadowColor,
+                            spotColor = colors.shadowColor
+                        )
                         .background(colors.cardBackground, RoundedCornerShape(12.dp))
                         .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                 ) {

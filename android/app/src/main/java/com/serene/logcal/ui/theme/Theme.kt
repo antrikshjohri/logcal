@@ -10,6 +10,39 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.serene.logcal.R
+
+val Nunito = FontFamily(
+    Font(R.font.nunito_regular, FontWeight.Normal),
+    Font(R.font.nunito_medium, FontWeight.Medium),
+    Font(R.font.nunito_semibold, FontWeight.SemiBold),
+    Font(R.font.nunito_bold, FontWeight.Bold)
+)
+
+val AppTypography = Typography().run {
+    copy(
+        displayLarge = displayLarge.copy(fontFamily = Nunito),
+        displayMedium = displayMedium.copy(fontFamily = Nunito),
+        displaySmall = displaySmall.copy(fontFamily = Nunito),
+        headlineLarge = headlineLarge.copy(fontFamily = Nunito),
+        headlineMedium = headlineMedium.copy(fontFamily = Nunito),
+        headlineSmall = headlineSmall.copy(fontFamily = Nunito),
+        titleLarge = titleLarge.copy(fontFamily = Nunito),
+        titleMedium = titleMedium.copy(fontFamily = Nunito),
+        titleSmall = titleSmall.copy(fontFamily = Nunito),
+        bodyLarge = bodyLarge.copy(fontFamily = Nunito),
+        bodyMedium = bodyMedium.copy(fontFamily = Nunito),
+        bodySmall = bodySmall.copy(fontFamily = Nunito),
+        labelLarge = labelLarge.copy(fontFamily = Nunito),
+        labelMedium = labelMedium.copy(fontFamily = Nunito),
+        labelSmall = labelSmall.copy(fontFamily = Nunito)
+    )
+}
+
 data class LogCalColors(
     val primaryGreen: Color = PrimaryGreen,
     val mintGreen: Color = MintGreen,
@@ -111,6 +144,7 @@ fun LogCalTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
+            typography = AppTypography,
             content = content
         )
     }

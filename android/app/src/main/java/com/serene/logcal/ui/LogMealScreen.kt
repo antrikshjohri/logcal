@@ -31,6 +31,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material.icons.filled.UnfoldMore
+import com.serene.logcal.ui.auth.AuthDialog
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -85,6 +93,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -113,6 +122,7 @@ import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
+import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.LogViewModel
 import kotlinx.coroutines.delay
 import java.io.File
@@ -147,6 +157,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
     var renameTitleText by remember { mutableStateOf("") }
     var showAllFavoritesSheet by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
+    var showAuthDialog by remember { mutableStateOf(false) }
 
     val confettiComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.confetti_animation)
@@ -156,11 +167,14 @@ fun LogMealScreen(viewModel: LogViewModel) {
         isPlaying = showConfetti,
         iterations = 1
     )
+    val loadingComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.loading_animation)
+    )
 
     // Launchers
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && pendingCameraUri != null) {
-            viewModel.setAttachedImageUri(pendingCameraUri.toString())
+            viewModel.addAttachedImageUri(pendingCameraUri.toString())
         }
     }
 
@@ -176,7 +190,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            viewModel.setAttachedImageUri(uri.toString())
+            viewModel.addAttachedImageUri(uri.toString())
         }
     }
 
@@ -220,7 +234,13 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
     val colors = LogCalTheme.colors
     val dateDisplayFormatter = remember { DateTimeFormatter.ofPattern("dd MMM yyyy") }
-    val isAnonymous = FirebaseAuth.getInstance().currentUser?.isAnonymous == true
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val isAnonymous = currentUser?.isAnonymous == true
+    val name = if (currentUser != null && !isAnonymous) {
+        currentUser.displayName?.substringBefore(" ") ?: "there"
+    } else {
+        null
+    }
 
     Scaffold(containerColor = colors.background) { innerPadding ->
         Box(
@@ -238,10 +258,17 @@ fun LogMealScreen(viewModel: LogViewModel) {
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Log Calories",
+                    text = "Log",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = colors.primaryText
+                )
+                val greeting = if (name != null) "What's on your plate, $name?" else "What's on your plate?"
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.mutedText
                 )
 
                 if (!uiState.isAuthReady) {
@@ -265,12 +292,29 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                "DATE",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.mutedText
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "DATE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.mutedText
+                                )
+                                if (uiState.selectedDate != LocalDate.now()) {
+                                    Text(
+                                        "↩ Today",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.primaryGreen,
+                                        modifier = Modifier.clickable {
+                                            viewModel.setSelectedDate(LocalDate.now())
+                                        }
+                                    )
+                                }
+                            }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -353,7 +397,11 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         .height(44.dp)
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(colors.cardBackground)
-                                        .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
+                                        .border(
+                                            if (dropdownExpanded) androidx.compose.foundation.BorderStroke(1.5.dp, colors.primaryGreen.copy(alpha = 0.5f))
+                                            else androidx.compose.foundation.BorderStroke(1.dp, colors.cardBorder),
+                                            RoundedCornerShape(10.dp)
+                                        )
                                         .onGloballyPositioned { coordinates ->
                                             mealTypeButtonWidth = with(density) { coordinates.size.width.toDp() }
                                         }
@@ -390,7 +438,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Icon(
-                                            Icons.Default.KeyboardArrowDown,
+                                            Icons.Default.UnfoldMore,
                                             contentDescription = null,
                                             tint = colors.primaryGreen,
                                             modifier = Modifier.size(16.dp)
@@ -428,6 +476,16 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                                     color = if (isSelected) colors.primaryGreen else colors.primaryText
                                                 )
+                                            },
+                                            trailingIcon = {
+                                                if (isSelected) {
+                                                    Icon(
+                                                        Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        tint = colors.primaryGreen,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
                                             },
                                             onClick = {
                                                 dropdownExpanded = false
@@ -490,7 +548,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                             color = colors.primaryText
                                         )
                                         Text(
-                                            text = "${fav.totalCalories.toInt()} cal",
+                                            text = "${NumberUtils.formatNumber(fav.totalCalories.toInt())} cal",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colors.mutedText
                                         )
@@ -518,33 +576,40 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                 .padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Attached image thumbnail
-                            uiState.attachedImageUri?.let { imageUri ->
-                                Box(modifier = Modifier.size(80.dp)) {
-                                    AsyncImage(
-                                        model = imageUri,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(colors.insetBackground)
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = 6.dp, y = (-6).dp)
-                                            .size(24.dp)
-                                            .background(Color.White, CircleShape)
-                                            .border(1.dp, Color(0xFFCCCCCC), CircleShape)
-                                            .clickable { viewModel.clearAttachedImage() },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = null,
-                                            tint = Color.DarkGray,
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                            // Attached image thumbnails gallery
+                            if (uiState.attachedImageUris.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    uiState.attachedImageUris.forEach { imageUri ->
+                                        Box(modifier = Modifier.size(72.dp)) {
+                                            AsyncImage(
+                                                model = imageUri,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(colors.insetBackground)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .offset(x = 6.dp, y = (-6).dp)
+                                                    .size(20.dp)
+                                                    .background(Color.White, CircleShape)
+                                                    .border(1.dp, Color(0xFFCCCCCC), CircleShape)
+                                                    .clickable { viewModel.removeAttachedImageUri(imageUri) },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Close,
+                                                    contentDescription = "Remove",
+                                                    tint = Color.DarkGray,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -553,7 +618,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(100.dp)
+                                    .heightIn(min = 80.dp)
                             ) {
                                 if (uiState.foodText.isBlank() && !uiState.isListening && !uiState.isTranscribingSpeech) {
                                     Text(
@@ -619,7 +684,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                     .width(3.dp)
                                                     .height(barHeight)
                                                     .clip(RoundedCornerShape(1.dp))
-                                                    .background(colors.primaryGreen)
+                                                    .background(Color(0xFFFFA33C))
                                             )
                                         }
                                     }
@@ -651,7 +716,12 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         },
                                         modifier = Modifier
                                             .size(36.dp)
-                                            .background(colors.warningAmber, CircleShape)
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(Color(0xFFFFA33C), Color(0xFFFF5E00))
+                                                ),
+                                                shape = CircleShape
+                                            )
                                     ) {
                                         Icon(
                                             Icons.Default.ArrowUpward,
@@ -746,7 +816,18 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         },
                                         modifier = Modifier
                                             .size(44.dp)
-                                            .background(colors.warningAmber, CircleShape),
+                                            .shadow(
+                                                elevation = 4.dp,
+                                                shape = CircleShape,
+                                                ambientColor = colors.shadowColor,
+                                                spotColor = colors.shadowColor
+                                            )
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(Color(0xFFFFA33C), Color(0xFFFF5E00))
+                                                ),
+                                                shape = CircleShape
+                                            ),
                                         enabled = !uiState.isTranscribingSpeech
                                     ) {
                                         Icon(
@@ -762,7 +843,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                     }
 
                     // Log Meal Submit Button
-                    val canSubmit = (uiState.foodText.trim().isNotEmpty() || uiState.attachedImageUri != null) && !uiState.isLoading
+                     val canSubmit = (uiState.foodText.trim().isNotEmpty() || uiState.attachedImageUris.isNotEmpty()) && !uiState.isLoading
                     Button(
                         onClick = {
                             focusManager.clearFocus()
@@ -777,16 +858,26 @@ fun LogMealScreen(viewModel: LogViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
+                            .run {
+                                if (canSubmit) {
+                                    shadow(
+                                        elevation = 8.dp,
+                                        shape = RoundedCornerShape(25.dp),
+                                        ambientColor = colors.primaryGreen.copy(alpha = 0.4f),
+                                        spotColor = colors.primaryGreen.copy(alpha = 0.6f)
+                                    )
+                                } else this
+                            }
                     ) {
                         if (uiState.isLoading) {
                             Row(
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
+                                LottieAnimation(
+                                    composition = loadingComposition,
+                                    iterations = Integer.MAX_VALUE,
+                                    modifier = Modifier.size(40.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(LOG_MEAL_LOADING_LABEL, color = Color.White)
@@ -804,7 +895,14 @@ fun LogMealScreen(viewModel: LogViewModel) {
                         var quickEditVal by remember { mutableStateOf("") }
 
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(
+                                    elevation = 6.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    ambientColor = colors.shadowColor,
+                                    spotColor = colors.shadowColor
+                                ),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
                             border = BorderStroke(1.dp, colors.cardBorder)
@@ -910,11 +1008,23 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                 color = colors.mutedText
                                             )
                                         }
+                                        Button(
+                                            onClick = { showAuthDialog = true },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = colors.primaryGreen,
+                                                contentColor = Color.White
+                                            ),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(30.dp)
+                                        ) {
+                                            Text("Sign In", style = MaterialTheme.typography.labelMedium)
+                                        }
                                     }
                                 }
 
                                 Text(
-                                    "${result.totalCalories.toInt()} cal",
+                                    "${NumberUtils.formatNumber(result.totalCalories.toInt())} cal",
                                     style = MaterialTheme.typography.displaySmall,
                                     fontWeight = FontWeight.Black,
                                     color = colors.primaryText
@@ -959,7 +1069,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                     color = colors.primaryText
                                                 )
                                                 Text(
-                                                    "${item.calories.toInt()} cal",
+                                                    "${NumberUtils.formatNumber(item.calories.toInt())} cal",
                                                     fontWeight = FontWeight.Bold,
                                                     color = colors.primaryGreen
                                                 )
@@ -1099,151 +1209,152 @@ fun LogMealScreen(viewModel: LogViewModel) {
     }
 
     // SavedMealLogSheet Dialog implementation
+    // SavedMealLogSheet BottomSheet implementation
     selectedSavedMealForDialog?.let { savedMeal ->
         var servingMultiplier by remember { mutableStateOf(1.0) }
         var isRenamingFav by remember { mutableStateOf(false) }
         var favRenameText by remember { mutableStateOf("") }
         var showDeleteConfirm by remember { mutableStateOf(false) }
 
-        Dialog(onDismissRequest = { selectedSavedMealForDialog = null }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.cardBackground,
-                border = BorderStroke(1.dp, colors.cardBorder),
+        ModalBottomSheet(
+            onDismissRequest = { selectedSavedMealForDialog = null },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = colors.cardBackground,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.cardBorder) }
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    savedMeal.title,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = colors.primaryText
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Rename",
-                                    tint = colors.primaryGreen,
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clickable {
-                                            favRenameText = savedMeal.title
-                                            isRenamingFav = true
-                                        }
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            val scaledCals = (savedMeal.totalCalories * servingMultiplier).toInt()
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "$scaledCals cal · ${savedMeal.mealType.replaceFirstChar { it.uppercase() }}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colors.mutedText
+                                savedMeal.title,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = colors.primaryText
                             )
-                        }
-
-                        IconButton(
-                            onClick = { showDeleteConfirm = true }
-                        ) {
+                            Spacer(modifier = Modifier.width(6.dp))
                             Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete favorite",
-                                tint = colors.dangerRed
+                                Icons.Default.Edit,
+                                contentDescription = "Rename",
+                                tint = colors.primaryGreen,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable {
+                                        favRenameText = savedMeal.title
+                                        isRenamingFav = true
+                                    }
                             )
                         }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val scaledCals = (savedMeal.totalCalories * servingMultiplier).toInt()
+                        Text(
+                            "${NumberUtils.formatNumber(scaledCals)} cal · ${savedMeal.mealType.replaceFirstChar { it.uppercase() }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.mutedText
+                        )
                     }
 
-                    // Serving selection buttons (0.5x, 1x, 1.5x, 2x)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            "Serving size",
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.primaryText
+                    IconButton(
+                        onClick = { showDeleteConfirm = true }
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete favorite",
+                            tint = colors.dangerRed
                         )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(38.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(colors.insetBackground)
-                                .padding(2.dp)
-                        ) {
-                            listOf(0.5, 1.0, 1.5, 2.0).forEach { mult ->
-                                val label = when (mult) {
-                                    0.5 -> "0.5x"
-                                    1.0 -> "1.0x"
-                                    1.5 -> "1.5x"
-                                    2.0 -> "2.0x"
-                                    else -> "${mult}x"
-                                }
-                                val selected = servingMultiplier == mult
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(if (selected) colors.cardBackground else Color.Transparent)
-                                        .clickable { servingMultiplier = mult }
-                                        .border(
-                                            if (selected) BorderStroke(1.dp, colors.cardBorder) else BorderStroke(0.dp, Color.Transparent),
-                                            RoundedCornerShape(6.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (selected) colors.primaryText else colors.mutedText
-                                    )
-                                }
+                    }
+                }
+
+                // Serving selection buttons (0.5x, 1x, 1.5x, 2x)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Serving size",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.primaryText
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(colors.insetBackground)
+                            .padding(2.dp)
+                    ) {
+                        listOf(0.5, 1.0, 1.5, 2.0).forEach { mult ->
+                            val label = when (mult) {
+                                0.5 -> "0.5x"
+                                1.0 -> "1.0x"
+                                1.5 -> "1.5x"
+                                2.0 -> "2.0x"
+                                else -> "${mult}x"
+                            }
+                            val selected = servingMultiplier == mult
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) colors.cardBackground else Color.Transparent)
+                                    .clickable { servingMultiplier = mult }
+                                    .border(
+                                        if (selected) BorderStroke(1.dp, colors.cardBorder) else BorderStroke(0.dp, Color.Transparent),
+                                        RoundedCornerShape(6.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (selected) colors.primaryText else colors.mutedText
+                                )
                             }
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    // Buttons
-                    Button(
-                        onClick = {
-                            viewModel.logSavedMealAsIs(savedMeal, servingMultiplier)
-                            selectedSavedMealForDialog = null
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text("Log", fontWeight = FontWeight.Bold, color = Color.White)
-                    }
+                // Buttons
+                Button(
+                    onClick = {
+                        viewModel.logSavedMealAsIs(savedMeal, servingMultiplier)
+                        selectedSavedMealForDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text("Log", fontWeight = FontWeight.Bold, color = Color.White)
+                }
 
-                    Button(
-                        onClick = {
-                            viewModel.prepareSavedMealForEditing(savedMeal)
-                            selectedSavedMealForDialog = null
-                            composerFocusRequester.requestFocus()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.insetBackground),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text("Edit before logging", fontWeight = FontWeight.Bold, color = colors.primaryGreen)
-                    }
+                Button(
+                    onClick = {
+                        viewModel.prepareSavedMealForEditing(savedMeal)
+                        selectedSavedMealForDialog = null
+                        composerFocusRequester.requestFocus()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.insetBackground),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text("Edit before logging", fontWeight = FontWeight.Bold, color = colors.primaryGreen)
                 }
             }
         }
@@ -1465,6 +1576,17 @@ fun LogMealScreen(viewModel: LogViewModel) {
     // Feedback Dialog overlay
     if (showFeedbackDialog) {
         FeedbackDialog(onDismiss = { showFeedbackDialog = false })
+    }
+
+    // Auth Dialog overlay
+    if (showAuthDialog) {
+        AuthDialog(
+            onDismiss = { showAuthDialog = false },
+            onAuthSuccess = {
+                showAuthDialog = false
+                viewModel.refreshAuth()
+            }
+        )
     }
 }
 
