@@ -31,6 +31,10 @@ import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
 
+enum class SpeechTarget {
+    MAIN, QUICK_EDIT
+}
+
 data class LogUiState(
     val isAuthReady: Boolean = false,
     val isLoading: Boolean = false,
@@ -39,6 +43,7 @@ data class LogUiState(
     val selectedMealType: MealType = MealType.BREAKFAST,
     val isMealTypeManuallySet: Boolean = false,
     val foodText: String = "",
+    val quickEditFoodText: String = "",
     val attachedImageUris: List<String> = emptyList(),
     val latestResult: MealLogResponse? = null,
     val lastLoggedMealId: String? = null,
@@ -46,6 +51,7 @@ data class LogUiState(
     val isListening: Boolean = false,
     val isTranscribingSpeech: Boolean = false,
     val speechErrorMessage: String? = null,
+    val speechTarget: SpeechTarget = SpeechTarget.MAIN,
     val waveformSamples: List<Float> = List(64) { 0.08f }
 )
 
@@ -305,19 +311,20 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Speech Recognition ---
 
-    fun toggleSpeechRecognition() {
+    fun toggleSpeechRecognition(target: SpeechTarget = SpeechTarget.MAIN) {
         if (_uiState.value.isTranscribingSpeech) return
 
         if (_uiState.value.isListening) {
             stopSpeechRecognition()
         } else {
-            startSpeechRecognition()
+            startSpeechRecognition(target)
         }
     }
 
-    private fun startSpeechRecognition() {
+    private fun startSpeechRecognition(target: SpeechTarget = SpeechTarget.MAIN) {
         _uiState.value = _uiState.value.copy(
             isListening = true,
+            speechTarget = target,
             speechErrorMessage = null,
             waveformSamples = List(64) { 0.08f }
         )
@@ -362,7 +369,11 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val text = matches?.firstOrNull().orEmpty()
                         if (text.isNotBlank()) {
-                            appendFoodText(text)
+                            if (_uiState.value.speechTarget == SpeechTarget.QUICK_EDIT) {
+                                appendQuickEditFoodText(text)
+                            } else {
+                                appendFoodText(text)
+                            }
                         }
                         _uiState.value = _uiState.value.copy(isTranscribingSpeech = false)
                     }
@@ -395,6 +406,18 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             isTranscribingSpeech = false,
             waveformSamples = List(64) { 0.08f }
         )
+    }
+
+    fun onQuickEditFoodTextChanged(newText: String) {
+        _uiState.value = _uiState.value.copy(quickEditFoodText = newText)
+    }
+
+    private fun appendQuickEditFoodText(recognizedText: String) {
+        val incoming = recognizedText.trim()
+        if (incoming.isEmpty()) return
+        val current = _uiState.value.quickEditFoodText.trim()
+        val next = if (current.isEmpty()) incoming else "$current $incoming"
+        _uiState.value = _uiState.value.copy(quickEditFoodText = next)
     }
 
     // --- Logging ---
@@ -482,6 +505,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         lastLoggedMealId = entryId,
                         errorMessage = null,
                         foodText = "",
+                        quickEditFoodText = "",
                         attachedImageUris = emptyList()
                     )
                 },
@@ -541,6 +565,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = _uiState.value.copy(
                         isRefiningMeal = false,
                         latestResult = response,
+                        quickEditFoodText = "",
                         errorMessage = null
                     )
                 },

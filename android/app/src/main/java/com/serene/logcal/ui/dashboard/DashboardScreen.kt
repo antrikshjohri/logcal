@@ -1,6 +1,6 @@
 package com.serene.logcal.ui.dashboard
 
-import android.app.DatePickerDialog
+import com.serene.logcal.ui.components.CalendarBottomSheet
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,11 +48,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.TextButton
+
 
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -252,34 +248,11 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
         }
 
         if (showDatePicker) {
-            val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = java.time.ZoneId.systemDefault().rules.getOffset(java.time.Instant.now()).totalSeconds * 1000L + selectedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+            CalendarBottomSheet(
+                initialDate = selectedDate,
+                onDateSelected = { viewModel.setSelectedDate(it) },
+                onDismiss = { showDatePicker = false }
             )
-            DatePickerDialog(
-                onDismissRequest = { showDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val localDate = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
-                            viewModel.setSelectedDate(localDate)
-                        }
-                        showDatePicker = false
-                    }) {
-                        Text("Close", color = LogCalTheme.colors.primaryGreen, fontWeight = FontWeight.Bold)
-                    }
-                },
-                colors = DatePickerDefaults.colors(containerColor = LogCalTheme.colors.cardBackground)
-            ) {
-                DatePicker(
-                    state = datePickerState,
-                    colors = DatePickerDefaults.colors(
-                        selectedDayContainerColor = LogCalTheme.colors.primaryGreen,
-                        selectedDayContentColor = Color.White,
-                        todayDateBorderColor = LogCalTheme.colors.primaryGreen,
-                        todayContentColor = LogCalTheme.colors.primaryGreen
-                    )
-                )
-            }
         }
 
         // 2. Guest Warning Banner

@@ -2,7 +2,7 @@ package com.serene.logcal.ui
 
 import com.serene.logcal.ui.profile.FeedbackDialog
 import android.Manifest
-import android.app.DatePickerDialog
+import com.serene.logcal.ui.components.CalendarBottomSheet
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -50,8 +50,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.UTurnLeft
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.OutlinedButton
+import com.serene.logcal.viewmodel.SpeechTarget
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -110,10 +113,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
+
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.window.Dialog
+
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -178,6 +181,12 @@ fun LogMealScreen(viewModel: LogViewModel) {
     )
     val loadingComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.loading_animation)
+    )
+    val loadingProgress by animateLottieCompositionAsState(
+        composition = loadingComposition,
+        isPlaying = uiState.isLoading,
+        iterations = Int.MAX_VALUE,
+        restartOnPlay = true
     )
 
     // Launchers
@@ -742,7 +751,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                     .padding(horizontal = 20.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (uiState.isListening) {
+                                if (uiState.isListening && uiState.speechTarget == SpeechTarget.MAIN) {
                                     // Cancel button
                                     Box(
                                         modifier = Modifier
@@ -886,7 +895,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
                                     Spacer(modifier = Modifier.weight(1f))
 
-                                    if (uiState.isTranscribingSpeech) {
+                                    if (uiState.isTranscribingSpeech && uiState.speechTarget == SpeechTarget.MAIN) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -958,8 +967,8 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (canSubmit) colors.primaryGreen else colors.primaryGreen.copy(alpha = 0.12f),
                                 contentColor = if (canSubmit) Color.White else colors.primaryGreen.copy(alpha = 0.4f),
-                                disabledContainerColor = colors.primaryGreen.copy(alpha = 0.12f),
-                                disabledContentColor = colors.primaryGreen.copy(alpha = 0.4f)
+                                disabledContainerColor = if (uiState.isLoading) Color.Gray.copy(alpha = 0.3f) else colors.primaryGreen.copy(alpha = 0.12f),
+                                disabledContentColor = if (uiState.isLoading) Color.White else colors.primaryGreen.copy(alpha = 0.4f)
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -977,16 +986,15 @@ fun LogMealScreen(viewModel: LogViewModel) {
                         ) {
                             if (uiState.isLoading) {
                                 Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    LottieAnimation(
-                                        composition = loadingComposition,
-                                        iterations = Integer.MAX_VALUE,
-                                        modifier = Modifier.size(40.dp)
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(LOG_MEAL_LOADING_LABEL, color = Color.White)
+                                    Text("Logging...", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp))
                                 }
                             } else {
                                 Text("Log Meal", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp))
@@ -999,7 +1007,6 @@ fun LogMealScreen(viewModel: LogViewModel) {
                         var isSaved by remember(savedMeals, uiState.lastLoggedMealId) {
                             mutableStateOf(savedMeals.any { it.sourceMealId == uiState.lastLoggedMealId })
                         }
-                        var quickEditVal by remember { mutableStateOf("") }
 
                         Card(
                             modifier = Modifier
@@ -1220,60 +1227,185 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         .background(colors.cardBorder)
                                 )
 
-                                // Inline quick edit correction field
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                // iOS-like Quick Edit Section
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(colors.cardBackground, RoundedCornerShape(16.dp))
+                                        .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    OutlinedTextField(
-                                        value = quickEditVal,
-                                        onValueChange = { quickEditVal = it },
-                                        placeholder = { Text("Type correction...", color = colors.quietText) },
-                                        singleLine = true,
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = colors.primaryGreen,
-                                            unfocusedBorderColor = colors.cardBorder,
-                                            focusedContainerColor = colors.insetBackground,
-                                            unfocusedContainerColor = colors.insetBackground
-                                        ),
-                                        modifier = Modifier.weight(1f),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                        keyboardActions = KeyboardActions(
-                                            onSend = {
-                                                if (quickEditVal.isNotBlank() && !uiState.isRefiningMeal) {
-                                                    viewModel.quickRefineLoggedMeal(quickEditVal)
-                                                    quickEditVal = ""
-                                                }
-                                            }
-                                        )
-                                    )
-                                    IconButton(
-                                        onClick = {
-                                            if (quickEditVal.isNotBlank() && !uiState.isRefiningMeal) {
-                                                viewModel.quickRefineLoggedMeal(quickEditVal)
-                                                quickEditVal = ""
-                                            }
-                                        },
-                                        enabled = !uiState.isRefiningMeal && quickEditVal.isNotBlank(),
-                                        modifier = Modifier
-                                            .size(44.dp)
-                                            .background(colors.primaryGreen, CircleShape)
+                                    // Header: Icon + Titles
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        if (uiState.isRefiningMeal) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(16.dp),
-                                                color = Color.White,
-                                                strokeWidth = 2.dp
-                                            )
-                                        } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(colors.mutedText.copy(alpha = 0.08f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
                                             Icon(
-                                                Icons.Default.Send,
-                                                contentDescription = "Send refinement",
-                                                tint = Color.White,
+                                                imageVector = Icons.Default.Autorenew,
+                                                contentDescription = null,
+                                                tint = colors.mutedText,
                                                 modifier = Modifier.size(18.dp)
                                             )
+                                        }
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "Fix food description",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.primaryText
+                                            )
+                                            Text(
+                                                text = "Tell us what to change about what you ate.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = colors.mutedText
+                                            )
+                                        }
+                                    }
+
+                                    // Input box: Row container with border
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(colors.cardBackground)
+                                            .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        // The TextField (multiline to look good and support 2-5 lines)
+                                        BasicTextField(
+                                            value = uiState.quickEditFoodText,
+                                            onValueChange = { viewModel.onQuickEditFoodTextChanged(it) },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(vertical = 4.dp),
+                                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText),
+                                            enabled = !uiState.isRefiningMeal && !uiState.isListening,
+                                            decorationBox = { innerTextField ->
+                                                if (uiState.quickEditFoodText.isEmpty()) {
+                                                    val placeholderText = when {
+                                                        uiState.isListening && uiState.speechTarget == SpeechTarget.QUICK_EDIT -> "Listening..."
+                                                        uiState.isTranscribingSpeech && uiState.speechTarget == SpeechTarget.QUICK_EDIT -> "Transcribing..."
+                                                        else -> "Correct the food description"
+                                                    }
+                                                    Text(
+                                                        text = placeholderText,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = colors.quietText
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+                                        )
+
+                                        // Mic / Controls block on the right
+                                        val isQuickEditListening = uiState.isListening && uiState.speechTarget == SpeechTarget.QUICK_EDIT
+                                        val isQuickEditTranscribing = uiState.isTranscribingSpeech && uiState.speechTarget == SpeechTarget.QUICK_EDIT
+
+                                        if (isQuickEditListening) {
+                                            // Red Cancel Button
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.Red.copy(alpha = 0.9f))
+                                                    .clickable { viewModel.cancelSpeechRecognition() },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Cancel dictation",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+
+                                        // Mic Toggle Button
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (isQuickEditListening) colors.primaryGreen else colors.mutedText.copy(alpha = 0.08f)
+                                                )
+                                                .clickable(enabled = !uiState.isRefiningMeal && !isQuickEditTranscribing) {
+                                                    if (isQuickEditListening) {
+                                                        viewModel.stopSpeechRecognition()
+                                                    } else {
+                                                        val hasRecordPermission = ContextCompat.checkSelfPermission(
+                                                            context,
+                                                            Manifest.permission.RECORD_AUDIO
+                                                        ) == PackageManager.PERMISSION_GRANTED
+                                                        if (hasRecordPermission) {
+                                                            viewModel.toggleSpeechRecognition(SpeechTarget.QUICK_EDIT)
+                                                        } else {
+                                                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                        }
+                                                    }
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isQuickEditTranscribing) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(18.dp),
+                                                    color = colors.primaryGreen,
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = if (isQuickEditListening) Icons.Default.ArrowUpward else Icons.Default.Mic,
+                                                    contentDescription = if (isQuickEditListening) "Send dictation" else "Start dictation",
+                                                    tint = if (isQuickEditListening) Color.White else colors.primaryGreen,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Full-width update button below the input
+                                    OutlinedButton(
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            viewModel.quickRefineLoggedMeal(uiState.quickEditFoodText)
+                                        },
+                                        enabled = !uiState.isRefiningMeal && uiState.quickEditFoodText.isNotBlank(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = colors.primaryText,
+                                            disabledContentColor = colors.mutedText
+                                        ),
+                                        border = BorderStroke(1.dp, colors.cardBorder)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            if (uiState.isRefiningMeal) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(16.dp),
+                                                    color = colors.primaryGreen,
+                                                    strokeWidth = 2.dp
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Updating...", fontWeight = FontWeight.Bold)
+                                            } else {
+                                                Text("Update description", fontWeight = FontWeight.Bold)
+                                            }
                                         }
                                     }
                                 }
@@ -1876,7 +2008,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
     }
 
     if (showCustomDatePicker) {
-        CustomDatePickerSheet(
+        CalendarBottomSheet(
             initialDate = uiState.selectedDate,
             onDateSelected = { viewModel.setSelectedDate(it) },
             onDismiss = { showCustomDatePicker = false }
@@ -1884,188 +2016,6 @@ fun LogMealScreen(viewModel: LogViewModel) {
     }
 }
 
-@Composable
-private fun CustomDatePickerSheet(
-    initialDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var currentMonth by remember { mutableStateOf(initialDate.withDayOfMonth(1)) }
-    val colors = LogCalTheme.colors
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
-                .clickable(onClick = onDismiss),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                    .background(colors.background)
-                    .clickable(enabled = false) {}
-                    .navigationBarsPadding()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Spacer(modifier = Modifier.width(60.dp))
-                    Text(
-                        text = "Select Date",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.primaryText,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
-                    )
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(colors.cardBackground)
-                            .border(1.dp, colors.cardBorder, CircleShape)
-                            .clickable { onDismiss() }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .shadow(2.dp, CircleShape, ambientColor = colors.shadowColor, spotColor = colors.shadowColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "Close",
-                            color = colors.primaryGreen,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, colors.cardBorder, RoundedCornerShape(20.dp)),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)),
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.primaryText,
-                                    fontSize = 18.sp
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = colors.primaryGreen,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.ChevronLeft,
-                                    contentDescription = "Previous month",
-                                    tint = colors.primaryGreen,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable { currentMonth = currentMonth.minusMonths(1) }
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = "Next month",
-                                    tint = colors.primaryGreen,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable { currentMonth = currentMonth.plusMonths(1) }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        val weekdays = listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            weekdays.forEach { day ->
-                                Text(
-                                    text = day,
-                                    modifier = Modifier.weight(1f),
-                                    textAlign = TextAlign.Center,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = colors.quietText
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        val daysInMonth = currentMonth.lengthOfMonth()
-                        val firstDayOfWeek = currentMonth.dayOfWeek.value
-                        val emptySlots = if (firstDayOfWeek == 7) 0 else firstDayOfWeek
-
-                        val totalSlots = emptySlots + daysInMonth
-                        val rowsCount = (totalSlots + 6) / 7
-
-                        for (r in 0 until rowsCount) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                for (c in 0 until 7) {
-                                    val slotIndex = r * 7 + c
-                                    if (slotIndex < emptySlots || slotIndex >= totalSlots) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    } else {
-                                        val dayNumber = slotIndex - emptySlots + 1
-                                        val date = currentMonth.withDayOfMonth(dayNumber)
-                                        val isSelected = date == initialDate
-
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .aspectRatio(1f)
-                                                .clip(CircleShape)
-                                                .background(if (isSelected) colors.primaryGreen else Color.Transparent)
-                                                .clickable {
-                                                    onDateSelected(date)
-                                                    onDismiss()
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = dayNumber.toString(),
-                                                color = if (isSelected) Color.White else colors.primaryText,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 16.sp
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun MacroIndicatorBlock(label: String, value: String, barColor: Color) {
