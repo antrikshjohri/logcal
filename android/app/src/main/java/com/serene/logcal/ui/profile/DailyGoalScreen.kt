@@ -2,6 +2,7 @@ package com.serene.logcal.ui.profile
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -280,29 +283,72 @@ fun DailyGoalScreen(
                     Text("Diet Style & Macro Split", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
                 }
 
-                // Grid of Diet Styles
-                FlowRow(
+                // Diet Style Selector Container (removes large vertical gaps)
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxItemsInEachRow = 2
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    DietStyle.entries.forEach { style ->
-                        val isSelected = currentDietStyle == style
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) colors.primaryGreen else colors.insetBackground)
-                                .border(1.dp, if (isSelected) colors.primaryGreen else colors.cardBorder, RoundedCornerShape(10.dp))
-                                .clickable {
-                                    currentDietStyle = style
-                                    if (style != DietStyle.CUSTOM) {
+                    // Grid of Diet Styles (standard options)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = 2
+                    ) {
+                        DietStyle.entries.filter { it != DietStyle.CUSTOM }.forEach { style ->
+                            val isSelected = currentDietStyle == style
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSelected) colors.primaryGreen else colors.insetBackground)
+                                    .border(1.dp, if (isSelected) colors.primaryGreen else colors.cardBorder, RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        currentDietStyle = style
                                         val percent = style.macroPercentages
                                         currentProteinPercent = percent.first * 100.0
                                         currentCarbsPercent = percent.second * 100.0
                                         currentFatPercent = percent.third * 100.0
                                     }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        style.rawValue,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.White else colors.primaryText
+                                    )
+                                    if (isSelected) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Custom Option - Centered, same size, separate look to draw focus
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        val isSelected = currentDietStyle == DietStyle.CUSTOM
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.48f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) colors.primaryGreen else colors.warningAmber.copy(alpha = 0.1f))
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) colors.primaryGreen else colors.warningAmber.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .clickable {
+                                    currentDietStyle = DietStyle.CUSTOM
                                 }
                                 .padding(horizontal = 14.dp, vertical = 12.dp)
                         ) {
@@ -312,14 +358,17 @@ fun DailyGoalScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    style.rawValue,
+                                    DietStyle.CUSTOM.rawValue,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.White else colors.primaryText
+                                    color = if (isSelected) Color.White else colors.warningAmber
                                 )
-                                if (isSelected) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                                }
+                                Icon(
+                                    imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = if (isSelected) Color.White else colors.warningAmber,
+                                    modifier = Modifier.size(14.dp)
+                                )
                             }
                         }
                     }
@@ -336,7 +385,7 @@ fun DailyGoalScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = colors.primaryGreen, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = colors.primaryGreen, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         "Help Me Choose",
@@ -362,7 +411,7 @@ fun DailyGoalScreen(
 
                         // Protein Stepper
                         CustomMacroStepperRow(
-                            label = "Protein:",
+                            label = "Protein",
                             value = currentProteinPercent,
                             color = colors.protein,
                             onValueChange = { currentProteinPercent = it }
@@ -370,7 +419,7 @@ fun DailyGoalScreen(
 
                         // Carbs Stepper
                         CustomMacroStepperRow(
-                            label = "Carbohydrates:",
+                            label = "Carbohydrates",
                             value = currentCarbsPercent,
                             color = colors.carbs,
                             onValueChange = { currentCarbsPercent = it }
@@ -378,7 +427,7 @@ fun DailyGoalScreen(
 
                         // Fat Stepper
                         CustomMacroStepperRow(
-                            label = "Fats:",
+                            label = "Fats",
                             value = currentFatPercent,
                             color = colors.fat,
                             onValueChange = { currentFatPercent = it }
@@ -392,8 +441,9 @@ fun DailyGoalScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Total Percentage", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
+                            val totalDisplay = if (totalPercentage % 1.0 == 0.0) "${totalPercentage.toInt()}%" else "$totalPercentage%"
                             Text(
-                                "${totalPercentage.roundToInt()}%",
+                                totalDisplay,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = if (totalPercentage == 100.0) colors.primaryGreen else colors.dangerRed
@@ -468,7 +518,7 @@ fun DailyGoalScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
@@ -481,30 +531,65 @@ private fun CustomMacroStepperRow(
     onValueChange: (Double) -> Unit
 ) {
     val colors = LogCalTheme.colors
+    val displayValue = if (value % 1.0 == 0.0) "${value.toInt()}%" else "$value%"
+    val isDark = isSystemInDarkTheme()
+    val displayColor = if (color == colors.protein && isDark) colors.mintGreen else color
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.primaryText)
-            Text("${value.roundToInt()}%", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
-        }
-
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.primaryText,
+            fontWeight = FontWeight.Medium
+        )
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        Text(
+            text = displayValue,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = displayColor,
+            modifier = Modifier.padding(end = 12.dp)
+        )
+        
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconButton(
-                onClick = { if (value >= 2.5) onValueChange(value - 2.5) }
+                onClick = { if (value >= 2.5) onValueChange(value - 2.5) },
+                modifier = Modifier.size(32.dp)
             ) {
-                Icon(Icons.Default.Remove, contentDescription = "Minus", tint = colors.primaryText)
+                Icon(
+                    Icons.Default.Remove, 
+                    contentDescription = "Minus", 
+                    tint = colors.primaryText,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(colors.insetBackground, CircleShape)
+                        .padding(6.dp)
+                )
             }
 
             IconButton(
-                onClick = { if (value <= 97.5) onValueChange(value + 2.5) }
+                onClick = { if (value <= 97.5) onValueChange(value + 2.5) },
+                modifier = Modifier.size(32.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Plus", tint = colors.primaryText)
+                Icon(
+                    Icons.Default.Add, 
+                    contentDescription = "Plus", 
+                    tint = colors.primaryText,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(colors.insetBackground, CircleShape)
+                        .padding(6.dp)
+                )
             }
         }
     }
@@ -519,6 +604,8 @@ private fun CalculatedTargetRow(
     kcal: Double
 ) {
     val colors = LogCalTheme.colors
+    val pctVal = percentage * 100.0
+    val pctDisplay = if (pctVal % 1.0 == 0.0) "${pctVal.toInt()}%" else "$pctVal%"
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -540,7 +627,7 @@ private fun CalculatedTargetRow(
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("${grams.roundToInt()}g", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
-                Text("(${(percentage * 100).roundToInt()}% • ${kcal.roundToInt()} kcal)", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
+                Text("($pctDisplay • ${kcal.roundToInt()} kcal)", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
             }
         }
 

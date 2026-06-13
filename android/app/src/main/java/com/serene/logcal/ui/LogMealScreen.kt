@@ -113,6 +113,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.text.style.TextDecoration
@@ -1721,32 +1722,128 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
         // Rename Alert Dialog
         if (isRenamingFav) {
-            AlertDialog(
-                onDismissRequest = { isRenamingFav = false },
-                title = { Text("Rename Favorite Meal") },
-                text = {
-                    OutlinedTextField(
-                        value = favRenameText,
-                        onValueChange = { favRenameText = it },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            if (favRenameText.isNotBlank()) {
-                                viewModel.renameFavoriteMeal(savedMeal.id, favRenameText)
-                            }
-                            isRenamingFav = false
-                            selectedSavedMealForDialog = null
+            Dialog(onDismissRequest = { isRenamingFav = false }) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = colors.cardBackground,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    border = BorderStroke(1.dp, colors.cardBorder)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Header Icon
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(colors.softAccentBackground),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BookmarkBorder,
+                                contentDescription = null,
+                                tint = colors.primaryGreen,
+                                modifier = Modifier.size(28.dp)
+                            )
                         }
-                    ) { Text("Save", color = colors.primaryGreen) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { isRenamingFav = false }) { Text("Cancel") }
+
+                        // Titles
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Rename Favourite Meal",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.primaryText,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Give this meal a new name so you can quickly log it later.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.mutedText,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        // Input Field
+                        OutlinedTextField(
+                            value = favRenameText,
+                            onValueChange = { favRenameText = it },
+                            singleLine = true,
+                            placeholder = { Text("Name", color = colors.quietText) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = colors.primaryGreen,
+                                unfocusedBorderColor = colors.cardBorder,
+                                focusedContainerColor = colors.insetBackground,
+                                unfocusedContainerColor = colors.insetBackground,
+                                focusedTextColor = colors.primaryText,
+                                unfocusedTextColor = colors.primaryText
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Buttons Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { isRenamingFav = false },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = colors.mutedText
+                                )
+                            ) {
+                                Text(
+                                    "Cancel",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    if (favRenameText.isNotBlank()) {
+                                        viewModel.renameFavoriteMeal(savedMeal.id, favRenameText)
+                                    }
+                                    isRenamingFav = false
+                                    selectedSavedMealForDialog = null
+                                },
+                                modifier = Modifier
+                                    .weight(1.5f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = colors.primaryGreen,
+                                    contentColor = Color.White
+                                ),
+                                enabled = favRenameText.isNotBlank()
+                            ) {
+                                Text(
+                                    "Save",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
                 }
-            )
+            }
         }
 
         // Delete Confirm Dialog
@@ -1773,50 +1870,155 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
     // Rename prompt for recently logged meal bookmarking
     renameTargetMeal?.let { savedMeal ->
-        AlertDialog(
-            onDismissRequest = { renameTargetMeal = null },
-            title = { Text(if (isRenamingResultMeal) "Rename Favourite Meal" else "Remove Favourite Meal") },
-            text = {
-                if (isRenamingResultMeal) {
-                    OutlinedTextField(
-                        value = renameTitleText,
-                        onValueChange = { renameTitleText = it },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text("Are you sure you want to remove this meal from your favourites?")
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (isRenamingResultMeal) {
-                            if (renameTitleText.isNotBlank()) {
-                                viewModel.renameFavoriteMeal(savedMeal.id, renameTitleText)
-                            }
-                        } else {
-                            viewModel.deleteFavoriteMeal(savedMeal.id)
-                        }
-                        renameTargetMeal = null
-                        isRenamingResultMeal = false
-                    }
+        if (isRenamingResultMeal) {
+            Dialog(onDismissRequest = { 
+                renameTargetMeal = null 
+                isRenamingResultMeal = false
+            }) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = colors.cardBackground,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    border = BorderStroke(1.dp, colors.cardBorder)
                 ) {
-                    Text(
-                        text = if (isRenamingResultMeal) "Save" else "Remove",
-                        color = if (isRenamingResultMeal) colors.primaryGreen else colors.dangerRed
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        renameTargetMeal = null
-                        isRenamingResultMeal = false
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Header Icon
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(colors.softAccentBackground),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BookmarkBorder,
+                                contentDescription = null,
+                                tint = colors.primaryGreen,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+
+                        // Titles
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Rename Favourite Meal",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.primaryText,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Give this meal a new name so you can quickly log it later.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.mutedText,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        // Input Field
+                        OutlinedTextField(
+                            value = renameTitleText,
+                            onValueChange = { renameTitleText = it },
+                            singleLine = true,
+                            placeholder = { Text("Name", color = colors.quietText) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = colors.primaryGreen,
+                                unfocusedBorderColor = colors.cardBorder,
+                                focusedContainerColor = colors.insetBackground,
+                                unfocusedContainerColor = colors.insetBackground,
+                                focusedTextColor = colors.primaryText,
+                                unfocusedTextColor = colors.primaryText
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Buttons Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { 
+                                    renameTargetMeal = null 
+                                    isRenamingResultMeal = false
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = colors.mutedText
+                                )
+                            ) {
+                                Text(
+                                    "Cancel",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    if (renameTitleText.isNotBlank()) {
+                                        viewModel.renameFavoriteMeal(savedMeal.id, renameTitleText)
+                                    }
+                                    renameTargetMeal = null
+                                    isRenamingResultMeal = false
+                                },
+                                modifier = Modifier
+                                    .weight(1.5f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = colors.primaryGreen,
+                                    contentColor = Color.White
+                                ),
+                                enabled = renameTitleText.isNotBlank()
+                            ) {
+                                Text(
+                                    "Save",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
                     }
-                ) { Text("Cancel") }
+                }
             }
-        )
+        } else {
+            AlertDialog(
+                onDismissRequest = { renameTargetMeal = null },
+                title = { Text("Remove Favourite Meal") },
+                text = { Text("Are you sure you want to remove this meal from your favourites?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteFavoriteMeal(savedMeal.id)
+                            renameTargetMeal = null
+                        }
+                    ) {
+                        Text("Remove", color = colors.dangerRed)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { renameTargetMeal = null }) { Text("Cancel") }
+                }
+            )
+        }
     }
 
     // See all favorites overlay sheet BottomSheet implementation

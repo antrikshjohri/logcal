@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Work
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -121,6 +122,7 @@ fun DietStyleHelperScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
+            .padding(bottom = 100.dp)
     ) {
         // Toolbar
         Row(
@@ -345,7 +347,7 @@ private fun RecommendationResultView(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                Icons.Default.Star,
+                Icons.Default.AutoAwesome,
                 contentDescription = null,
                 tint = colors.primaryGreen,
                 modifier = Modifier.size(44.dp)
@@ -556,8 +558,10 @@ private fun ResultTargetRow(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                val pctVal = percentage * 100.0
+                val pctDisplay = if (pctVal % 1.0 == 0.0) "${pctVal.toInt()}%" else "$pctVal%"
                 Text("${grams.roundToInt()}g", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
-                Text("(${(percentage * 100).roundToInt()}% • ${kcal.roundToInt()} kcal)", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
+                Text("($pctDisplay • ${kcal.roundToInt()} kcal)", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
             }
         }
 

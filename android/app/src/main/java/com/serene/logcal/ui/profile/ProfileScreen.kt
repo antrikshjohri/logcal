@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.filled.Warning
 import kotlin.math.roundToInt
 import androidx.compose.material3.Button
@@ -48,6 +49,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -173,56 +178,59 @@ fun ProfileScreen() {
     if (showThemeSelector) {
         var selectedTheme by remember { mutableStateOf(prefManager.appTheme) }
 
-        Dialog(onDismissRequest = { showThemeSelector = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.background,
+        ModalBottomSheet(
+            onDismissRequest = { showThemeSelector = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = colors.cardBackground,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.cardBorder) }
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                Text(
+                    text = "Choose Theme",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.primaryText
+                )
+
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.insetBackground, RoundedCornerShape(12.dp))
+                        .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                 ) {
-                    Text("Choose Theme", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colors.primaryText)
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ThemeOptionRow(
-                            label = "System Default",
-                            isSelected = selectedTheme == "system",
-                            onSelect = { selectedTheme = "system" }
-                        )
-                        ThemeOptionRow(
-                            label = "Light Mode",
-                            isSelected = selectedTheme == "light",
-                            onSelect = { selectedTheme = "light" }
-                        )
-                        ThemeOptionRow(
-                            label = "Dark Mode",
-                            isSelected = selectedTheme == "dark",
-                            onSelect = { selectedTheme = "dark" }
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showThemeSelector = false }) {
-                            Text("Cancel", color = colors.mutedText)
+                    ThemeOptionRow(
+                        label = "System Default",
+                        isSelected = selectedTheme == "system",
+                        onSelect = { 
+                            selectedTheme = "system" 
+                            prefManager.appTheme = "system"
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                prefManager.appTheme = selectedTheme
-                                showThemeSelector = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen)
-                        ) {
-                            Text("Done", fontWeight = FontWeight.Bold, color = Color.White)
+                    )
+                    HorizontalDivider(color = colors.cardBorder, thickness = 0.8.dp)
+                    ThemeOptionRow(
+                        label = "Light Mode",
+                        isSelected = selectedTheme == "light",
+                        onSelect = { 
+                            selectedTheme = "light" 
+                            prefManager.appTheme = "light"
                         }
-                    }
+                    )
+                    HorizontalDivider(color = colors.cardBorder, thickness = 0.8.dp)
+                    ThemeOptionRow(
+                        label = "Dark Mode",
+                        isSelected = selectedTheme == "dark",
+                        onSelect = { 
+                            selectedTheme = "dark" 
+                            prefManager.appTheme = "dark"
+                        }
+                    )
                 }
             }
         }
@@ -512,7 +520,7 @@ private fun MainProfileView(
                 ) {
                     SettingsActionRow(
                         title = "Log using Whatsapp",
-                        icon = Icons.Default.Phone,
+                        iconPainter = painterResource(id = com.serene.logcal.R.drawable.ic_whatsapp),
                         trailingValue = if (isWhatsAppLinked) "Linked" else "Not Linked",
                         onClick = { onNavigate(ProfileSubScreen.WHATS_APP_LINK) }
                     )
@@ -557,7 +565,8 @@ private fun MainProfileView(
 @Composable
 private fun SettingsActionRow(
     title: String,
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    iconPainter: androidx.compose.ui.graphics.painter.Painter? = null,
     trailingValue: String? = null,
     onClick: () -> Unit
 ) {
@@ -570,7 +579,17 @@ private fun SettingsActionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = colors.primaryGreen, modifier = Modifier.size(20.dp))
+        if (iconPainter != null) {
+            Image(
+                painter = iconPainter,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+        } else if (icon != null) {
+            Icon(icon, contentDescription = null, tint = colors.primaryGreen, modifier = Modifier.size(20.dp))
+        }
         Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.primaryText, modifier = Modifier.weight(1f))
         
         if (trailingValue != null) {
@@ -592,7 +611,7 @@ private fun ThemeOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onSelect() }
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

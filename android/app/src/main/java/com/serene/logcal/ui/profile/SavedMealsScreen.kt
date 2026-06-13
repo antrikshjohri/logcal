@@ -19,13 +19,26 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -36,6 +49,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,6 +76,7 @@ import kotlinx.serialization.json.Json
 import java.util.Locale
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SavedMealsScreen(
     onBack: () -> Unit
@@ -77,59 +92,115 @@ fun SavedMealsScreen(
     var mealBeingRenamed by remember { mutableStateOf<SavedMealEntity?>(null) }
     var mealPendingDeletion by remember { mutableStateOf<SavedMealEntity?>(null) }
     var renameText by remember { mutableStateOf("") }
+    var isEditMode by remember { mutableStateOf(false) }
+
+    var activeList by remember { mutableStateOf<List<SavedMealEntity>>(emptyList()) }
+    var draggingItemId by remember { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+
+    androidx.compose.runtime.LaunchedEffect(savedMeals, draggingItemId) {
+        if (draggingItemId == null) {
+            activeList = savedMeals
+        }
+    }
 
     val json = remember { Json { ignoreUnknownKeys = true } }
 
     if (mealBeingRenamed != null) {
         Dialog(onDismissRequest = { mealBeingRenamed = null }) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.background,
+                shape = RoundedCornerShape(24.dp),
+                color = colors.cardBackground,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(16.dp),
+                border = BorderStroke(1.dp, colors.cardBorder)
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        "Rename Favourite Meal",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.primaryText
-                    )
+                    // Header Icon
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(colors.softAccentBackground),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BookmarkBorder,
+                            contentDescription = null,
+                            tint = colors.primaryGreen,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
 
+                    // Titles
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Rename Favourite Meal",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primaryText,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Give this meal a new name so you can quickly log it later.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.mutedText,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    // Input Field
                     OutlinedTextField(
                         value = renameText,
                         onValueChange = { renameText = it },
-                        placeholder = { Text("Name", color = colors.quietText) },
                         singleLine = true,
+                        placeholder = { Text("Name", color = colors.quietText) },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = colors.primaryGreen,
                             unfocusedBorderColor = colors.cardBorder,
-                            focusedContainerColor = colors.cardBackground,
-                            unfocusedContainerColor = colors.cardBackground
+                            focusedContainerColor = colors.insetBackground,
+                            unfocusedContainerColor = colors.insetBackground,
+                            focusedTextColor = colors.primaryText,
+                            unfocusedTextColor = colors.primaryText
                         ),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Buttons Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "Cancel",
+                        TextButton(
+                            onClick = { mealBeingRenamed = null },
                             modifier = Modifier
-                                .clickable { mealBeingRenamed = null }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.mutedText
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = colors.mutedText
+                            )
+                        ) {
+                            Text(
+                                "Cancel",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
                         Button(
                             onClick = {
                                 val savedMeal = mealBeingRenamed ?: return@Button
@@ -151,9 +222,21 @@ fun SavedMealsScreen(
                                     }
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen)
+                            modifier = Modifier
+                                .weight(1.5f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.primaryGreen,
+                                contentColor = Color.White
+                            ),
+                            enabled = renameText.isNotBlank()
                         ) {
-                            Text("Save", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Save",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
@@ -249,6 +332,19 @@ fun SavedMealsScreen(
                 fontWeight = FontWeight.Bold,
                 color = colors.primaryText
             )
+            Spacer(modifier = Modifier.weight(1f))
+            if (savedMeals.isNotEmpty()) {
+                TextButton(
+                    onClick = { isEditMode = !isEditMode }
+                ) {
+                    Text(
+                        text = if (isEditMode) "Done" else "Edit",
+                        color = colors.primaryGreen,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
 
         if (savedMeals.isEmpty()) {
@@ -283,14 +379,17 @@ fun SavedMealsScreen(
                 }
             }
         } else {
-            Column(
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val lazyListState = rememberLazyListState()
+
+            LazyColumn(
+                state = lazyListState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                savedMeals.forEach { fav ->
+                itemsIndexed(activeList, key = { _, fav -> fav.id }) { index, fav ->
                     val response = remember(fav.rawResponseJson) {
                         try {
                             json.decodeFromString(MealLogResponse.serializer(), fav.rawResponseJson)
@@ -300,10 +399,16 @@ fun SavedMealsScreen(
                     }
                     val itemsText = response?.items?.take(3)?.joinToString(", ") { it.name } ?: ""
 
+                    val isDragging = draggingItemId == fav.id
+                    val dragOffset = if (isDragging) with(density) { dragOffsetY.toDp() } else 0.dp
+
                     // Card representing Favourite meal
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .zIndex(if (isDragging) 10f else 1f)
+                            .offset(y = dragOffset)
+                            .animateItemPlacement()
                             .background(colors.cardBackground, RoundedCornerShape(12.dp))
                             .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                             .padding(16.dp),
@@ -325,20 +430,22 @@ fun SavedMealsScreen(
                                     color = colors.primaryText,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                IconButton(
-                                    onClick = {
-                                        renameText = fav.title
-                                        mealBeingRenamed = fav
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Rename",
-                                        tint = colors.primaryGreen,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                if (!isEditMode) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    IconButton(
+                                        onClick = {
+                                            renameText = fav.title
+                                            mealBeingRenamed = fav
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Rename",
+                                            tint = colors.primaryGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -353,16 +460,98 @@ fun SavedMealsScreen(
                                     fontWeight = FontWeight.Bold
                                 )
 
-                                IconButton(
-                                    onClick = { mealPendingDeletion = fav },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
+                                if (isEditMode) {
                                     Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        tint = colors.dangerRed,
-                                        modifier = Modifier.size(16.dp)
+                                        imageVector = Icons.Default.Menu,
+                                        contentDescription = "Drag to reorder",
+                                        tint = colors.mutedText,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .pointerInput(fav.id) {
+                                                detectDragGestures(
+                                                    onDragStart = {
+                                                        draggingItemId = fav.id
+                                                        dragOffsetY = 0f
+                                                    },
+                                                    onDragEnd = {
+                                                        coroutineScope.launch {
+                                                            try {
+                                                                val updated = activeList.mapIndexed { idx, item ->
+                                                                    item.copy(displayOrder = idx, updatedAtMillis = System.currentTimeMillis())
+                                                                }
+                                                                favRepo.saveAll(updated)
+                                                                syncService.syncSavedMealsToCloud()
+                                                            } catch (e: Exception) {
+                                                                DebugLogger.e("DEBUG: Failed to save drag order", e)
+                                                            } finally {
+                                                                draggingItemId = null
+                                                            }
+                                                        }
+                                                    },
+                                                    onDragCancel = {
+                                                        draggingItemId = null
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragOffsetY += dragAmount.y
+                                                        
+                                                        val currentList = activeList
+                                                        val dragId = draggingItemId
+                                                        if (dragId != null) {
+                                                            val idx = currentList.indexOfFirst { it.id == dragId }
+                                                            if (idx != -1) {
+                                                                val layoutInfo = lazyListState.layoutInfo
+                                                                val draggingItemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.key == dragId }
+                                                                if (draggingItemInfo != null) {
+                                                                    val currentVisualTop = draggingItemInfo.offset + dragOffsetY
+                                                                    val currentVisualCenter = currentVisualTop + draggingItemInfo.size / 2
+                                                                    
+                                                                    if (dragOffsetY > 0 && idx < currentList.size - 1) {
+                                                                        val nextItem = currentList[idx + 1]
+                                                                        val nextItemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.key == nextItem.id }
+                                                                        if (nextItemInfo != null) {
+                                                                            val nextItemCenter = nextItemInfo.offset + nextItemInfo.size / 2
+                                                                            if (currentVisualCenter > nextItemCenter) {
+                                                                                val newList = currentList.toMutableList()
+                                                                                newList[idx] = nextItem
+                                                                                newList[idx + 1] = currentList[idx]
+                                                                                activeList = newList
+                                                                                dragOffsetY -= nextItemInfo.size
+                                                                            }
+                                                                        }
+                                                                    } else if (dragOffsetY < 0 && idx > 0) {
+                                                                        val prevItem = currentList[idx - 1]
+                                                                        val prevItemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.key == prevItem.id }
+                                                                        if (prevItemInfo != null) {
+                                                                            val prevItemCenter = prevItemInfo.offset + prevItemInfo.size / 2
+                                                                            if (currentVisualCenter < prevItemCenter) {
+                                                                                val newList = currentList.toMutableList()
+                                                                                newList[idx] = prevItem
+                                                                                newList[idx - 1] = currentList[idx]
+                                                                                activeList = newList
+                                                                                dragOffsetY += prevItemInfo.size
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                )
+                                            }
                                     )
+                                } else {
+                                    IconButton(
+                                        onClick = { mealPendingDeletion = fav },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = colors.dangerRed,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -403,8 +592,10 @@ fun SavedMealsScreen(
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(24.dp))
+
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         }
     }

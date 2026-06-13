@@ -3,9 +3,11 @@ package com.serene.logcal.ui.profile
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -263,7 +265,13 @@ fun WhatsAppLinkScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Phone, contentDescription = null, tint = colors.primaryGreen)
+                        Image(
+                            painter = painterResource(id = com.serene.logcal.R.drawable.ic_whatsapp),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                        )
                         Column {
                             Text("Connected Number", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = colors.mutedText)
                             Text("+$linkedPhoneNumber", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = colors.primaryText)
@@ -292,20 +300,13 @@ fun WhatsAppLinkScreen(
                     }
                 } else {
                     // Unlinked View
-                    Box(
+                    Image(
+                        painter = painterResource(id = com.serene.logcal.R.drawable.ic_whatsapp),
+                        contentDescription = "WhatsApp Link",
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF25D366)), // WhatsApp Green
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Link,
-                            contentDescription = "WhatsApp Link",
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
+                    )
 
                     Text(
                         "Log via WhatsApp",

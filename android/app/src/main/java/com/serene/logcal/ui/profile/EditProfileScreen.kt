@@ -49,6 +49,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -244,72 +248,84 @@ fun EditProfileScreen(
             else countries.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
 
-        Dialog(onDismissRequest = { showCountryPicker = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.background,
+        ModalBottomSheet(
+            onDismissRequest = { showCountryPicker = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            containerColor = colors.cardBackground,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.cardBorder) }
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(500.dp)
-                    .padding(16.dp)
+                    .height(600.dp)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(bottom = 24.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Select Country", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colors.primaryText)
-                        IconButton(onClick = { showCountryPicker = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.primaryText)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search country...", color = colors.quietText) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.mutedText) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.primaryGreen,
-                            unfocusedBorderColor = colors.cardBorder,
-                            focusedContainerColor = colors.cardBackground,
-                            unfocusedContainerColor = colors.cardBackground
-                        ),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Select Country",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.primaryText
                     )
+                    IconButton(onClick = { showCountryPicker = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.primaryText)
+                    }
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        filteredCountries.forEach { country ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        userCountryCode = country.code
-                                        showCountryPicker = false
-                                    }
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(country.name, style = MaterialTheme.typography.bodyMedium, color = colors.primaryText)
-                                if (userCountryCode.lowercase() == country.code.lowercase()) {
-                                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = colors.primaryGreen)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search country...", color = colors.quietText) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.mutedText) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryGreen,
+                        unfocusedBorderColor = colors.cardBorder,
+                        focusedContainerColor = colors.insetBackground,
+                        unfocusedContainerColor = colors.insetBackground,
+                        focusedTextColor = colors.primaryText,
+                        unfocusedTextColor = colors.primaryText
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    filteredCountries.forEach { country ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    userCountryCode = country.code
+                                    showCountryPicker = false
                                 }
+                                .padding(vertical = 14.dp, horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(country.name, style = MaterialTheme.typography.bodyMedium, color = colors.primaryText)
+                            if (userCountryCode.lowercase() == country.code.lowercase()) {
+                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = colors.primaryGreen)
                             }
-                            HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f))
                         }
+                        HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f))
                     }
                 }
             }
@@ -431,49 +447,54 @@ fun EditProfileScreen(
         ) {
             // Photo Picker
             Box(
-                contentAlignment = Alignment.BottomEnd,
                 modifier = Modifier
                     .padding(top = 16.dp)
                     .size(120.dp)
-                    .clip(CircleShape)
-                    .background(colors.softAccentBackground)
                     .clickable {
                         photoPickerLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
                     }
             ) {
-                if (selectedImageBitmap != null) {
-                    Image(
-                        bitmap = selectedImageBitmap!!.asImageBitmap(),
-                        contentDescription = "Profile Photo",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else if (!profilePhotoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = profilePhotoUrl,
-                        contentDescription = "Profile Photo",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(60.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(colors.softAccentBackground)
+                ) {
+                    if (selectedImageBitmap != null) {
+                        Image(
+                            bitmap = selectedImageBitmap!!.asImageBitmap(),
+                            contentDescription = "Profile Photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
+                    } else if (!profilePhotoUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = profilePhotoUrl,
+                            contentDescription = "Profile Photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(60.dp)
+                            )
+                        }
                     }
                 }
 
                 Box(
                     modifier = Modifier
                         .size(36.dp)
+                        .align(Alignment.BottomEnd)
                         .background(colors.cardBackground, CircleShape)
                         .border(2.dp, colors.cardBorder, CircleShape),
                     contentAlignment = Alignment.Center
