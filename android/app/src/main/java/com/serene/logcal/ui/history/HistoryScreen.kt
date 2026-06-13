@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import com.serene.logcal.data.local.PreferenceManager
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -122,7 +124,6 @@ fun HistoryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryListScreen(
     viewModel: HistoryViewModel,
@@ -133,6 +134,9 @@ private fun HistoryListScreen(
     val context = LocalContext.current
     val colors = LogCalTheme.colors
     var lastErrorShown by remember { mutableStateOf<String?>(null) }
+
+    val preferenceManager = remember { PreferenceManager(context) }
+    val dailyGoal = remember { preferenceManager.dailyGoal }
 
     var editMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
@@ -175,69 +179,74 @@ private fun HistoryListScreen(
         }
     }
 
-    var showClearAllDialog by remember { mutableStateOf(false) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
     val isAnonymous = FirebaseAuth.getInstance().currentUser?.isAnonymous == true
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("History", fontWeight = FontWeight.Bold) },
-                actions = {
-                    if (!editMode) {
-                        IconButton(
-                            onClick = { showClearAllDialog = true },
-                            enabled = uiState.meals.isNotEmpty()
-                        ) {
-                            Icon(
-                                Icons.Default.DeleteSweep,
-                                contentDescription = "Clear all",
-                                tint = colors.dangerRed
-                            )
-                        }
-                        TextButton(
-                            onClick = {
-                                editMode = true
-                                selectedIds = emptySet()
-                            },
-                            enabled = uiState.meals.isNotEmpty()
-                        ) {
-                            Text("Edit", color = colors.primaryGreen, fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        TextButton(
-                            onClick = {
-                                editMode = false
-                                selectedIds = emptySet()
-                            }
-                        ) {
-                            Text("Cancel", color = colors.primaryText)
-                        }
-                        TextButton(
-                            onClick = {
-                                if (selectedIds.isNotEmpty()) showBulkDeleteDialog = true
-                            },
-                            enabled = selectedIds.isNotEmpty()
-                        ) {
-                            Text(
-                                text = "Delete (${selectedIds.size})",
-                                color = if (selectedIds.isNotEmpty()) colors.dangerRed else colors.mutedText,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background, titleContentColor = colors.primaryText)
-            )
-        },
         containerColor = colors.background
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
+                .statusBarsPadding()
                 .fillMaxSize()
                 .background(colors.background)
         ) {
+            // Edit / Cancel Pill Button (Top Left)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = {
+                        editMode = !editMode
+                        selectedIds = emptySet()
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        containerColor = colors.cardBackground,
+                        contentColor = colors.primaryGreen
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    modifier = Modifier.shadow(1.dp, RoundedCornerShape(20.dp))
+                ) {
+                    Text(
+                        text = if (editMode) "Cancel" else "Edit",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                if (editMode) {
+                    TextButton(
+                        onClick = {
+                            if (selectedIds.isNotEmpty()) showBulkDeleteDialog = true
+                        },
+                        enabled = selectedIds.isNotEmpty(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = colors.dangerRed,
+                            disabledContentColor = colors.mutedText
+                        )
+                    ) {
+                        Text(
+                            text = "Delete (${selectedIds.size})",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Screen Title
+            Text(
+                text = "History",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.primaryText,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+
             // Search field
             OutlinedTextField(
                 value = searchText,
@@ -248,11 +257,14 @@ private fun HistoryListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = colors.primaryGreen,
-                    unfocusedBorderColor = colors.cardBorder,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                     focusedContainerColor = colors.cardBackground,
-                    unfocusedContainerColor = colors.cardBackground
+                    unfocusedContainerColor = colors.cardBackground,
+                    focusedTextColor = colors.primaryText,
+                    unfocusedTextColor = colors.primaryText
                 ),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
             )
@@ -380,33 +392,12 @@ private fun HistoryListScreen(
                         onToggleSelect = { id ->
                             selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
                         },
-                        onMealClick = onMealClick
+                        onMealClick = onMealClick,
+                        dailyGoal = dailyGoal
                     )
                 }
             }
         }
-    }
-
-    // Confirmation dialogs
-    if (showClearAllDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearAllDialog = false },
-            title = { Text("Clear all meals?") },
-            text = { Text("This will remove every meal from this device.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showClearAllDialog = false
-                        editMode = false
-                        selectedIds = emptySet()
-                        viewModel.deleteAllMeals()
-                    }
-                ) { Text("Clear all", color = colors.dangerRed) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearAllDialog = false }) { Text("Cancel") }
-            }
-        )
     }
 
     if (showBulkDeleteDialog) {
@@ -433,6 +424,35 @@ private fun HistoryListScreen(
 }
 
 @Composable
+private fun CalorieStatusIcon(
+    isOverGoal: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = LogCalTheme.colors
+    val (bgColor, iconChar) = if (isOverGoal) {
+        Pair(colors.warningAmber, "!")
+    } else {
+        Pair(colors.primaryGreen, "✓")
+    }
+
+    Box(
+        modifier = modifier
+            .size(16.dp)
+            .clip(CircleShape)
+            .background(bgColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = iconChar,
+            color = Color.White,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 10.sp
+        )
+    }
+}
+
+@Composable
 private fun DaySectionCard(
     section: HistoryDaySection,
     zone: ZoneId,
@@ -441,7 +461,8 @@ private fun DaySectionCard(
     editMode: Boolean,
     selectedIds: Set<String>,
     onToggleSelect: (String) -> Unit,
-    onMealClick: (String) -> Unit
+    onMealClick: (String) -> Unit,
+    dailyGoal: Double
 ) {
     val colors = LogCalTheme.colors
     val title = daySectionTitle(section.date, zone)
@@ -450,7 +471,6 @@ private fun DaySectionCard(
     val sumProtein = section.meals.mapNotNull { it.response.protein }.sum()
     val sumCarbs = section.meals.mapNotNull { it.response.carbs }.sum()
     val sumFat = section.meals.mapNotNull { it.response.fat }.sum()
-    val showMacros = sumProtein > 0 || sumCarbs > 0 || sumFat > 0
 
     Card(
         modifier = Modifier
@@ -469,42 +489,88 @@ private fun DaySectionCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onToggleExpand() },
+                    .clickable { onToggleExpand() }
+                    .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            "${NumberUtils.formatNumber(section.totalCalories.toInt())} cal",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.primaryGreen
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (section.isToday) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(colors.primaryGreen)
                         )
-                        if (showMacros) {
-                            Text(
-                                "· P: ${sumProtein.toInt()}g C: ${sumCarbs.toInt()}g F: ${sumFat.toInt()}g",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.mutedText
-                            )
-                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.primaryText
+                    )
                 }
-                Icon(
-                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = colors.mutedText
-                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val isOverGoal = section.totalCalories > dailyGoal
+                    CalorieStatusIcon(isOverGoal = isOverGoal)
+                    
+                    Text(
+                        text = "${NumberUtils.formatNumber(section.totalCalories.toInt())} cal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isOverGoal) colors.warningAmber else colors.primaryGreen
+                    )
+
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = colors.mutedText,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             if (expanded) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = colors.cardBorder)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Day Total Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.mutedText.copy(alpha = 0.08f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Day Total",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "P: ${sumProtein.toInt()}g  ·  C: ${sumCarbs.toInt()}g  ·  F: ${sumFat.toInt()}g",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(8.dp))
+
                 if (section.meals.isEmpty()) {
                     Text(
-                        if (section.isToday) "No meals logged today yet." else "No meals logged on this day.",
+                        text = if (section.isToday) "No meals logged today yet." else "No meals logged on this day.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.mutedText,
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -539,17 +605,30 @@ private fun HistoryMealRow(
     onOpen: () -> Unit
 ) {
     val colors = LogCalTheme.colors
-    val timeFmt = remember { DateTimeFormatter.ofPattern("h:mm a") }
-    val timeText = Instant.ofEpochMilli(meal.timestampMillis).atZone(zone).toLocalTime().format(timeFmt)
 
     val p = meal.response.protein
     val c = meal.response.carbs
     val f = meal.response.fat
     val macroCompact = buildString {
-        if (p != null) append("P ${p.toInt()}g  ")
-        if (c != null) append("C ${c.toInt()}g  ")
-        if (f != null) append("F ${f.toInt()}g")
-    }.trim()
+        if (p != null) append("P: ${p.toInt()}g")
+        if (c != null) {
+            if (isNotEmpty()) append("  ·  ")
+            append("C: ${c.toInt()}g")
+        }
+        if (f != null) {
+            if (isNotEmpty()) append("  ·  ")
+            append("F: ${f.toInt()}g")
+        }
+    }
+
+    val mealTypeLower = meal.mealType.lowercase(Locale.ROOT)
+    val (emoji, displayLabel) = when (mealTypeLower) {
+        "breakfast" -> Pair("🌅", "Breakfast")
+        "lunch" -> Pair("☀️", "Lunch")
+        "dinner" -> Pair("🌙", "Dinner")
+        "snack" -> Pair("🌿", "Snack")
+        else -> Pair("🍽️", meal.mealType.replaceFirstChar { it.uppercase() })
+    }
 
     Row(
         modifier = Modifier
@@ -595,10 +674,10 @@ private fun HistoryMealRow(
                     }
                 }
                 Text(
-                    meal.foodText,
+                    text = meal.foodText,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = colors.primaryText,
                     modifier = Modifier.weight(1f, fill = false)
@@ -617,33 +696,30 @@ private fun HistoryMealRow(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        meal.mealType.replaceFirstChar { it.uppercase() },
+                        text = "$emoji $displayLabel",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.primaryGreen,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Text(
-                    timeText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.mutedText
-                )
-
                 if (macroCompact.isNotEmpty()) {
                     Text(
-                        macroCompact,
+                        text = macroCompact,
                         style = MaterialTheme.typography.labelSmall,
-                        color = colors.quietText
+                        color = colors.warningAmber,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
         }
 
+        Spacer(modifier = Modifier.width(8.dp))
+
         Text(
-            NumberUtils.formatNumber(meal.totalCalories.toInt()),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            text = "${NumberUtils.formatNumber(meal.totalCalories.toInt())} cal",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
             color = colors.primaryGreen
         )
     }
@@ -651,7 +727,7 @@ private fun HistoryMealRow(
 
 private fun daySectionTitle(date: LocalDate, zone: ZoneId): String {
     val today = LocalDate.now(zone)
-    val fmt = DateTimeFormatter.ofPattern("EEEE, MMM d")
+    val fmt = DateTimeFormatter.ofPattern("EEE, MMM d")
     return when (date) {
         today -> "Today"
         today.minusDays(1) -> "Yesterday"
