@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -70,9 +72,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -82,6 +88,7 @@ import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
+import com.serene.logcal.ui.components.CalendarBottomSheet
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.history.HistoryViewModel
@@ -105,6 +112,9 @@ fun MealEditScreen(
 
     var mealState by remember { mutableStateOf<HistoryMeal?>(null) }
     var loaded by remember { mutableStateOf(false) }
+
+    var showCalendar by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
 
     // Form inputs state
     var editedDateMillis by remember { mutableStateOf(0L) }
@@ -155,6 +165,12 @@ fun MealEditScreen(
             linkedFavoriteId = fav?.id
         }
         loaded = true
+    }
+
+    LaunchedEffect(isEditingCalories) {
+        if (isEditingCalories) {
+            focusRequester.requestFocus()
+        }
     }
 
     // Auto save changes whenever date or meal type changes
@@ -213,7 +229,7 @@ fun MealEditScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Success indicator header
@@ -257,28 +273,35 @@ fun MealEditScreen(
                                 horizontalArrangement = Arrangement.Center,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                OutlinedTextField(
-                                    value = caloriesText,
-                                    onValueChange = { caloriesText = it.filter { c -> c.isDigit() }.take(5) },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    textStyle = MaterialTheme.typography.displaySmall.copy(
-                                        fontSize = 32.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = colors.primaryGreen
-                                    ),
-                                    modifier = Modifier.width(140.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = colors.primaryGreen,
-                                        unfocusedBorderColor = colors.cardBorder
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(colors.softAccentBackground)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    BasicTextField(
+                                        value = caloriesText,
+                                        onValueChange = { caloriesText = it.filter { c -> c.isDigit() }.take(5) },
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        textStyle = MaterialTheme.typography.displaySmall.copy(
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = colors.primaryGreen,
+                                            textAlign = TextAlign.Center
+                                        ),
+                                        modifier = Modifier
+                                            .width(100.dp)
+                                            .focusRequester(focusRequester)
                                     )
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     "cal",
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = colors.mutedText
+                                    color = colors.primaryGreen
                                 )
                             }
                         } else {
@@ -298,22 +321,24 @@ fun MealEditScreen(
                     }
 
                     if (!isEditingCalories) {
-                        IconButton(
-                            onClick = {
-                                caloriesText = editedCalories.toInt().toString()
-                                isEditingCalories = true
-                            },
+                        Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(12.dp)
-                                .size(32.dp)
-                                .background(colors.softAccentBackground, CircleShape)
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(colors.softAccentBackground)
+                                .clickable {
+                                    caloriesText = editedCalories.toInt().toString()
+                                    isEditingCalories = true
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = "Edit calories",
                                 tint = colors.primaryGreen,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                     }
@@ -460,22 +485,23 @@ fun MealEditScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.clickable {
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, day ->
-                                        val newDate = LocalDate.of(y, m + 1, day)
-                                        val newMillis = newDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                                        editedDateMillis = newMillis
-                                        autoSaveChanges(newDate = newMillis)
-                                    },
-                                    activeLocalDate.year,
-                                    activeLocalDate.monthValue - 1,
-                                    activeLocalDate.dayOfMonth
-                                ).show()
+                                showCalendar = true
                             }
                         ) {
                             Text(activeLocalDate.format(displayDateFormatter), fontWeight = FontWeight.Bold, color = colors.primaryText)
-                            Icon(Icons.Default.Edit, contentDescription = null, tint = colors.primaryGreen, modifier = Modifier.size(14.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .background(colors.softAccentBackground, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit date",
+                                    tint = colors.primaryGreen,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                     }
 
@@ -488,7 +514,7 @@ fun MealEditScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = null, tint = colors.mutedText, modifier = Modifier.size(16.dp)) // placeholder
+                            Icon(Icons.Default.Restaurant, contentDescription = null, tint = colors.mutedText, modifier = Modifier.size(16.dp))
                             Text("Meal Type", fontWeight = FontWeight.SemiBold, color = colors.mutedText, style = MaterialTheme.typography.bodyMedium)
                         }
                         Box {
@@ -528,7 +554,7 @@ fun MealEditScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = null, tint = colors.mutedText, modifier = Modifier.size(16.dp)) // placeholder
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = colors.mutedText, modifier = Modifier.size(16.dp))
                             Text("Logged At", fontWeight = FontWeight.SemiBold, color = colors.mutedText, style = MaterialTheme.typography.bodyMedium)
                         }
                         Text(activeTimeText, fontWeight = FontWeight.Medium, color = colors.primaryText)
@@ -544,17 +570,19 @@ fun MealEditScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("What you ate", fontWeight = FontWeight.SemiBold, color = colors.mutedText, style = MaterialTheme.typography.bodyMedium)
-                            IconButton(
-                                onClick = { showQuickEdit = !showQuickEdit },
+                            Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .background(colors.softAccentBackground, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(colors.softAccentBackground)
+                                    .clickable { showQuickEdit = !showQuickEdit },
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = if (showQuickEdit) Icons.Default.Close else Icons.Default.Edit,
                                     contentDescription = "Quick edit",
                                     tint = colors.primaryGreen,
-                                    modifier = Modifier.size(12.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
@@ -867,35 +895,130 @@ fun MealEditScreen(
 
     // Alert: Save Favorite Dialog
     if (isSavingFavoriteAlert) {
-        AlertDialog(
-            onDismissRequest = { isSavingFavoriteAlert = false },
-            title = { Text("Save Favourite Meal") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Name this favorite meal:")
+        Dialog(onDismissRequest = { isSavingFavoriteAlert = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = colors.cardBackground,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                border = BorderStroke(1.dp, colors.cardBorder)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Header Icon
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(colors.softAccentBackground),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bookmark,
+                            contentDescription = null,
+                            tint = colors.primaryGreen,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    // Titles
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Save to Favorites",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primaryText,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Give this meal a name so you can quickly log it later.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.mutedText,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    // Input Field (Modern, rounded, premium border)
                     OutlinedTextField(
                         value = favoriteTitleText,
                         onValueChange = { favoriteTitleText = it },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        placeholder = { Text("e.g. Grandma's Lasagna", color = colors.quietText) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.primaryGreen,
+                            unfocusedBorderColor = colors.cardBorder,
+                            focusedContainerColor = colors.insetBackground,
+                            unfocusedContainerColor = colors.insetBackground,
+                            focusedTextColor = colors.primaryText,
+                            unfocusedTextColor = colors.primaryText
+                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
                     )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (favoriteTitleText.isNotBlank()) {
-                            viewModel.saveMealAsFavorite(mealId, favoriteTitleText)
-                            isSavedToFavorites = true
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Buttons Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Cancel button
+                        TextButton(
+                            onClick = { isSavingFavoriteAlert = false },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = colors.mutedText
+                            )
+                        ) {
+                            Text(
+                                "Cancel",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
-                        isSavingFavoriteAlert = false
+
+                        // Save button
+                        Button(
+                            onClick = {
+                                if (favoriteTitleText.isNotBlank()) {
+                                    viewModel.saveMealAsFavorite(mealId, favoriteTitleText)
+                                    isSavedToFavorites = true
+                                }
+                                isSavingFavoriteAlert = false
+                            },
+                            modifier = Modifier
+                                .weight(1.5f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.primaryGreen,
+                                contentColor = Color.White
+                            ),
+                            enabled = favoriteTitleText.isNotBlank()
+                        ) {
+                            Text(
+                                "Save",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
-                ) { Text("Save", color = colors.primaryGreen) }
-            },
-            dismissButton = {
-                TextButton(onClick = { isSavingFavoriteAlert = false }) { Text("Cancel") }
+                }
             }
-        )
+        }
     }
 
     // Alert: Delete Favorite confirm
@@ -919,6 +1042,18 @@ fun MealEditScreen(
             dismissButton = {
                 TextButton(onClick = { showFavoriteDeleteConfirm = false }) { Text("Cancel") }
             }
+        )
+    }
+
+    if (showCalendar) {
+        CalendarBottomSheet(
+            initialDate = activeLocalDate,
+            onDateSelected = { date ->
+                val newMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                editedDateMillis = newMillis
+                autoSaveChanges(newDate = newMillis)
+            },
+            onDismiss = { showCalendar = false }
         )
     }
 }

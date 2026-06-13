@@ -192,7 +192,7 @@ private fun HistoryListScreen(
                 .fillMaxSize()
                 .background(colors.background)
         ) {
-            // Edit / Cancel Pill Button (Top Left)
+            // Edit / Cancel Button (Top Left)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -205,17 +205,15 @@ private fun HistoryListScreen(
                         editMode = !editMode
                         selectedIds = emptySet()
                     },
-                    shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.textButtonColors(
-                        containerColor = colors.cardBackground,
                         contentColor = colors.primaryGreen
                     ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                    modifier = Modifier.shadow(1.dp, RoundedCornerShape(20.dp))
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = if (editMode) "Cancel" else "Edit",
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
 
@@ -393,7 +391,8 @@ private fun HistoryListScreen(
                             selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
                         },
                         onMealClick = onMealClick,
-                        dailyGoal = dailyGoal
+                        dailyGoal = dailyGoal,
+                        onNavigateToLogTab = onNavigateToLogTab
                     )
                 }
             }
@@ -462,7 +461,8 @@ private fun DaySectionCard(
     selectedIds: Set<String>,
     onToggleSelect: (String) -> Unit,
     onMealClick: (String) -> Unit,
-    dailyGoal: Double
+    dailyGoal: Double,
+    onNavigateToLogTab: () -> Unit
 ) {
     val colors = LogCalTheme.colors
     val title = daySectionTitle(section.date, zone)
@@ -569,12 +569,73 @@ private fun DaySectionCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (section.meals.isEmpty()) {
-                    Text(
-                        text = if (section.isToday) "No meals logged today yet." else "No meals logged on this day.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.mutedText,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+                    if (section.isToday) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.softAccentBackground),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = colors.primaryGreen,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "No meals logged today",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.primaryText
+                                )
+                                Text(
+                                    text = "Start tracking your calories",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.mutedText
+                                )
+                            }
+
+                            Button(
+                                onClick = onNavigateToLogTab,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = colors.primaryGreen,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(22.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp)
+                                    .padding(horizontal = 48.dp)
+                            ) {
+                                Text(
+                                    text = "Log your first meal",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "No meals logged on this day.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.mutedText,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
                 } else {
                     section.meals.forEachIndexed { index, meal ->
                         HistoryMealRow(
