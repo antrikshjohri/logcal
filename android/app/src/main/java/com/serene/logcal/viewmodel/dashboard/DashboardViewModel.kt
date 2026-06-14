@@ -162,15 +162,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val fat = dayMeals.sumOf { it.response.fat ?: 0.0 }.roundToInt()
         val remainingCalories = (goal - todayCalories).coerceAtLeast(0)
 
-        // Weekly stats centered around the selected date (7 days ending at selected date)
+        val today = LocalDate.now(zone)
+        // Weekly stats: last 7 days ending today (inclusive)
         val weekly = (6 downTo 0).map { offset ->
-            val d = date.minusDays(offset.toLong())
+            val d = today.minusDays(offset.toLong())
             val dayCalories = mealsByDate[d].orEmpty().sumOf { it.totalCalories }.roundToInt()
             WeeklyDayStat(date = d, calories = dayCalories)
         }
         val weeklyAverage = if (weekly.isNotEmpty()) weekly.map { it.calories }.average().roundToInt() else 0
         
-        val today = LocalDate.now()
         val streakDays = calculateStreakDays(today, mealsByDate)
 
         val proteinTarget = prefManager.proteinGoal.roundToInt().coerceAtLeast(1)
