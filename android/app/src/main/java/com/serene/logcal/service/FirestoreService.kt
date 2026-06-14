@@ -16,7 +16,7 @@ class FirestoreService {
     private val auth = FirebaseAuth.getInstance()
 
     data class UserPreferences(
-        val dailyGoal: Double,
+        val dailyGoal: Double? = null,
         val proteinGoal: Double? = null,
         val carbsGoal: Double? = null,
         val fatGoal: Double? = null,
@@ -223,7 +223,14 @@ class FirestoreService {
             val doc = db.collection("users").document(userId).get().await()
             if (doc.exists()) {
                 val data = doc.data ?: return null
-                val dailyGoal = (data["dailyGoal"] as? Number)?.toDouble() ?: 2000.0
+                val hasPreferences = data.containsKey("dailyGoal") ||
+                    data.containsKey("proteinGoal") ||
+                    data.containsKey("carbsGoal") ||
+                    data.containsKey("fatGoal") ||
+                    data.containsKey("dietStyle")
+                if (!hasPreferences) return null
+
+                val dailyGoal = (data["dailyGoal"] as? Number)?.toDouble()
                 val proteinGoal = (data["proteinGoal"] as? Number)?.toDouble()
                 val carbsGoal = (data["carbsGoal"] as? Number)?.toDouble()
                 val fatGoal = (data["fatGoal"] as? Number)?.toDouble()

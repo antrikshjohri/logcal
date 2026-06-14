@@ -117,6 +117,29 @@ class PreferenceManager(context: Context) {
         get() = prefs.getBoolean(KEY_HAS_REQUESTED_NOTIFICATION_PERMISSION, false)
         set(value) = prefs.edit().putBoolean(KEY_HAS_REQUESTED_NOTIFICATION_PERMISSION, value).apply()
 
+    fun hasStoredUserPreferences(): Boolean {
+        return prefs.contains(KEY_DAILY_GOAL) ||
+            prefs.contains(KEY_PROTEIN_GOAL) ||
+            prefs.contains(KEY_CARBS_GOAL) ||
+            prefs.contains(KEY_FAT_GOAL) ||
+            prefs.contains(KEY_DIET_STYLE) ||
+            legacyDashboardPrefs.contains("daily_goal")
+    }
+
+    fun hasStoredNotificationPreferences(): Boolean {
+        return prefs.contains(KEY_MEAL_REMINDERS_ENABLED) ||
+            prefs.contains(KEY_BREAKFAST_HOUR) ||
+            prefs.contains(KEY_BREAKFAST_MINUTE) ||
+            prefs.contains(KEY_LUNCH_HOUR) ||
+            prefs.contains(KEY_LUNCH_MINUTE) ||
+            prefs.contains(KEY_DINNER_HOUR) ||
+            prefs.contains(KEY_DINNER_MINUTE)
+    }
+
+    fun hasStoredUserCountry(): Boolean {
+        return prefs.contains(KEY_USER_COUNTRY) && userCountry.isNotBlank()
+    }
+
     var lastActiveDateDashboard: String?
         get() = prefs.getString("lastActiveDateDashboard", null)
         set(value) = prefs.edit().putString("lastActiveDateDashboard", value).apply()

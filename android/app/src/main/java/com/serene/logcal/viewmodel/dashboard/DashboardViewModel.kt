@@ -135,7 +135,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun observeMeals() {
         viewModelScope.launch {
-            combine(localRepo.observeHistoryMeals(), _selectedDate) { meals, date ->
+            combine(localRepo.observeHistoryMeals(), _selectedDate, syncService.lastSyncTimeMillis) { meals, date, _ ->
                 Pair(meals, date)
             }.collect { (meals, date) ->
                 val currentGoal = prefManager.dailyGoal.roundToInt()
@@ -220,4 +220,3 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         return streak
     }
 }
-

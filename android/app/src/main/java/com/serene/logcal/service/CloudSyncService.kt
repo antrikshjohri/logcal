@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.serene.logcal.data.local.MealEntryEntity
 import com.serene.logcal.data.local.SavedMealEntity
 import com.serene.logcal.data.repository.AppGraph
+import com.serene.logcal.model.DietStyle
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,6 +113,8 @@ class CloudSyncService(private val context: Context) {
                 DebugLogger.d("DEBUG: [CloudSyncService] Merged ${favsToAdd.size} favorites from cloud to local Room DB")
             }
 
+            restoreUserSettingsFromCloud()
+
             _lastSyncTimeMillis.value = System.currentTimeMillis()
             _isSyncing.value = false
         } catch (e: Exception) {
@@ -125,6 +128,13 @@ class CloudSyncService(private val context: Context) {
         val user = auth.currentUser
         if (user == null || user.isAnonymous) {
             DebugLogger.d("DEBUG: [CloudSyncService] User is anonymous, skipping migration")
+            return
+        }
+        val lastSyncedUserId = prefManager.lastSyncedUserId
+        if (lastSyncedUserId != null && lastSyncedUserId != user.uid) {
+            DebugLogger.d(
+                "DEBUG: [CloudSyncService] Signed-in account changed, skipping local migration before cloud restore"
+            )
             return
         }
 
@@ -150,14 +160,42 @@ class CloudSyncService(private val context: Context) {
                 firestoreService.syncLocalMealsToCloud(entities)
             }
 
-            // Migrate preferences
-            val dailyGoal = prefManager.dailyGoal
-            val protein = prefManager.proteinGoal
-            val carbs = prefManager.carbsGoal
-            val fat = prefManager.fatGoal
-            val style = prefManager.dietStyle
-            if (dailyGoal > 0) {
-                firestoreService.saveDailyGoal(dailyGoal, protein, carbs, fat, style)
+            // Migrate preferences only when the user has actually stored local values.
+            if (prefManager.hasStoredUserPreferences()) {
+                val dailyGoal = prefManager.dailyGoal
+                val protein = prefManager.proteinGoal
+                val carbs = prefManager.carbsGoal
+                val fat = prefManager.fatGoal
+                val style = prefManager.dietStyle
+                if (dailyGoal > 0) {
+                    firestoreService.saveDailyGoal(dailyGoal, protein, carbs, fat, style)
+                }
+            } else {
+                DebugLogger.d("DEBUG: [CloudSyncService] No stored local nutrition preferences to migrate")
+            }
+
+            if (prefManager.hasStoredNotificationPreferences()) {
+                firestoreService.saveNotificationPreferences(
+                    mealRemindersEnabled = prefManager.mealRemindersEnabled,
+                    breakfastTime = FirestoreService.ReminderTime(
+                        prefManager.breakfastHour,
+                        prefManager.breakfastMinute
+                    ),
+                    lunchTime = FirestoreService.ReminderTime(
+                        prefManager.lunchHour,
+                        prefManager.lunchMinute
+                    ),
+                    dinnerTime = FirestoreService.ReminderTime(
+                        prefManager.dinnerHour,
+                        prefManager.dinnerMinute
+                    )
+                )
+            } else {
+                DebugLogger.d("DEBUG: [CloudSyncService] No stored local notification preferences to migrate")
+            }
+
+            if (prefManager.hasStoredUserCountry()) {
+                firestoreService.saveUserCountry(prefManager.userCountry)
             }
 
             // Migrate favorites
@@ -231,5 +269,59 @@ class CloudSyncService(private val context: Context) {
         } catch (e: Exception) {
             DebugLogger.e("DEBUG: [CloudSyncService] Error syncing saved meals to cloud", e)
         }
+    }
+
+    private suspend fun restoreUserSettingsFromCloud() {
+        val preferences = firestoreService.fetchUserPreferences()
+        if (preferences != null) {
+            preferences.dailyGoal?.takeIf { it > 0 }?.let { prefManager.dailyGoal = it }
+            preferences.proteinGoal?.takeIf { it > 0 }?.let { prefManager.proteinGoal = it }
+            preferences.carbsGoal?.takeIf { it > 0 }?.let { prefManager.carbsGoal = it }
+            preferences.fatGoal?.takeIf { it > 0 }?.let { prefManager.fatGoal = it }
+            preferences.dietStyle?.takeIf { it.isNotBlank() }?.let { prefManager.dietStyle = it }
+
+            if (preferences.dietStyle == DietStyle.CUSTOM.rawValue) {
+                restoreCustomMacroPercentages(preferences)
+            }
+
+            DebugLogger.d("DEBUG: [CloudSyncService] Restored nutrition preferences from cloud")
+        }
+
+        val country = firestoreService.fetchUserCountry()
+        if (!country.isNullOrBlank()) {
+            prefManager.userCountry = country
+            DebugLogger.d("DEBUG: [CloudSyncService] Restored country from cloud: $country")
+        }
+
+        val notificationPrefs = firestoreService.fetchNotificationPreferences()
+        if (notificationPrefs != null) {
+            prefManager.mealRemindersEnabled = notificationPrefs.mealRemindersEnabled
+            notificationPrefs.breakfastTime?.let {
+                prefManager.breakfastHour = it.hour
+                prefManager.breakfastMinute = it.minute
+            }
+            notificationPrefs.lunchTime?.let {
+                prefManager.lunchHour = it.hour
+                prefManager.lunchMinute = it.minute
+            }
+            notificationPrefs.dinnerTime?.let {
+                prefManager.dinnerHour = it.hour
+                prefManager.dinnerMinute = it.minute
+            }
+            AppGraph.mealReminderService(context).scheduleAll()
+            DebugLogger.d("DEBUG: [CloudSyncService] Restored notification preferences from cloud")
+        }
+    }
+
+    private fun restoreCustomMacroPercentages(preferences: FirestoreService.UserPreferences) {
+        val dailyGoal = preferences.dailyGoal ?: return
+        val proteinGoal = preferences.proteinGoal ?: return
+        val carbsGoal = preferences.carbsGoal ?: return
+        val fatGoal = preferences.fatGoal ?: return
+        if (dailyGoal <= 0) return
+
+        prefManager.customProteinPercent = proteinGoal * 4.0 / dailyGoal * 100.0
+        prefManager.customCarbsPercent = carbsGoal * 4.0 / dailyGoal * 100.0
+        prefManager.customFatPercent = fatGoal * 9.0 / dailyGoal * 100.0
     }
 }

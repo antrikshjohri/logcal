@@ -109,6 +109,45 @@ fun NotificationsScreen(
         originalLunchMinute = lunchMinute
         originalDinnerHour = dinnerHour
         originalDinnerMinute = dinnerMinute
+
+        val cloudPrefs = firestoreService.fetchNotificationPreferences()
+        if (cloudPrefs != null) {
+            mealRemindersEnabled = cloudPrefs.mealRemindersEnabled
+            prefManager.mealRemindersEnabled = cloudPrefs.mealRemindersEnabled
+
+            cloudPrefs.breakfastTime?.let {
+                breakfastHour = it.hour
+                breakfastMinute = it.minute
+                prefManager.breakfastHour = it.hour
+                prefManager.breakfastMinute = it.minute
+            }
+            cloudPrefs.lunchTime?.let {
+                lunchHour = it.hour
+                lunchMinute = it.minute
+                prefManager.lunchHour = it.hour
+                prefManager.lunchMinute = it.minute
+            }
+            cloudPrefs.dinnerTime?.let {
+                dinnerHour = it.hour
+                dinnerMinute = it.minute
+                prefManager.dinnerHour = it.hour
+                prefManager.dinnerMinute = it.minute
+            }
+
+            originalEnabled = mealRemindersEnabled
+            originalBreakfastHour = breakfastHour
+            originalBreakfastMinute = breakfastMinute
+            originalLunchHour = lunchHour
+            originalLunchMinute = lunchMinute
+            originalDinnerHour = dinnerHour
+            originalDinnerMinute = dinnerMinute
+            if (mealRemindersEnabled) {
+                reminderService.scheduleAll()
+            } else {
+                reminderService.cancelAll()
+            }
+            DebugLogger.d("DEBUG: [NotificationsScreen] Loaded notification preferences from cloud")
+        }
     }
 
     val hasChanges = mealRemindersEnabled != originalEnabled ||
