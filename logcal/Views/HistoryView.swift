@@ -31,6 +31,7 @@ struct HistoryView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var toastManager: ToastManager
     @State private var showLinkSheet = false
+    private let scrollTopAnchorID = "history-scroll-top"
     
     // Group meals by date
     private var groupedMeals: [(date: Date, meals: [MealEntry], totalCalories: Double)] {
@@ -186,80 +187,89 @@ struct HistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Theme.backgroundColor(colorScheme: colorScheme))
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: Constants.Spacing.large) {
-                            if authViewModel.isAnonymous {
-                                HStack(alignment: .center, spacing: 10) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundColor(Theme.warningAmber)
-                                        .font(.system(size: 18))
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Guest Session")
-                                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                        Text("Sign in to back up your meals to the cloud.")
-                                            .font(.system(size: 11, design: .rounded))
-                                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    Button(action: {
-                                        showLinkSheet = true
-                                    }) {
-                                        Text("Sign In")
-                                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 6)
-                                            .background(Theme.primaryGreen)
-                                            .cornerRadius(6)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Theme.cardBackground(colorScheme: colorScheme))
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Theme.warningAmber.opacity(0.3), lineWidth: 1)
-                                )
-                                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
-                                .padding(.bottom, 4)
-                            }
-                            
-                            ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
-                                DayCardView(
-                                    dayGroup: dayGroup,
-                                    isExpanded: Binding(
-                                        get: { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || expandedDates.contains(dayGroup.date) },
-                                        set: { isExpanded in
-                                            if isExpanded {
-                                                expandedDates.insert(dayGroup.date)
-                                            } else {
-                                                expandedDates.remove(dayGroup.date)
-                                            }
+                    ScrollViewReader { scrollProxy in
+                        ScrollView {
+                            LazyVStack(spacing: Constants.Spacing.large) {
+                                if authViewModel.isAnonymous {
+                                    HStack(alignment: .center, spacing: 10) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(Theme.warningAmber)
+                                            .font(.system(size: 18))
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Guest Session")
+                                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                            Text("Sign in to back up your meals to the cloud.")
+                                                .font(.system(size: 11, design: .rounded))
+                                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                                .fixedSize(horizontal: false, vertical: true)
                                         }
-                                    ),
-                                    editMode: $editMode,
-                                    selectedMeals: $selectedMeals,
-                                    isToday: isToday(dayGroup.date),
-                                    navigateToDateTimestamp: $navigateToDateTimestamp,
-                                    selectedTab: $selectedTab
-                                )
+
+                                        Spacer()
+
+                                        Button(action: {
+                                            showLinkSheet = true
+                                        }) {
+                                            Text("Sign In")
+                                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(Theme.primaryGreen)
+                                                .cornerRadius(6)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(Theme.cardBackground(colorScheme: colorScheme))
+                                    .cornerRadius(12)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Theme.warningAmber.opacity(0.3), lineWidth: 1)
+                                    )
+                                    .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
+                                    .padding(.bottom, 4)
                                 }
-                                .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
-                                .frame(maxWidth: .infinity, alignment: .center)
+
+                                ForEach(Array(allDates.enumerated()), id: \.element.date) { index, dayGroup in
+                                    DayCardView(
+                                        dayGroup: dayGroup,
+                                        isExpanded: Binding(
+                                            get: { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || expandedDates.contains(dayGroup.date) },
+                                            set: { isExpanded in
+                                                if isExpanded {
+                                                    expandedDates.insert(dayGroup.date)
+                                                } else {
+                                                    expandedDates.remove(dayGroup.date)
+                                                }
+                                            }
+                                        ),
+                                        editMode: $editMode,
+                                        selectedMeals: $selectedMeals,
+                                        isToday: isToday(dayGroup.date),
+                                        navigateToDateTimestamp: $navigateToDateTimestamp,
+                                        selectedTab: $selectedTab
+                                    )
+                                    .frame(maxWidth: horizontalSizeClass == .regular ? 650 : .infinity)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                }
                             }
                             .padding(.horizontal, 20)
                             .padding(.vertical, Constants.Spacing.large)
+                            .id(scrollTopAnchorID)
                         }
                         .background(Theme.backgroundColor(colorScheme: colorScheme))
-                    .refreshable {
-                        await refreshFromCloud()
+                        .refreshable {
+                            await refreshFromCloud()
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 100_000_000)
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    scrollProxy.scrollTo(scrollTopAnchorID, anchor: .top)
+                                }
+                            }
+                        }
                     }
                 }
             }
