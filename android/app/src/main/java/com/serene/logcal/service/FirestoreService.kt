@@ -29,6 +29,18 @@ class FirestoreService {
         val linkageExpiryMillis: Long? = null,
     )
 
+    data class ReminderTime(
+        val hour: Int,
+        val minute: Int,
+    )
+
+    data class NotificationPreferences(
+        val mealRemindersEnabled: Boolean,
+        val breakfastTime: ReminderTime? = null,
+        val lunchTime: ReminderTime? = null,
+        val dinnerTime: ReminderTime? = null,
+    )
+
     private val currentUserId: String?
         get() = auth.currentUser?.uid
 
@@ -234,6 +246,68 @@ class FirestoreService {
 
     suspend fun fetchDailyGoal(): Double? {
         return fetchUserPreferences()?.dailyGoal
+    }
+
+    suspend fun saveNotificationPreferences(
+        mealRemindersEnabled: Boolean,
+        breakfastTime: ReminderTime,
+        lunchTime: ReminderTime,
+        dinnerTime: ReminderTime,
+    ) {
+        val userId = currentUserId ?: return
+        val notificationPrefs = hashMapOf<String, Any>(
+            "mealRemindersEnabled" to mealRemindersEnabled,
+            "breakfastTime" to mapOf(
+                "hour" to breakfastTime.hour,
+                "minute" to breakfastTime.minute
+            ),
+            "lunchTime" to mapOf(
+                "hour" to lunchTime.hour,
+                "minute" to lunchTime.minute
+            ),
+            "dinnerTime" to mapOf(
+                "hour" to dinnerTime.hour,
+                "minute" to dinnerTime.minute
+            )
+        )
+        val userData = hashMapOf<String, Any>(
+            "notificationPreferences" to notificationPrefs,
+            "updatedAt" to Timestamp(Date())
+        )
+
+        try {
+            db.collection("users").document(userId).set(userData, SetOptions.merge()).await()
+            DebugLogger.d("DEBUG: [FirestoreService] Saved notification preferences")
+        } catch (e: Exception) {
+            DebugLogger.e("DEBUG: [FirestoreService] Error saving notification preferences", e)
+            throw e
+        }
+    }
+
+    suspend fun fetchNotificationPreferences(): NotificationPreferences? {
+        val userId = currentUserId ?: return null
+        return try {
+            val doc = db.collection("users").document(userId).get().await()
+            val prefs = doc.data?.get("notificationPreferences") as? Map<*, *> ?: return null
+            val enabled = prefs["mealRemindersEnabled"] as? Boolean ?: return null
+
+            NotificationPreferences(
+                mealRemindersEnabled = enabled,
+                breakfastTime = parseReminderTime(prefs["breakfastTime"]),
+                lunchTime = parseReminderTime(prefs["lunchTime"]),
+                dinnerTime = parseReminderTime(prefs["dinnerTime"])
+            )
+        } catch (e: Exception) {
+            DebugLogger.e("DEBUG: [FirestoreService] Error fetching notification preferences", e)
+            null
+        }
+    }
+
+    private fun parseReminderTime(value: Any?): ReminderTime? {
+        val time = value as? Map<*, *> ?: return null
+        val hour = (time["hour"] as? Number)?.toInt() ?: return null
+        val minute = (time["minute"] as? Number)?.toInt() ?: return null
+        return ReminderTime(hour, minute)
     }
 
     suspend fun saveUserCountry(countryCode: String) {

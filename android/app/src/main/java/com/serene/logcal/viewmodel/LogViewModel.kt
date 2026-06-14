@@ -62,6 +62,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     private val localRepo = AppGraph.localMealRepository(application)
     private val favRepo = AppGraph.localSavedMealsRepository(application)
     private val syncService = AppGraph.cloudSyncService(application)
+    private val reminderService = AppGraph.mealReminderService(application)
     private val prefManager = AppGraph.preferenceManager(application)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -177,6 +178,17 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(selectedDate = newDate, latestResult = null)
     }
 
+    fun applyNotificationTarget(mealType: MealType) {
+        val today = LocalDate.now()
+        DebugLogger.d("DEBUG: [LogViewModel] Applying notification target date=$today mealType=${mealType.rawValue}")
+        _uiState.value = _uiState.value.copy(
+            selectedDate = today,
+            selectedMealType = mealType,
+            isMealTypeManuallySet = true,
+            latestResult = null
+        )
+    }
+
     fun clearLatestResult() {
         _uiState.value = _uiState.value.copy(latestResult = null)
     }
@@ -269,6 +281,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                 if (mealEntry != null) {
                     syncService.syncMealToCloud(mealEntry)
                 }
+                reminderService.rescheduleNotificationsIfNeeded()
 
                 _uiState.value = _uiState.value.copy(
                     latestResult = response,
@@ -496,6 +509,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         if (mealEntry != null) {
                             syncService.syncMealToCloud(mealEntry)
                         }
+                        reminderService.rescheduleNotificationsIfNeeded()
                         DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
                     } catch (t: Throwable) {
                         DebugLogger.e("DEBUG: [LogViewModel] Failed to save meal to local DB", t)

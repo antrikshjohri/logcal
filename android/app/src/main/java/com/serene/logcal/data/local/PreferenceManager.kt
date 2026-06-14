@@ -26,6 +26,7 @@ class PreferenceManager(context: Context) {
         private const val KEY_DINNER_HOUR = "dinnerHour"
         private const val KEY_DINNER_MINUTE = "dinnerMinute"
         private const val KEY_LAST_SYNCED_USER_ID = "lastSyncedUserId"
+        private const val KEY_HAS_REQUESTED_NOTIFICATION_PERMISSION = "hasRequestedNotificationPermission"
     }
 
     var dailyGoal: Double
@@ -111,6 +112,10 @@ class PreferenceManager(context: Context) {
     var lastSyncedUserId: String?
         get() = prefs.getString(KEY_LAST_SYNCED_USER_ID, null)
         set(value) = prefs.edit().putString(KEY_LAST_SYNCED_USER_ID, value).apply()
+
+    var hasRequestedNotificationPermission: Boolean
+        get() = prefs.getBoolean(KEY_HAS_REQUESTED_NOTIFICATION_PERMISSION, false)
+        set(value) = prefs.edit().putBoolean(KEY_HAS_REQUESTED_NOTIFICATION_PERMISSION, value).apply()
 
     var lastActiveDateDashboard: String?
         get() = prefs.getString("lastActiveDateDashboard", null)

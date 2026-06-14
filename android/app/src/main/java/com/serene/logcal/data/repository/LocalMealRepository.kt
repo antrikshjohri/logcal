@@ -57,6 +57,18 @@ class LocalMealRepository(
         mealDao.getById(id)
     }
 
+    suspend fun hasMealTypeBetween(
+        mealType: String,
+        startMillis: Long,
+        endMillis: Long
+    ): Boolean = withContext(Dispatchers.IO) {
+        mealDao.hasMealTypeBetween(mealType, startMillis, endMillis)
+    }
+
+    suspend fun hasMealCreatedSince(cutoffMillis: Long): Boolean = withContext(Dispatchers.IO) {
+        mealDao.hasMealCreatedSince(cutoffMillis)
+    }
+
     suspend fun saveMeal(
         timestampMillis: Long,
         foodText: String,

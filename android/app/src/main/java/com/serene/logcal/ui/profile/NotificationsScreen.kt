@@ -1,7 +1,12 @@
 package com.serene.logcal.ui.profile
 
+import android.Manifest
 import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -45,14 +50,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.serene.logcal.data.repository.AppGraph
+import com.serene.logcal.service.FirestoreService
 import com.serene.logcal.ui.theme.LogCalTheme
+import com.serene.logcal.util.DebugLogger
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
@@ -61,6 +71,9 @@ fun NotificationsScreen(
 ) {
     val context = LocalContext.current
     val prefManager = remember { AppGraph.preferenceManager(context) }
+    val reminderService = remember { AppGraph.mealReminderService(context) }
+    val firestoreService = remember { FirestoreService() }
+    val coroutineScope = rememberCoroutineScope()
     val colors = LogCalTheme.colors
 
     var mealRemindersEnabled by remember { mutableStateOf(true) }
@@ -78,6 +91,7 @@ fun NotificationsScreen(
     var originalLunchMinute by remember { mutableIntStateOf(0) }
     var originalDinnerHour by remember { mutableIntStateOf(20) }
     var originalDinnerMinute by remember { mutableIntStateOf(0) }
+    var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         mealRemindersEnabled = prefManager.mealRemindersEnabled
@@ -105,25 +119,81 @@ fun NotificationsScreen(
             dinnerHour != originalDinnerHour ||
             dinnerMinute != originalDinnerMinute
 
+    fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    fun persistReminderPreferences(enabledOverride: Boolean? = null, closeAfterSave: Boolean = true) {
+        val effectiveEnabled = enabledOverride ?: mealRemindersEnabled
+        mealRemindersEnabled = effectiveEnabled
+        isSaving = true
+
+        coroutineScope.launch {
+            prefManager.mealRemindersEnabled = effectiveEnabled
+            prefManager.breakfastHour = breakfastHour
+            prefManager.breakfastMinute = breakfastMinute
+            prefManager.lunchHour = lunchHour
+            prefManager.lunchMinute = lunchMinute
+            prefManager.dinnerHour = dinnerHour
+            prefManager.dinnerMinute = dinnerMinute
+
+            try {
+                firestoreService.saveNotificationPreferences(
+                    mealRemindersEnabled = effectiveEnabled,
+                    breakfastTime = FirestoreService.ReminderTime(breakfastHour, breakfastMinute),
+                    lunchTime = FirestoreService.ReminderTime(lunchHour, lunchMinute),
+                    dinnerTime = FirestoreService.ReminderTime(dinnerHour, dinnerMinute)
+                )
+            } catch (e: Exception) {
+                DebugLogger.e("DEBUG: [NotificationsScreen] Failed to sync notification preferences", e)
+                Toast.makeText(context, "Saved on this device. Cloud sync failed.", Toast.LENGTH_SHORT).show()
+            }
+
+            if (effectiveEnabled) {
+                reminderService.scheduleAll()
+            } else {
+                reminderService.cancelAll()
+            }
+
+            originalEnabled = effectiveEnabled
+            originalBreakfastHour = breakfastHour
+            originalBreakfastMinute = breakfastMinute
+            originalLunchHour = lunchHour
+            originalLunchMinute = lunchMinute
+            originalDinnerHour = dinnerHour
+            originalDinnerMinute = dinnerMinute
+
+            isSaving = false
+            Toast.makeText(context, "Reminder preferences saved!", Toast.LENGTH_SHORT).show()
+            if (closeAfterSave) {
+                onBack()
+            }
+        }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        prefManager.hasRequestedNotificationPermission = true
+        if (granted) {
+            persistReminderPreferences()
+        } else {
+            Toast.makeText(context, "Notification permission is required for meal reminders.", Toast.LENGTH_SHORT).show()
+            persistReminderPreferences(enabledOverride = false, closeAfterSave = false)
+        }
+    }
+
     fun saveReminders() {
-        prefManager.mealRemindersEnabled = mealRemindersEnabled
-        prefManager.breakfastHour = breakfastHour
-        prefManager.breakfastMinute = breakfastMinute
-        prefManager.lunchHour = lunchHour
-        prefManager.lunchMinute = lunchMinute
-        prefManager.dinnerHour = dinnerHour
-        prefManager.dinnerMinute = dinnerMinute
-
-        originalEnabled = mealRemindersEnabled
-        originalBreakfastHour = breakfastHour
-        originalBreakfastMinute = breakfastMinute
-        originalLunchHour = lunchHour
-        originalLunchMinute = lunchMinute
-        originalDinnerHour = dinnerHour
-        originalDinnerMinute = dinnerMinute
-
-        Toast.makeText(context, "Reminder preferences saved!", Toast.LENGTH_SHORT).show()
-        onBack()
+        if (mealRemindersEnabled && !hasNotificationPermission()) {
+            prefManager.hasRequestedNotificationPermission = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        persistReminderPreferences()
     }
 
     fun formatTime(hour: Int, minute: Int): String {
@@ -278,13 +348,19 @@ fun NotificationsScreen(
             if (hasChanges) {
                 Button(
                     onClick = { saveReminders() },
+                    enabled = !isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(25.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen)
                 ) {
-                    Text("Save Changes", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text(
+                        if (isSaving) "Saving..." else "Save Changes",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
                 }
             }
 

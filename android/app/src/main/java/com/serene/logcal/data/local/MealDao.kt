@@ -18,10 +18,24 @@ interface MealDao {
     @Query("SELECT * FROM meal_entries WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): MealEntryEntity?
 
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM meal_entries
+            WHERE mealType = :mealType
+            AND timestampMillis >= :startMillis
+            AND timestampMillis < :endMillis
+        )
+        """
+    )
+    suspend fun hasMealTypeBetween(mealType: String, startMillis: Long, endMillis: Long): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM meal_entries WHERE createdAtMillis >= :cutoffMillis)")
+    suspend fun hasMealCreatedSince(cutoffMillis: Long): Boolean
+
     @Query("DELETE FROM meal_entries WHERE id = :id")
     suspend fun deleteById(id: String)
 
     @Query("DELETE FROM meal_entries")
     suspend fun deleteAll()
 }
-

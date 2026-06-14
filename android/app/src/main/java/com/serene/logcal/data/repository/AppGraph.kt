@@ -4,6 +4,7 @@ import android.content.Context
 import com.serene.logcal.data.local.AppDatabase
 import com.serene.logcal.data.local.PreferenceManager
 import com.serene.logcal.service.CloudSyncService
+import com.serene.logcal.service.MealReminderService
 
 object AppGraph {
     @Volatile
@@ -17,6 +18,9 @@ object AppGraph {
 
     @Volatile
     private var cloudSyncService: CloudSyncService? = null
+
+    @Volatile
+    private var mealReminderService: MealReminderService? = null
 
     fun localMealRepository(context: Context): LocalMealRepository {
         return localMealRepository ?: synchronized(this) {
@@ -44,6 +48,14 @@ object AppGraph {
         }
     }
 
+    fun mealReminderService(context: Context): MealReminderService {
+        return mealReminderService ?: synchronized(this) {
+            mealReminderService ?: MealReminderService(context.applicationContext).also { service ->
+                mealReminderService = service
+            }
+        }
+    }
+
     fun localSavedMealsRepository(context: Context): LocalSavedMealsRepository {
         return localSavedMealsRepository ?: synchronized(this) {
             localSavedMealsRepository ?: LocalSavedMealsRepository(
@@ -54,4 +66,3 @@ object AppGraph {
         }
     }
 }
-
