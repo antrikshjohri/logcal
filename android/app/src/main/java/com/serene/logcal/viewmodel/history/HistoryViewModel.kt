@@ -8,6 +8,8 @@ import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.data.local.MealEntryEntity
 import com.serene.logcal.data.local.SavedMealEntity
 import com.serene.logcal.data.local.PreferenceManager
+import com.serene.logcal.model.MealLogResponse
+import kotlinx.serialization.json.Json
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.service.CloudSyncService
 import com.serene.logcal.util.DebugLogger
@@ -29,6 +31,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     private val favRepo = AppGraph.localSavedMealsRepository(application)
     private val syncService = AppGraph.cloudSyncService(application)
     private val gson = Gson()
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -171,7 +174,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                     foodText = meal.foodText,
                     mealType = meal.mealType,
                     totalCalories = meal.totalCalories,
-                    rawResponseJson = gson.toJson(meal.response),
+                    rawResponseJson = json.encodeToString(MealLogResponse.serializer(), meal.response),
                     sourceMealId = meal.id,
                     displayOrder = favRepo.getAll().size
                 )

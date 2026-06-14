@@ -67,7 +67,7 @@ class FirebaseMealRepository(
             "DEBUG: [FirebaseMealRepository] refineMealLog() start foodTextLen=${foodText.length} mealType=${mealType.rawValue} correctionPromptLen=${correctionPrompt.length}"
         )
         return try {
-            val prevJson = gson.toJson(previousEstimate)
+            val prevJson = json.encodeToString(MealLogResponse.serializer(), previousEstimate)
             val prevMap = gson.fromJson(prevJson, Map::class.java)
 
             val payload = hashMapOf<String, Any>(

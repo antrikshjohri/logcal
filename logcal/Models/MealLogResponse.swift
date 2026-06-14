@@ -19,13 +19,87 @@ struct MealLogResponse: Codable, Equatable {
     
     enum CodingKeys: String, CodingKey {
         case mealType = "meal_type"
+        case mealTypeCamel = "mealType"
         case totalCalories = "total_calories"
+        case totalCaloriesCamel = "totalCalories"
         case protein
         case carbs
         case fat
         case items
         case needsClarification = "needs_clarification"
+        case needsClarificationCamel = "needsClarification"
         case clarifyingQuestion = "clarifying_question"
+        case clarifyingQuestionCamel = "clarifyingQuestion"
+    }
+
+    init(
+        mealType: String,
+        totalCalories: Double,
+        protein: Double?,
+        carbs: Double?,
+        fat: Double?,
+        items: [MealItem],
+        needsClarification: Bool,
+        clarifyingQuestion: String?
+    ) {
+        self.mealType = mealType
+        self.totalCalories = totalCalories
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+        self.items = items
+        self.needsClarification = needsClarification
+        self.clarifyingQuestion = clarifyingQuestion
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Try snake_case first, fall back to camelCase
+        if let type = try? container.decode(String.self, forKey: .mealType) {
+            self.mealType = type
+        } else {
+            self.mealType = try container.decode(String.self, forKey: .mealTypeCamel)
+        }
+        
+        if let calories = try? container.decode(Double.self, forKey: .totalCalories) {
+            self.totalCalories = calories
+        } else {
+            self.totalCalories = try container.decode(Double.self, forKey: .totalCaloriesCamel)
+        }
+        
+        self.protein = try container.decodeIfPresent(Double.self, forKey: .protein)
+        self.carbs = try container.decodeIfPresent(Double.self, forKey: .carbs)
+        self.fat = try container.decodeIfPresent(Double.self, forKey: .fat)
+        self.items = try container.decode([MealItem].self, forKey: .items)
+        
+        if let needsClar = try? container.decode(Bool.self, forKey: .needsClarification) {
+            self.needsClarification = needsClar
+        } else if let needsClarCamel = try? container.decode(Bool.self, forKey: .needsClarificationCamel) {
+            self.needsClarification = needsClarCamel
+        } else {
+            self.needsClarification = false
+        }
+        
+        if let clarifyingQ = try? container.decode(String.self, forKey: .clarifyingQuestion) {
+            self.clarifyingQuestion = clarifyingQ
+        } else if let clarifyingQCamel = try? container.decode(String.self, forKey: .clarifyingQuestionCamel) {
+            self.clarifyingQuestion = clarifyingQCamel
+        } else {
+            self.clarifyingQuestion = nil
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(mealType, forKey: .mealType)
+        try container.encode(totalCalories, forKey: .totalCalories)
+        try container.encodeIfPresent(protein, forKey: .protein)
+        try container.encodeIfPresent(carbs, forKey: .carbs)
+        try container.encodeIfPresent(fat, forKey: .fat)
+        try container.encode(items, forKey: .items)
+        try container.encode(needsClarification, forKey: .needsClarification)
+        try container.encodeIfPresent(clarifyingQuestion, forKey: .clarifyingQuestion)
     }
 }
 
@@ -37,7 +111,7 @@ struct MealItem: Codable, Equatable {
     let carbs: Double?    // grams
     let fat: Double?      // grams
     let assumptions: String?
-    let confidence: Double
+    let confidence: Double?
 }
 
 extension MealLogResponse {

@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.serene.logcal.data.local.SavedMealEntity
+import kotlinx.serialization.json.Json
 import com.serene.logcal.data.local.PreferenceManager
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.model.MealLogResponse
@@ -62,6 +63,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     private val favRepo = AppGraph.localSavedMealsRepository(application)
     private val syncService = AppGraph.cloudSyncService(application)
     private val prefManager = AppGraph.preferenceManager(application)
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     private val _uiState = MutableStateFlow(LogUiState())
     val uiState: StateFlow<LogUiState> = _uiState
@@ -195,7 +197,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             foodText = foodText,
             mealType = result.mealType,
             totalCalories = result.totalCalories,
-            rawResponseJson = Gson().toJson(result),
+            rawResponseJson = json.encodeToString(MealLogResponse.serializer(), result),
             sourceMealId = _uiState.value.lastLoggedMealId,
             displayOrder = savedMeals.value.size
         )
@@ -210,7 +212,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     fun logSavedMealAsIs(savedMeal: SavedMealEntity, servingMultiplier: Double = 1.0) {
         val rawJson = savedMeal.rawResponseJson
         val response = try {
-            val decoded = Gson().fromJson(rawJson, MealLogResponse::class.java)
+            val decoded = json.decodeFromString(MealLogResponse.serializer(), rawJson)
             if (servingMultiplier != 1.0) {
                 // Scale protein, carbs, fat, items calories
                 val scaledItems = decoded.items.map {

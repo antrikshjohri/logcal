@@ -93,11 +93,14 @@ import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.history.HistoryViewModel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,8 +155,8 @@ fun MealEditScreen(
             editedDateMillis = m.timestampMillis
             editedMealType = m.mealType
             editedCalories = m.totalCalories
-            originalResponseJson = Gson().toJson(m.response)
-            modifiedResponseJson = Gson().toJson(m.response)
+            originalResponseJson = json.encodeToString(MealLogResponse.serializer(), m.response)
+            modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), m.response)
 
             // Check override status
             val sumOfItems = m.response.items.sumOf { it.calories }
@@ -373,7 +376,7 @@ fun MealEditScreen(
                                         totalCalories = newCals,
                                         items = updatedItems
                                     )
-                                    modifiedResponseJson = Gson().toJson(updatedResponse)
+                                    modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), updatedResponse)
                                     editedCalories = newCals
                                     isEditingCalories = false
                                     autoSaveChanges(newCal = newCals)
@@ -455,7 +458,7 @@ fun MealEditScreen(
                         modifier = Modifier.clickable {
                             caloriesManuallyOverridden = false
                             modifiedResponseJson = originalResponseJson
-                            val decoded = Gson().fromJson(originalResponseJson, MealLogResponse::class.java)
+                            val decoded = json.decodeFromString(MealLogResponse.serializer(), originalResponseJson)
                             editedCalories = decoded.totalCalories
                             autoSaveChanges(newCal = decoded.totalCalories)
                         }
@@ -634,7 +637,7 @@ fun MealEditScreen(
                                                         )
                                                         result.fold(
                                                             onSuccess = { response ->
-                                                                modifiedResponseJson = Gson().toJson(response)
+                                                                modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), response)
                                                                 editedCalories = response.totalCalories
                                                                 editedMealType = response.mealType
                                                                 viewModel.updateMeal(
@@ -683,7 +686,7 @@ fun MealEditScreen(
                                                     )
                                                     result.fold(
                                                         onSuccess = { response ->
-                                                            modifiedResponseJson = Gson().toJson(response)
+                                                            modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), response)
                                                             editedCalories = response.totalCalories
                                                             editedMealType = response.mealType
                                                             viewModel.updateMeal(
