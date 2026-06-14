@@ -47,7 +47,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
+import androidx.compose.runtime.LaunchedEffect
 
 data class FAQItem(val question: String, val answer: String)
 
@@ -56,6 +58,10 @@ fun HelpFAQScreen(
     onBack: () -> Unit
 ) {
     val colors = LogCalTheme.colors
+
+    LaunchedEffect(Unit) {
+        AnalyticsService.trackHelpFAQOpened()
+    }
 
     val faqs = remember {
         listOf(

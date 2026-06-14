@@ -18,6 +18,7 @@ import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
 import com.serene.logcal.service.CloudSyncService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.MealImageEncoder
 import kotlinx.coroutines.Dispatchers
@@ -158,6 +159,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                 latestResult = null,
                 sourceSavedMealId = null
             )
+            AnalyticsService.trackImageSelected()
         }
     }
 
@@ -167,6 +169,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             latestResult = null,
             sourceSavedMealId = null
         )
+        AnalyticsService.trackImageRemoved()
     }
 
     fun clearAttachedImages() {
@@ -184,6 +187,9 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             latestResult = null,
             sourceSavedMealId = null
         )
+        if (isManual) {
+            AnalyticsService.trackMealTypeChanged(newMealType.rawValue)
+        }
     }
 
     fun setSelectedDate(newDate: LocalDate) {
@@ -313,6 +319,12 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     foodText = "",
                     attachedImageUris = emptyList()
                 )
+                AnalyticsService.trackMealLogged(
+                    mealType = savedMeal.mealType,
+                    totalCalories = totalCalories,
+                    itemCount = response?.items?.size ?: 0,
+                    hasImage = false
+                )
             } catch (e: Exception) {
                 DebugLogger.e("DEBUG: [LogViewModel] logSavedMealAsIs failed", e)
                 _uiState.value = _uiState.value.copy(errorMessage = "Failed to log favorite meal.")
@@ -363,6 +375,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startSpeechRecognition(target: SpeechTarget = SpeechTarget.MAIN) {
+        AnalyticsService.trackSpeechRecognitionStarted()
         _uiState.value = _uiState.value.copy(
             isListening = true,
             speechTarget = target,
@@ -433,12 +446,14 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stopSpeechRecognition() {
         if (!_uiState.value.isListening) return
+        AnalyticsService.trackSpeechRecognitionStopped()
         speechRecognizer?.stopListening()
         _uiState.value = _uiState.value.copy(isListening = false, isTranscribingSpeech = true)
     }
 
     fun cancelSpeechRecognition() {
         if (!_uiState.value.isListening) return
+        AnalyticsService.trackSpeechRecognitionStopped()
         speechRecognizer?.cancel()
         speechRecognizer?.destroy()
         speechRecognizer = null
@@ -556,6 +571,12 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         quickEditFoodText = "",
                         attachedImageUris = emptyList()
                     )
+                    AnalyticsService.trackMealLogged(
+                        mealType = response.mealType,
+                        totalCalories = response.totalCalories,
+                        itemCount = response.items.size,
+                        hasImage = imageBase64s.isNotEmpty()
+                    )
                 },
                 onFailure = { t ->
                     DebugLogger.e("DEBUG: [LogViewModel] logMeal() failed", t)
@@ -563,6 +584,9 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         isLoading = false,
                         latestResult = null,
                         errorMessage = "Failed to log meal. Please try again."
+                    )
+                    AnalyticsService.trackMealLogFailed(
+                        errorType = t.localizedMessage ?: "Unknown error"
                     )
                 }
             )

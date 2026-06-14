@@ -76,6 +76,7 @@ import com.serene.logcal.viewmodel.dashboard.DashboardViewModel
 import com.serene.logcal.viewmodel.history.HistoryViewModel
 import com.serene.logcal.ui.auth.AuthScreen
 import com.serene.logcal.util.DebugLogger
+import com.serene.logcal.service.AnalyticsService
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AnalyticsService.initialize(this)
         applyLaunchIntent(intent)
         setContent {
             var themeState by rememberSaveable { mutableStateOf(prefManager.appTheme) }
@@ -110,8 +112,11 @@ class MainActivity : ComponentActivity() {
                     ActivityResultContracts.RequestPermission()
                 ) { granted ->
                     prefManager.hasRequestedNotificationPermission = true
-                    if (!granted) {
+                    if (granted) {
+                        AnalyticsService.trackNotificationPermissionGranted()
+                    } else {
                         prefManager.mealRemindersEnabled = false
+                        AnalyticsService.trackNotificationPermissionDenied()
                     }
                     lifecycleScope.launch {
                         reminderService.scheduleAll()
@@ -213,6 +218,7 @@ class MainActivity : ComponentActivity() {
                 reminderService.scheduleAll()
             }
         } else {
+            AnalyticsService.trackNotificationPermissionRequested()
             launchPermissionRequest()
         }
     }
@@ -255,6 +261,17 @@ private fun AppRoot(
     val dashboardViewModel: DashboardViewModel = viewModel()
     val logViewModel: LogViewModel = viewModel()
     val historyViewModel: HistoryViewModel = viewModel()
+
+    LaunchedEffect(selectedTab) {
+        val tabName = when (selectedTab) {
+            RootTab.HOME -> "Dashboard"
+            RootTab.LOG -> "Log"
+            RootTab.HISTORY -> "History"
+            RootTab.PROFILE -> "Profile"
+        }
+        AnalyticsService.trackTabChanged(tabName)
+        AnalyticsService.trackViewOpened(tabName)
+    }
 
     LaunchedEffect(requestedTab) {
         requestedTab?.let {

@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.model.DietStyle
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.launch
@@ -156,6 +157,9 @@ fun DailyGoalScreen(
                     dietStyle = currentDietStyle.rawValue
                 )
 
+                AnalyticsService.trackDailyGoalChanged(currentGoal)
+                AnalyticsService.trackDietStyleChanged(currentDietStyle.rawValue)
+
                 Toast.makeText(context, "Goal targets saved successfully!", Toast.LENGTH_SHORT).show()
                 onBack()
             } catch (e: Exception) {
@@ -234,7 +238,13 @@ fun DailyGoalScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     IconButton(
-                        onClick = { if (currentGoal > 100) currentGoal -= 50 }
+                        onClick = {
+                            if (currentGoal > 100) {
+                                val target = currentGoal - 50
+                                AnalyticsService.trackCalorieDecrementTapped(target)
+                                currentGoal = target
+                            }
+                        }
                     ) {
                         Icon(Icons.Default.RemoveCircle, contentDescription = "Decrement", tint = colors.primaryGreen, modifier = Modifier.size(28.dp))
                     }
@@ -253,7 +263,13 @@ fun DailyGoalScreen(
                     )
 
                     IconButton(
-                        onClick = { if (currentGoal < 5000) currentGoal += 50 }
+                        onClick = {
+                            if (currentGoal < 5000) {
+                                val target = currentGoal + 50
+                                AnalyticsService.trackCalorieIncrementTapped(target)
+                                currentGoal = target
+                            }
+                        }
                     ) {
                         Icon(Icons.Default.AddCircle, contentDescription = "Increment", tint = colors.primaryGreen, modifier = Modifier.size(28.dp))
                     }
@@ -304,6 +320,7 @@ fun DailyGoalScreen(
                                     .background(if (isSelected) colors.primaryGreen else colors.insetBackground)
                                     .border(1.dp, if (isSelected) colors.primaryGreen else colors.cardBorder, RoundedCornerShape(10.dp))
                                     .clickable {
+                                        AnalyticsService.trackDietStyleSelectionTapped(style.rawValue)
                                         currentDietStyle = style
                                         val percent = style.macroPercentages
                                         currentProteinPercent = percent.first * 100.0
@@ -348,6 +365,7 @@ fun DailyGoalScreen(
                                     shape = RoundedCornerShape(10.dp)
                                 )
                                 .clickable {
+                                    AnalyticsService.trackDietStyleSelectionTapped(DietStyle.CUSTOM.rawValue)
                                     currentDietStyle = DietStyle.CUSTOM
                                 }
                                 .padding(horizontal = 14.dp, vertical = 12.dp)
@@ -380,7 +398,10 @@ fun DailyGoalScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(colors.softAccentBackground)
-                        .clickable { onNavigateToQuestionnaire() }
+                        .clickable {
+                            AnalyticsService.trackHelpMeChooseTapped()
+                            onNavigateToQuestionnaire()
+                        }
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
@@ -498,7 +519,10 @@ fun DailyGoalScreen(
 
             // Save Button
             Button(
-                onClick = { saveGoal() },
+                onClick = {
+                    AnalyticsService.trackSaveGoalTapped()
+                    saveGoal()
+                },
                 enabled = canSave,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -563,7 +587,13 @@ private fun CustomMacroStepperRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconButton(
-                onClick = { if (value >= 2.5) onValueChange(value - 2.5) },
+                onClick = {
+                    if (value >= 2.5) {
+                        val target = value - 2.5
+                        AnalyticsService.trackCustomMacroStepperTapped(label, target)
+                        onValueChange(target)
+                    }
+                },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
@@ -578,7 +608,13 @@ private fun CustomMacroStepperRow(
             }
 
             IconButton(
-                onClick = { if (value <= 97.5) onValueChange(value + 2.5) },
+                onClick = {
+                    if (value <= 97.5) {
+                        val target = value + 2.5
+                        AnalyticsService.trackCustomMacroStepperTapped(label, target)
+                        onValueChange(target)
+                    }
+                },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(

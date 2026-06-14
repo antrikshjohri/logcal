@@ -61,7 +61,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.serene.logcal.model.DietStyle
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
+import androidx.compose.runtime.LaunchedEffect
 import kotlin.math.roundToInt
 
 enum class GoalOption(val rawValue: String, val description: String, val icon: ImageVector) {
@@ -97,6 +99,10 @@ fun DietStyleHelperScreen(
 
     val totalSteps = 3
 
+    LaunchedEffect(Unit) {
+        AnalyticsService.trackDietStyleHelperOpened()
+    }
+
     val recommendedStyle = remember(selectedCarbPref, selectedGoal, selectedActivity) {
         when {
             selectedCarbPref == CarbOption.KETO -> DietStyle.KETO
@@ -131,7 +137,10 @@ fun DietStyleHelperScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onDismiss) {
+            IconButton(onClick = {
+                AnalyticsService.trackDietStyleHelperCancelTapped()
+                onDismiss()
+            }) {
                 Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.primaryText)
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -169,22 +178,37 @@ fun DietStyleHelperScreen(
                 when (step) {
                     0 -> GoalStepView(
                         selected = selectedGoal,
-                        onSelect = { selectedGoal = it }
+                        onSelect = {
+                            AnalyticsService.trackDietStyleHelperOptionSelected(it.rawValue)
+                            selectedGoal = it
+                        }
                     )
                     1 -> ActivityStepView(
                         selected = selectedActivity,
-                        onSelect = { selectedActivity = it }
+                        onSelect = {
+                            AnalyticsService.trackDietStyleHelperOptionSelected(it.rawValue)
+                            selectedActivity = it
+                        }
                     )
                     2 -> CarbStepView(
                         selected = selectedCarbPref,
-                        onSelect = { selectedCarbPref = it }
+                        onSelect = {
+                            AnalyticsService.trackDietStyleHelperOptionSelected(it.rawValue)
+                            selectedCarbPref = it
+                        }
                     )
                     else -> RecommendationResultView(
                         recommendedStyle = recommendedStyle,
                         explanation = styleExplanation,
                         calorieGoal = calorieGoal,
-                        onApply = { onApply(recommendedStyle) },
-                        onRetake = { currentStep = 0 }
+                        onApply = {
+                            AnalyticsService.trackDietStyleHelperCompleted(recommendedStyle.rawValue)
+                            onApply(recommendedStyle)
+                        },
+                        onRetake = {
+                            AnalyticsService.trackDietStyleHelperRetakeTapped()
+                            currentStep = 0
+                        }
                     )
                 }
             }
@@ -208,7 +232,10 @@ fun DietStyleHelperScreen(
                         fontWeight = FontWeight.Bold,
                         color = colors.mutedText,
                         modifier = Modifier
-                            .clickable { currentStep -= 1 }
+                            .clickable {
+                                AnalyticsService.trackDietStyleHelperBackTapped(currentStep - 1)
+                                currentStep -= 1
+                            }
                             .padding(8.dp)
                     )
                 } else {
@@ -221,7 +248,10 @@ fun DietStyleHelperScreen(
                     fontWeight = FontWeight.Bold,
                     color = colors.primaryGreen,
                     modifier = Modifier
-                        .clickable { currentStep += 1 }
+                        .clickable {
+                            AnalyticsService.trackDietStyleHelperNextTapped(currentStep + 1)
+                            currentStep += 1
+                        }
                         .padding(8.dp)
                 )
             }

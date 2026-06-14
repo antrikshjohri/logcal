@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.serene.logcal.service.FirestoreService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
 import kotlinx.coroutines.launch
 
@@ -65,6 +66,7 @@ fun FeedbackDialog(onDismiss: () -> Unit) {
     val textLimit = 2000
 
     LaunchedEffect(Unit) {
+        AnalyticsService.trackViewOpened("feedback_form")
         val user = FirebaseAuth.getInstance().currentUser
         if (user != null && !user.isAnonymous && !user.email.isNullOrBlank()) {
             contactEmail = user.email!!
@@ -240,6 +242,7 @@ fun FeedbackDialog(onDismiss: () -> Unit) {
                                 text = feedbackText.trim(),
                                 email = contactEmail.trim().takeIf { it.isNotBlank() }
                             )
+                            AnalyticsService.trackFeedbackSubmitted()
                             Toast.makeText(context, "Feedback submitted successfully!", Toast.LENGTH_SHORT).show()
                             onDismiss()
                         } catch (e: Exception) {

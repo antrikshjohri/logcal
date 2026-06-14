@@ -84,6 +84,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.model.DietStyle
 import com.serene.logcal.service.FirestoreService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.auth.AuthDialog
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
@@ -211,6 +212,7 @@ fun ProfileScreen() {
                         onSelect = { 
                             selectedTheme = "system" 
                             prefManager.appTheme = "system"
+                            AnalyticsService.trackThemeChanged("system")
                         }
                     )
                     HorizontalDivider(color = colors.cardBorder, thickness = 0.8.dp)
@@ -220,6 +222,7 @@ fun ProfileScreen() {
                         onSelect = { 
                             selectedTheme = "light" 
                             prefManager.appTheme = "light"
+                            AnalyticsService.trackThemeChanged("light")
                         }
                     )
                     HorizontalDivider(color = colors.cardBorder, thickness = 0.8.dp)
@@ -229,6 +232,7 @@ fun ProfileScreen() {
                         onSelect = { 
                             selectedTheme = "dark" 
                             prefManager.appTheme = "dark"
+                            AnalyticsService.trackThemeChanged("dark")
                         }
                     )
                 }
@@ -382,7 +386,10 @@ private fun MainProfileView(
                     }
 
                     Button(
-                        onClick = onShowAuth,
+                        onClick = {
+                            AnalyticsService.trackProfileSignInToSyncTapped()
+                            onShowAuth()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(44.dp),
@@ -447,7 +454,10 @@ private fun MainProfileView(
                         fontWeight = FontWeight.Bold,
                         color = colors.primaryGreen,
                         modifier = Modifier
-                            .clickable { onNavigate(ProfileSubScreen.EDIT_PROFILE) }
+                            .clickable {
+                                AnalyticsService.trackProfileEditProfileTapped()
+                                onNavigate(ProfileSubScreen.EDIT_PROFILE)
+                            }
                             .padding(8.dp)
                     )
                 }
@@ -473,7 +483,10 @@ private fun MainProfileView(
                         title = "Daily Goal",
                         icon = Icons.Default.Flag,
                         trailingValue = "${dailyGoalCalories.roundToInt()} cal",
-                        onClick = { onNavigate(ProfileSubScreen.DAILY_GOAL) }
+                        onClick = {
+                            AnalyticsService.trackProfileDailyGoalTapped()
+                            onNavigate(ProfileSubScreen.DAILY_GOAL)
+                        }
                     )
                     HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -481,7 +494,10 @@ private fun MainProfileView(
                     SettingsActionRow(
                         title = "Favourite meals",
                         icon = Icons.Default.Bookmark,
-                        onClick = { onNavigate(ProfileSubScreen.SAVED_MEALS) }
+                        onClick = {
+                            AnalyticsService.trackProfileFavouriteMealsTapped()
+                            onNavigate(ProfileSubScreen.SAVED_MEALS)
+                        }
                     )
                     HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -490,7 +506,10 @@ private fun MainProfileView(
                         title = "Theme",
                         icon = Icons.Default.Palette,
                         trailingValue = currentThemeName,
-                        onClick = onShowTheme
+                        onClick = {
+                            AnalyticsService.trackProfileThemeTapped()
+                            onShowTheme()
+                        }
                     )
                     HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -498,7 +517,10 @@ private fun MainProfileView(
                     SettingsActionRow(
                         title = "Meal Reminders",
                         icon = Icons.Default.Notifications,
-                        onClick = { onNavigate(ProfileSubScreen.NOTIFICATIONS) }
+                        onClick = {
+                            AnalyticsService.trackProfileMealRemindersTapped()
+                            onNavigate(ProfileSubScreen.NOTIFICATIONS)
+                        }
                     )
                 }
             }
@@ -522,7 +544,10 @@ private fun MainProfileView(
                         title = "Log using Whatsapp",
                         iconPainter = painterResource(id = com.serene.logcal.R.drawable.ic_whatsapp),
                         trailingValue = if (isWhatsAppLinked) "Linked" else "Not Linked",
-                        onClick = { onNavigate(ProfileSubScreen.WHATS_APP_LINK) }
+                        onClick = {
+                            AnalyticsService.trackProfileLogWhatsAppTapped()
+                            onNavigate(ProfileSubScreen.WHATS_APP_LINK)
+                        }
                     )
                 }
             }
@@ -545,14 +570,20 @@ private fun MainProfileView(
                     SettingsActionRow(
                         title = "Help & FAQ",
                         icon = Icons.Default.HelpOutline,
-                        onClick = { onNavigate(ProfileSubScreen.HELP_FAQ) }
+                        onClick = {
+                            AnalyticsService.trackProfileHelpFAQTapped()
+                            onNavigate(ProfileSubScreen.HELP_FAQ)
+                        }
                     )
                     HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsActionRow(
                         title = "Send Feedback",
                         icon = Icons.Default.Send,
-                        onClick = onShowFeedback
+                        onClick = {
+                            AnalyticsService.trackProfileSendFeedbackTapped()
+                            onShowFeedback()
+                        }
                     )
                 }
             }

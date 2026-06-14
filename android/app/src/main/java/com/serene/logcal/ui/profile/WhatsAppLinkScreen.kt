@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.service.FirestoreService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.delay
@@ -146,6 +147,7 @@ fun WhatsAppLinkScreen(
             val url = "https://wa.me/$botNumber?text=$encodedMsg"
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             context.startActivity(intent)
+            AnalyticsService.trackWhatsAppOpened()
         } catch (e: Exception) {
             DebugLogger.e("DEBUG: Failed to launch WhatsApp", e)
             Toast.makeText(context, "Could not open WhatsApp.", Toast.LENGTH_SHORT).show()
@@ -162,6 +164,7 @@ fun WhatsAppLinkScreen(
                 val expiry = System.currentTimeMillis() + (15 * 60 * 1000) // 15 mins
                 
                 firestoreService.saveWhatsAppLinkageCode(code, expiry)
+                AnalyticsService.trackWhatsAppLinkingStarted()
                 
                 linkageCode = code
                 linkageExpiryMillis = expiry
@@ -182,6 +185,7 @@ fun WhatsAppLinkScreen(
         coroutineScope.launch {
             try {
                 firestoreService.unlinkWhatsApp()
+                AnalyticsService.trackWhatsAppUnlinked()
                 linkedPhoneNumber = null
                 linkageCode = ""
                 linkageExpiryMillis = 0L
@@ -207,7 +211,10 @@ fun WhatsAppLinkScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = {
+                AnalyticsService.trackWhatsAppCloseTapped()
+                onBack()
+            }) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.primaryText)
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -281,7 +288,10 @@ fun WhatsAppLinkScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = { unlinkFlow() },
+                        onClick = {
+                            AnalyticsService.trackWhatsAppUnlinkTapped()
+                            unlinkFlow()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
@@ -374,7 +384,10 @@ fun WhatsAppLinkScreen(
 
                     if (linkageCode.isBlank()) {
                         Button(
-                            onClick = { linkFlow() },
+                            onClick = {
+                                AnalyticsService.trackWhatsAppLinkTapped()
+                                linkFlow()
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
@@ -385,7 +398,10 @@ fun WhatsAppLinkScreen(
                         }
                     } else {
                         Button(
-                            onClick = { openWhatsApp(linkageCode) },
+                            onClick = {
+                                AnalyticsService.trackWhatsAppOpenWATapped()
+                                openWhatsApp(linkageCode)
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
@@ -415,7 +431,10 @@ fun WhatsAppLinkScreen(
 
                             Row(
                                 modifier = Modifier
-                                    .clickable { loadStatus() }
+                                    .clickable {
+                                        AnalyticsService.trackWhatsAppCheckStatusTapped()
+                                        loadStatus()
+                                    }
                                     .padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center

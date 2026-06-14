@@ -61,6 +61,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.delay
@@ -144,6 +145,12 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                 auth.signInWithCredential(credential)
                     .addOnSuccessListener { authResult ->
                         DebugLogger.d("DEBUG: Google sign-in successful: ${authResult.user?.email}")
+                        val isNew = authResult.additionalUserInfo?.isNewUser == true
+                        if (isNew) {
+                            AnalyticsService.trackSignUp("google")
+                        } else {
+                            AnalyticsService.trackLogin("google")
+                        }
                         onAuthSuccess()
                     }
                     .addOnFailureListener { e ->
@@ -360,8 +367,14 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                         isLoading = true
                         auth
                             .signInAnonymously()
-                            .addOnSuccessListener {
+                            .addOnSuccessListener { authResult ->
                                 DebugLogger.d("DEBUG: Anonymous guest sign-in successful")
+                                val isNew = authResult.additionalUserInfo?.isNewUser == true
+                                if (isNew) {
+                                    AnalyticsService.trackSignUp("guest")
+                                } else {
+                                    AnalyticsService.trackLogin("guest")
+                                }
                                 onAuthSuccess()
                             }
                             .addOnFailureListener { e ->

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.service.FirestoreService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.launch
@@ -94,6 +95,7 @@ fun NotificationsScreen(
     var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        AnalyticsService.trackViewOpened("Notifications Settings")
         mealRemindersEnabled = prefManager.mealRemindersEnabled
         breakfastHour = prefManager.breakfastHour
         breakfastMinute = prefManager.breakfastMinute
@@ -180,6 +182,16 @@ fun NotificationsScreen(
             prefManager.dinnerHour = dinnerHour
             prefManager.dinnerMinute = dinnerMinute
 
+            AnalyticsService.trackNotificationPreferenceChanged(effectiveEnabled)
+            AnalyticsService.trackNotificationTimesSaved(
+                breakfastHour = breakfastHour,
+                breakfastMinute = breakfastMinute,
+                lunchHour = lunchHour,
+                lunchMinute = lunchMinute,
+                dinnerHour = dinnerHour,
+                dinnerMinute = dinnerMinute
+            )
+
             try {
                 firestoreService.saveNotificationPreferences(
                     mealRemindersEnabled = effectiveEnabled,
@@ -194,6 +206,14 @@ fun NotificationsScreen(
 
             if (effectiveEnabled) {
                 reminderService.scheduleAll()
+                AnalyticsService.trackNotificationsScheduled(
+                    breakfastHour = breakfastHour,
+                    breakfastMinute = breakfastMinute,
+                    lunchHour = lunchHour,
+                    lunchMinute = lunchMinute,
+                    dinnerHour = dinnerHour,
+                    dinnerMinute = dinnerMinute
+                )
             } else {
                 reminderService.cancelAll()
             }
@@ -219,8 +239,10 @@ fun NotificationsScreen(
     ) { granted ->
         prefManager.hasRequestedNotificationPermission = true
         if (granted) {
+            AnalyticsService.trackNotificationPermissionGranted()
             persistReminderPreferences()
         } else {
+            AnalyticsService.trackNotificationPermissionDenied()
             Toast.makeText(context, "Notification permission is required for meal reminders.", Toast.LENGTH_SHORT).show()
             persistReminderPreferences(enabledOverride = false, closeAfterSave = false)
         }
@@ -229,6 +251,7 @@ fun NotificationsScreen(
     fun saveReminders() {
         if (mealRemindersEnabled && !hasNotificationPermission()) {
             prefManager.hasRequestedNotificationPermission = true
+            AnalyticsService.trackNotificationPermissionRequested()
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }

@@ -78,6 +78,7 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.storage.FirebaseStorage
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.service.FirestoreService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.Dispatchers
@@ -377,6 +378,7 @@ fun EditProfileScreen(
                                         syncService.clearLocalMeals()
                                         // 3. Delete Firebase Auth account
                                         user.delete().await()
+                                        AnalyticsService.trackAccountDeleted()
                                     }
                                     showDeleteConfirmation = false
                                     onSignOut()
@@ -612,6 +614,7 @@ fun EditProfileScreen(
             Button(
                 onClick = {
                     coroutineScope.launch {
+                        AnalyticsService.trackLogout()
                         auth.signOut()
                         syncService.clearLocalMeals()
                         onSignOut()

@@ -12,6 +12,7 @@ import com.serene.logcal.model.MealLogResponse
 import kotlinx.serialization.json.Json
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.service.CloudSyncService
+import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +72,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                 syncService.deleteMealFromCloud(id)
                 // Delete locally
                 localRepo.deleteMeal(id)
+                AnalyticsService.trackMealDeleted()
             } catch (t: Throwable) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] deleteMeal() failed id=$id", t)
                 _uiState.update { it.copy(errorMessage = "Failed to delete meal") }
@@ -87,6 +89,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                     syncService.deleteMealFromCloud(id)
                 }
                 localRepo.deleteMeals(ids)
+                AnalyticsService.trackMealDeleted()
             } catch (t: Throwable) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] deleteMeals() failed", t)
                 _uiState.update { it.copy(errorMessage = "Failed to delete meals") }
@@ -103,6 +106,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                     syncService.deleteMealFromCloud(meal.id)
                 }
                 localRepo.deleteAllMeals()
+                AnalyticsService.trackMealDeleted()
             } catch (t: Throwable) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] deleteAllMeals() failed", t)
                 _uiState.update { it.copy(errorMessage = "Failed to clear history") }
@@ -153,6 +157,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                         favRepo.save(updatedFav)
                         syncService.syncSavedMealsToCloud()
                     }
+                    AnalyticsService.trackMealEdited()
                 }
             } catch (e: Exception) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] updateMeal failed", e)
