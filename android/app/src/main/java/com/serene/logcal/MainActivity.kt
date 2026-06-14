@@ -118,14 +118,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(Unit) {
-                    handleInitialNotificationPermissionRequest(
-                        launchPermissionRequest = {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    )
-                }
-
                 var currentUser by remember { mutableStateOf(auth.currentUser) }
 
                 DisposableEffect(Unit) {
@@ -135,6 +127,16 @@ class MainActivity : ComponentActivity() {
                     auth.addAuthStateListener(authListener)
                     onDispose {
                         auth.removeAuthStateListener(authListener)
+                    }
+                }
+
+                LaunchedEffect(currentUser?.uid) {
+                    if (currentUser != null) {
+                        handleInitialNotificationPermissionRequest(
+                            launchPermissionRequest = {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        )
                     }
                 }
 
