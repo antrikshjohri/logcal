@@ -64,6 +64,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     )
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+    val isRefreshing: StateFlow<Boolean> = syncService.isSyncing
+
+    fun refreshData() {
+        viewModelScope.launch {
+            syncService.syncFromCloud()
+        }
+    }
+
     init {
         DebugLogger.d("DEBUG: [DashboardViewModel] init()")
         observeMeals()

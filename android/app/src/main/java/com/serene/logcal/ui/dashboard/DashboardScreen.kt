@@ -48,6 +48,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -101,6 +102,7 @@ import android.widget.Toast
 fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Unit = {}) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -161,34 +163,38 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
 
     var dragAccumulator by remember { mutableStateOf(0f) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LogCalTheme.colors.background)
-            .verticalScroll(rememberScrollState())
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragEnd = {
-                        val threshold = 100f
-                        if (dragAccumulator > threshold) {
-                            viewModel.changeDate(-1)
-                        } else if (dragAccumulator < -threshold) {
-                            val isToday = selectedDate == LocalDate.now()
-                            if (!isToday) {
-                                viewModel.changeDate(1)
-                            }
-                        }
-                        dragAccumulator = 0f
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        dragAccumulator += dragAmount
-                    }
-                )
-            }
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refreshData() }
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(LogCalTheme.colors.background)
+                .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val threshold = 100f
+                            if (dragAccumulator > threshold) {
+                                viewModel.changeDate(-1)
+                            } else if (dragAccumulator < -threshold) {
+                                val isToday = selectedDate == LocalDate.now()
+                                if (!isToday) {
+                                    viewModel.changeDate(1)
+                                }
+                            }
+                            dragAccumulator = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            dragAccumulator += dragAmount
+                        }
+                    )
+                }
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         // 1. Date Header Navigation
         var showDatePicker by remember { mutableStateOf(false) }
 
@@ -505,12 +511,13 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
             )
         }
     }
+    }
 
     if (showDailyGoalSheet) {
         ModalBottomSheet(
             onDismissRequest = { showDailyGoalSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            windowInsets = BottomSheetDefaults.windowInsets
+            contentWindowInsets = { BottomSheetDefaults.windowInsets }
         ) {
             DailyGoalScreen(
                 onBack = { showDailyGoalSheet = false },

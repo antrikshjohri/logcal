@@ -49,7 +49,7 @@ android {
 }
 
 dependencies {
-    val composeBom = "2024.06.00"
+    val composeBom = "2024.12.01"
     implementation(platform("androidx.compose:compose-bom:$composeBom"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

@@ -33,6 +33,14 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
+    val isRefreshing: StateFlow<Boolean> = syncService.isSyncing
+
+    fun refreshData() {
+        viewModelScope.launch {
+            syncService.syncFromCloud()
+        }
+    }
+
     init {
         DebugLogger.d("DEBUG: [HistoryViewModel] init()")
         observeHistory()

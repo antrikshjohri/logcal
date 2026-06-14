@@ -44,6 +44,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -124,6 +125,7 @@ fun HistoryScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryListScreen(
     viewModel: HistoryViewModel,
@@ -131,6 +133,7 @@ private fun HistoryListScreen(
     onMealClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val colors = LogCalTheme.colors
     var lastErrorShown by remember { mutableStateOf<String?>(null) }
@@ -313,87 +316,95 @@ private fun HistoryListScreen(
                 return@Scaffold
             }
 
-            if (uiState.meals.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(colors.primaryGreen.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null,
-                            tint = colors.primaryGreen,
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text(
-                        text = "No meals logged yet",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.primaryText,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Log meals from the Log tab and they will appear here in your calendar history.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.mutedText,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onNavigateToLogTab,
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.height(48.dp).padding(horizontal = 16.dp)
-                    ) {
-                        Text("Go to Log Tab", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    }
-                }
-                return@Scaffold
-            }
-
-            // History sections list
-            LazyColumn(
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { viewModel.refreshData() },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentPadding = PaddingValues(bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .weight(1f)
             ) {
-                items(sections, key = { it.date.toString() }) { section ->
-                    DaySectionCard(
-                        section = section,
-                        zone = zone,
-                        expanded = !collapsedDates.contains(section.date.toString()),
-                        onToggleExpand = {
-                            val key = section.date.toString()
-                            collapsedDates = if (collapsedDates.contains(key)) {
-                                collapsedDates - key
-                            } else {
-                                collapsedDates + key
-                            }
-                        },
-                        editMode = editMode,
-                        selectedIds = selectedIds,
-                        onToggleSelect = { id ->
-                            selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
-                        },
-                        onMealClick = onMealClick,
-                        dailyGoal = dailyGoal,
-                        onNavigateToLogTab = onNavigateToLogTab
-                    )
+                if (uiState.meals.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(32.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(colors.primaryGreen.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = colors.primaryGreen,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text(
+                            text = "No meals logged yet",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primaryText,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Log meals from the Log tab and they will appear here in your calendar history.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.mutedText,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = onNavigateToLogTab,
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.height(48.dp).padding(horizontal = 16.dp)
+                        ) {
+                            Text("Go to Log Tab", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                } else {
+                    // History sections list
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(sections, key = { it.date.toString() }) { section ->
+                            DaySectionCard(
+                                section = section,
+                                zone = zone,
+                                expanded = !collapsedDates.contains(section.date.toString()),
+                                onToggleExpand = {
+                                    val key = section.date.toString()
+                                    collapsedDates = if (collapsedDates.contains(key)) {
+                                        collapsedDates - key
+                                    } else {
+                                        collapsedDates + key
+                                    }
+                                },
+                                editMode = editMode,
+                                selectedIds = selectedIds,
+                                onToggleSelect = { id ->
+                                    selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
+                                },
+                                onMealClick = onMealClick,
+                                dailyGoal = dailyGoal,
+                                onNavigateToLogTab = onNavigateToLogTab
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -106,7 +106,22 @@ class MainActivity : ComponentActivity() {
 
                 if (currentUser == null) {
                     AuthScreen(onAuthSuccess = {
-                        currentUser = auth.currentUser
+                        val newUser = auth.currentUser
+                        currentUser = newUser
+                        if (newUser != null) {
+                            lifecycleScope.launch {
+                                if (newUser.isAnonymous) {
+                                    syncService.initializeAnonymousSession()
+                                } else {
+                                    try {
+                                        syncService.migrateLocalToCloud()
+                                    } catch (e: Exception) {
+                                        DebugLogger.e("DEBUG: [MainActivity] migrateLocalToCloud failed", e)
+                                    }
+                                    syncService.syncFromCloud()
+                                }
+                            }
+                        }
                     })
                 } else {
                     AppRoot()
