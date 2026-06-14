@@ -154,7 +154,8 @@ class CloudSyncService(private val context: Context) {
                         mealType = meal.mealType,
                         totalCalories = meal.totalCalories,
                         rawResponseJson = json.encodeToString(com.serene.logcal.model.MealLogResponse.serializer(), meal.response),
-                        hasImage = meal.hasImage
+                        hasImage = meal.hasImage,
+                        sourceSavedMealId = meal.sourceSavedMealId
                     )
                 }
                 firestoreService.syncLocalMealsToCloud(entities)

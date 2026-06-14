@@ -33,6 +33,12 @@ interface MealDao {
     @Query("SELECT EXISTS(SELECT 1 FROM meal_entries WHERE createdAtMillis >= :cutoffMillis)")
     suspend fun hasMealCreatedSince(cutoffMillis: Long): Boolean
 
+    @Query("UPDATE meal_entries SET sourceSavedMealId = :sourceSavedMealId WHERE id = :mealId")
+    suspend fun updateSourceSavedMealId(mealId: String, sourceSavedMealId: String?)
+
+    @Query("UPDATE meal_entries SET sourceSavedMealId = NULL WHERE sourceSavedMealId = :sourceSavedMealId")
+    suspend fun clearSourceSavedMealId(sourceSavedMealId: String)
+
     @Query("DELETE FROM meal_entries WHERE id = :id")
     suspend fun deleteById(id: String)
 

@@ -134,7 +134,8 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                         mealType = mealType,
                         totalCalories = totalCalories,
                         rawResponseJson = rawResponseJson,
-                        hasImage = existing.hasImage
+                        hasImage = existing.hasImage,
+                        sourceSavedMealId = existing.sourceSavedMealId
                     )
                     localRepo.updateMeal(updated)
                     syncService.syncMealToCloud(updated)
@@ -160,6 +161,10 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     suspend fun getLinkedFavorite(mealId: String): SavedMealEntity? {
+        val meal = localRepo.getMealById(mealId)
+        if (meal?.sourceSavedMealId != null) {
+            favRepo.getById(meal.sourceSavedMealId)?.let { return it }
+        }
         val favorites = favRepo.getAll()
         return favorites.find { it.sourceMealId == mealId }
     }
@@ -179,7 +184,9 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                     displayOrder = favRepo.getAll().size
                 )
                 favRepo.save(savedMeal)
+                localRepo.updateSourceSavedMealId(mealId, savedMeal.id)
                 syncService.syncSavedMealsToCloud()
+                localRepo.getMealEntryById(mealId)?.let { syncService.syncMealToCloud(it) }
             } catch (e: Exception) {
                 DebugLogger.e("DEBUG: [HistoryViewModel] saveMealAsFavorite failed", e)
             }
@@ -189,6 +196,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     fun deleteFavoriteMeal(id: String) {
         viewModelScope.launch {
             try {
+                localRepo.clearSourceSavedMealId(id)
                 favRepo.delete(id)
                 syncService.syncSavedMealsToCloud()
             } catch (e: Exception) {

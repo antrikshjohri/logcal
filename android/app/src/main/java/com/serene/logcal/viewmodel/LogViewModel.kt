@@ -48,6 +48,7 @@ data class LogUiState(
     val attachedImageUris: List<String> = emptyList(),
     val latestResult: MealLogResponse? = null,
     val lastLoggedMealId: String? = null,
+    val sourceSavedMealId: String? = null,
     val errorMessage: String? = null,
     val isListening: Boolean = false,
     val isTranscribingSpeech: Boolean = false,
@@ -115,7 +116,8 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     fun onFoodTextChanged(newText: String) {
         _uiState.value = _uiState.value.copy(
             foodText = newText,
-            latestResult = null
+            latestResult = null,
+            sourceSavedMealId = null
         )
         if (!_uiState.value.isMealTypeManuallySet) {
             updateInferredMealType(newText)
@@ -142,7 +144,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         }
         val current = _uiState.value.foodText.trim()
         val next = if (current.isEmpty()) incoming else "$current $incoming"
-        _uiState.value = _uiState.value.copy(foodText = next, latestResult = null)
+        _uiState.value = _uiState.value.copy(foodText = next, latestResult = null, sourceSavedMealId = null)
         if (!_uiState.value.isMealTypeManuallySet) {
             updateInferredMealType(next)
         }
@@ -151,31 +153,45 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     fun addAttachedImageUri(uri: String) {
         val current = _uiState.value.attachedImageUris
         if (current.size < 3) {
-            _uiState.value = _uiState.value.copy(attachedImageUris = current + uri, latestResult = null)
+            _uiState.value = _uiState.value.copy(
+                attachedImageUris = current + uri,
+                latestResult = null,
+                sourceSavedMealId = null
+            )
         }
     }
 
     fun removeAttachedImageUri(uri: String) {
         _uiState.value = _uiState.value.copy(
             attachedImageUris = _uiState.value.attachedImageUris.filter { it != uri },
-            latestResult = null
+            latestResult = null,
+            sourceSavedMealId = null
         )
     }
 
     fun clearAttachedImages() {
-        _uiState.value = _uiState.value.copy(attachedImageUris = emptyList(), latestResult = null)
+        _uiState.value = _uiState.value.copy(
+            attachedImageUris = emptyList(),
+            latestResult = null,
+            sourceSavedMealId = null
+        )
     }
 
     fun setMealType(newMealType: MealType, isManual: Boolean = true) {
         _uiState.value = _uiState.value.copy(
             selectedMealType = newMealType,
             isMealTypeManuallySet = isManual,
-            latestResult = null
+            latestResult = null,
+            sourceSavedMealId = null
         )
     }
 
     fun setSelectedDate(newDate: LocalDate) {
-        _uiState.value = _uiState.value.copy(selectedDate = newDate, latestResult = null)
+        _uiState.value = _uiState.value.copy(
+            selectedDate = newDate,
+            latestResult = null,
+            sourceSavedMealId = null
+        )
     }
 
     fun applyNotificationTarget(mealType: MealType) {
@@ -185,12 +201,13 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             selectedDate = today,
             selectedMealType = mealType,
             isMealTypeManuallySet = true,
-            latestResult = null
+            latestResult = null,
+            sourceSavedMealId = null
         )
     }
 
     fun clearLatestResult() {
-        _uiState.value = _uiState.value.copy(latestResult = null)
+        _uiState.value = _uiState.value.copy(latestResult = null, sourceSavedMealId = null)
     }
 
     // --- Favourites/Saved Meals ---
@@ -216,8 +233,13 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             favRepo.save(savedMeal)
+            _uiState.value.lastLoggedMealId?.let { mealId ->
+                localRepo.updateSourceSavedMealId(mealId, savedMeal.id)
+                localRepo.getMealEntryById(mealId)?.let { syncService.syncMealToCloud(it) }
+            }
             syncService.syncSavedMealsToCloud()
         }
+        _uiState.value = _uiState.value.copy(sourceSavedMealId = savedMeal.id)
         return savedMeal
     }
 
@@ -274,7 +296,8 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         clarifyingQuestion = null
                     ),
                     hasImage = false,
-                    id = entryId
+                    id = entryId,
+                    sourceSavedMealId = savedMeal.id
                 )
                 // Sync to Cloud
                 val mealEntry = localRepo.getMealEntryById(entryId)
@@ -286,6 +309,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(
                     latestResult = response,
                     lastLoggedMealId = entryId,
+                    sourceSavedMealId = savedMeal.id,
                     foodText = "",
                     attachedImageUris = emptyList()
                 )
@@ -299,6 +323,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteFavoriteMeal(id: String) {
         viewModelScope.launch {
             favRepo.delete(id)
+            localRepo.clearSourceSavedMealId(id)
             syncService.syncSavedMealsToCloud()
         }
     }
@@ -320,7 +345,8 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             isMealTypeManuallySet = true,
             attachedImageUris = emptyList(),
             latestResult = null,
-            lastLoggedMealId = null
+            lastLoggedMealId = null,
+            sourceSavedMealId = null
         )
     }
 
@@ -457,7 +483,12 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         DebugLogger.d("DEBUG: [LogViewModel] logMeal() tapped date=${state.selectedDate} mealType=${state.selectedMealType.rawValue} hasImages=$hasImages imageCount=${state.attachedImageUris.size}")
-        _uiState.value = state.copy(isLoading = true, errorMessage = null, latestResult = null)
+        _uiState.value = state.copy(
+            isLoading = true,
+            errorMessage = null,
+            latestResult = null,
+            sourceSavedMealId = null
+        )
 
         viewModelScope.launch {
             val imageBase64s = if (hasImages) {
@@ -519,6 +550,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         isLoading = false,
                         latestResult = response,
                         lastLoggedMealId = entryId,
+                        sourceSavedMealId = null,
                         errorMessage = null,
                         foodText = "",
                         quickEditFoodText = "",
@@ -567,7 +599,8 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                                 mealType = response.mealType,
                                 response = response,
                                 hasImage = mealEntry.hasImage,
-                                id = mealId
+                                id = mealId,
+                                sourceSavedMealId = mealEntry.sourceSavedMealId
                             )
                             val updated = localRepo.getMealEntryById(mealId)
                             if (updated != null) {

@@ -56,6 +56,7 @@ class FirestoreService {
             "rawResponseJson" to entry.rawResponseJson,
             "hasImage" to entry.hasImage
         )
+        entry.sourceSavedMealId?.let { mealData["sourceSavedMealId"] = it }
 
         try {
             db.collection("users").document(userId)
@@ -103,6 +104,7 @@ class FirestoreService {
                 val totalCalories = (data["totalCalories"] as? Number)?.toDouble() ?: continue
                 val rawResponseJson = data["rawResponseJson"] as? String ?: continue
                 val hasImage = data["hasImage"] as? Boolean ?: false
+                val sourceSavedMealId = data["sourceSavedMealId"] as? String
 
                 entries.add(
                     MealEntryEntity(
@@ -113,7 +115,8 @@ class FirestoreService {
                         mealType = mealType,
                         totalCalories = totalCalories,
                         rawResponseJson = rawResponseJson,
-                        hasImage = hasImage
+                        hasImage = hasImage,
+                        sourceSavedMealId = sourceSavedMealId
                     )
                 )
             }
@@ -163,6 +166,7 @@ class FirestoreService {
                 "rawResponseJson" to entry.rawResponseJson,
                 "hasImage" to entry.hasImage
             )
+            entry.sourceSavedMealId?.let { mealData["sourceSavedMealId"] = it }
             batch.set(mealRef, mealData)
             ops++
 

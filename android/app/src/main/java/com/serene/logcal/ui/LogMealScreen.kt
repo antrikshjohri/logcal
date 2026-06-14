@@ -1005,9 +1005,17 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
                     // Result card section
                     uiState.latestResult?.let { result ->
-                        var isSaved by remember(savedMeals, uiState.lastLoggedMealId) {
-                            mutableStateOf(savedMeals.any { it.sourceMealId == uiState.lastLoggedMealId })
+                        val linkedSavedMeal = remember(
+                            savedMeals,
+                            uiState.lastLoggedMealId,
+                            uiState.sourceSavedMealId
+                        ) {
+                            savedMeals.firstOrNull { savedMeal ->
+                                savedMeal.sourceMealId == uiState.lastLoggedMealId ||
+                                    savedMeal.id == uiState.sourceSavedMealId
+                            }
                         }
+                        val isSaved = linkedSavedMeal != null
 
                         Card(
                             modifier = Modifier
@@ -1061,9 +1069,8 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(
                                             onClick = {
-                                                val existing = savedMeals.firstOrNull { it.sourceMealId == uiState.lastLoggedMealId }
-                                                if (existing != null) {
-                                                    renameTargetMeal = existing
+                                                if (linkedSavedMeal != null) {
+                                                    renameTargetMeal = linkedSavedMeal
                                                 } else {
                                                     val saved = viewModel.saveLatestMealAsFavorite()
                                                     if (saved != null) {

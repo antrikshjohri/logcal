@@ -39,6 +39,7 @@ class LocalMealRepository(
                 foodText = row.foodText,
                 response = response,
                 hasImage = row.hasImage,
+                sourceSavedMealId = row.sourceSavedMealId,
             )
         } catch (t: Throwable) {
             DebugLogger.e("DEBUG: [LocalMealRepository] Failed to decode rawResponseJson for id=${row.id}", t)
@@ -75,7 +76,8 @@ class LocalMealRepository(
         mealType: String,
         response: MealLogResponse,
         hasImage: Boolean = false,
-        id: String? = null
+        id: String? = null,
+        sourceSavedMealId: String? = null
     ) = withContext(Dispatchers.IO) {
         val entity = MealEntryEntity(
             id = id ?: UUID.randomUUID().toString(),
@@ -86,6 +88,7 @@ class LocalMealRepository(
             totalCalories = response.totalCalories,
             rawResponseJson = json.encodeToString(response),
             hasImage = hasImage,
+            sourceSavedMealId = sourceSavedMealId,
         )
         DebugLogger.d(
             "DEBUG: [LocalMealRepository] saveMeal() id=${entity.id} mealType=$mealType calories=${response.totalCalories} hasImage=$hasImage"
@@ -96,6 +99,14 @@ class LocalMealRepository(
     suspend fun updateMeal(meal: MealEntryEntity) = withContext(Dispatchers.IO) {
         DebugLogger.d("DEBUG: [LocalMealRepository] updateMeal() id=${meal.id}")
         mealDao.insertMeal(meal) // insert with REPLACE strategy is effectively an update
+    }
+
+    suspend fun updateSourceSavedMealId(mealId: String, sourceSavedMealId: String?) = withContext(Dispatchers.IO) {
+        mealDao.updateSourceSavedMealId(mealId, sourceSavedMealId)
+    }
+
+    suspend fun clearSourceSavedMealId(sourceSavedMealId: String) = withContext(Dispatchers.IO) {
+        mealDao.clearSourceSavedMealId(sourceSavedMealId)
     }
 
     suspend fun deleteMeal(id: String) {
