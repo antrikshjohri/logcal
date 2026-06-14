@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.res.painterResource
+import com.serene.logcal.R
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -322,34 +326,47 @@ fun AuthDialog(
                         )
                     }
 
-                    Button(
-                        onClick = {
-                            isLoading = true
-                            errorMessage = null
-                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                                .requestIdToken("1023141890322-i5ob5lajc097qdfs3fg22ebc6bapfboe.apps.googleusercontent.com")
-                                .requestEmail()
-                                .build()
-                            val googleSignInClient = GoogleSignIn.getClient(context, gso)
-                            googleSignInClient.signOut().addOnCompleteListener {
-                                val intent = googleSignInClient.signInIntent
-                                googleSignInLauncher.launch(intent)
-                            }
-                        },
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .height(50.dp)
+                            .clickable {
+                                isLoading = true
+                                errorMessage = null
+                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                    .requestIdToken("1023141890322-i5ob5lajc097qdfs3fg22ebc6bapfboe.apps.googleusercontent.com")
+                                    .requestEmail()
+                                    .build()
+                                val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    val intent = googleSignInClient.signInIntent
+                                    googleSignInLauncher.launch(intent)
+                                }
+                            },
                         shape = RoundedCornerShape(25.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.primaryGreen,
-                            contentColor = Color.White
-                        )
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                        shadowElevation = 2.dp
                     ) {
-                        Text(
-                            text = "Sign in with Google",
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_google),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Sign in with Google",
+                                color = Color(0xFF1F1F1F),
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

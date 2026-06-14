@@ -29,8 +29,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
+import com.serene.logcal.R
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -173,143 +177,139 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
 
     val colors = LogCalTheme.colors
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Welcome headings
+        Text(
+            text = "Welcome to LogCal",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = colors.primaryText,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Speak to track calories",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.mutedText,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Visual Demo Section
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Welcome headings
-            Text(
-                text = "Welcome to LogCal",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.primaryText,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Speak to track calories",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.mutedText,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Visual Demo Section
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.weight(1f)
+            // Mic Circle Icon
+            Box(
+                modifier = Modifier
+                    .size(110.dp)
+                    .background(colors.softAccentBackground, CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                // Mic Circle Icon
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(colors.softAccentBackground, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Microphone",
-                        tint = colors.primaryGreen,
-                        modifier = Modifier.size(44.dp)
-                    )
-                }
-
-                // Meal text container (fixed height to prevent layout shifts)
-                Box(
-                    modifier = Modifier
-                        .height(60.dp)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "\"${demoMeals[currentMealIndex].first}\"",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
-                        fontStyle = FontStyle.Italic,
-                        color = colors.primaryText,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.alpha(mealTextAlpha.value)
-                    )
-                }
-
-                // Arrow container
-                Box(
-                    modifier = Modifier.height(30.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowDownward,
-                        contentDescription = "Inferred to",
-                        tint = colors.mutedText,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .alpha(arrowAlpha.value)
-                    )
-                }
-
-                // Calories Card
-                Box(
-                    modifier = Modifier
-                        .height(100.dp)
-                        .width(220.dp)
-                        .alpha(caloriesAlpha.value)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(colors.cardBackground, RoundedCornerShape(16.dp))
-                            .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
-                            .padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Logged",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.mutedText
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${demoMeals[currentMealIndex].second} cal",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.primaryText
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = "Microphone",
+                    tint = colors.primaryGreen,
+                    modifier = Modifier.size(56.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
+            // Meal text container (fixed height to prevent layout shifts)
+            Box(
+                modifier = Modifier
+                    .height(90.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "\"${demoMeals[currentMealIndex].first}\"",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp, lineHeight = 26.sp),
+                    fontStyle = FontStyle.Italic,
+                    color = colors.primaryText,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.alpha(mealTextAlpha.value)
+                )
+            }
 
-            // Auth actions
-            Text(
-                text = "Sign in to sync your data",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.mutedText,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            // Arrow container
+            Box(
+                modifier = Modifier.height(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowDownward,
+                    contentDescription = "Inferred to",
+                    tint = colors.mutedText,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .alpha(arrowAlpha.value)
+                )
+            }
 
-            if (isLoading) {
-                CircularProgressIndicator(color = colors.primaryGreen)
-                Spacer(modifier = Modifier.height(20.dp))
-            } else {
-                // Google sign-in button
-                Button(
-                    onClick = {
+            // Calories Card
+            Box(
+                modifier = Modifier
+                    .height(130.dp)
+                    .width(250.dp)
+                    .alpha(caloriesAlpha.value)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(colors.cardBackground, RoundedCornerShape(20.dp))
+                        .border(1.dp, colors.cardBorder, RoundedCornerShape(20.dp))
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Logged",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "${demoMeals[currentMealIndex].second} cal",
+                        style = MaterialTheme.typography.headlineLarge.copy(fontSize = 36.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = colors.primaryText
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1.2f))
+
+        // Auth actions
+        Text(
+            text = "Sign in to sync your data",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.mutedText,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        if (isLoading) {
+            CircularProgressIndicator(color = colors.primaryGreen)
+            Spacer(modifier = Modifier.height(20.dp))
+        } else {
+            // Official Google sign-in button
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .clickable {
                         isLoading = true
                         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                             .requestIdToken("1023141890322-i5ob5lajc097qdfs3fg22ebc6bapfboe.apps.googleusercontent.com")
@@ -321,71 +321,80 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                             googleSignInLauncher.launch(intent)
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(25.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.primaryGreen,
-                        contentColor = Color.White
-                    )
+                shape = RoundedCornerShape(25.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_google),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "Sign in with Google",
-                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1F1F1F),
+                        fontWeight = FontWeight.Medium,
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Guest option
-                Text(
-                    text = "Continue as Guest",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.primaryGreen,
-                    modifier = Modifier
-                        .clickable {
-                            isLoading = true
-                            auth
-                                .signInAnonymously()
-                                .addOnSuccessListener {
-                                    DebugLogger.d("DEBUG: Anonymous guest sign-in successful")
-                                    onAuthSuccess()
-                                }
-                                .addOnFailureListener { e ->
-                                    isLoading = false
-                                    Toast.makeText(context, "Guest setup failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                                }
-                        }
-                        .padding(vertical = 8.dp)
-                )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Legal notice
-            Row(
-                modifier = Modifier.padding(bottom = 20.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "By continuing, you agree to our ",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.mutedText
-                )
-                Text(
-                    text = "Privacy Policy",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.mutedText,
-                    textDecoration = TextDecoration.Underline,
-                    modifier = Modifier.clickable {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/privacypolicylogcalai/home"))
-                        context.startActivity(browserIntent)
+            // Guest option
+            Text(
+                text = "Continue as Guest",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = colors.primaryGreen,
+                modifier = Modifier
+                    .clickable {
+                        isLoading = true
+                        auth
+                            .signInAnonymously()
+                            .addOnSuccessListener {
+                                DebugLogger.d("DEBUG: Anonymous guest sign-in successful")
+                                onAuthSuccess()
+                            }
+                            .addOnFailureListener { e ->
+                                isLoading = false
+                                Toast.makeText(context, "Guest setup failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
                     }
-                )
-            }
+                    .padding(vertical = 8.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Legal notice
+        Row(
+            modifier = Modifier.padding(bottom = 20.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "By continuing, you agree to our ",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.mutedText
+            )
+            Text(
+                text = "Privacy Policy",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.mutedText,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/privacypolicylogcalai/home"))
+                    context.startActivity(browserIntent)
+                }
+            )
         }
     }
 }
