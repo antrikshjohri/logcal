@@ -1404,6 +1404,7 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
           
           mealsSnapshot.forEach((doc: any) => {
             const data = doc.data();
+            if (data.deleted === true) return;
             totalCalories += data.totalCalories || 0;
             
             if (data.rawResponseJson) {
@@ -1475,7 +1476,8 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
         mealType: openaiResponse.meal_type || inferredMealType,
         totalCalories: openaiResponse.total_calories || 0,
         rawResponseJson: JSON.stringify(openaiResponse),
-        hasImage: false
+        hasImage: false,
+        deleted: false
       };
 
       await userDoc.ref.collection("meals").doc(mealId).set(mealData);
@@ -1487,7 +1489,8 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
         mealType: openaiResponse.meal_type || inferredMealType,
         totalCalories: openaiResponse.total_calories || 0,
         hasImage: false,
-        timestamp: admin.firestore.Timestamp.now()
+        timestamp: admin.firestore.Timestamp.now(),
+        deleted: false
       });
 
       // Construct a confirmation reply showing the logged macros

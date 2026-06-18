@@ -814,7 +814,7 @@ struct MealEditView: View {
             await cloudSyncService.deleteMealFromCloud(meal)
         }
         
-        modelContext.delete(meal)
+        meal.deleted = true
         
         do {
             try modelContext.save()

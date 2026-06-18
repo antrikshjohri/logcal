@@ -76,13 +76,16 @@ class CloudSyncService(private val context: Context) {
         try {
             // 1. Sync meals
             val cloudMeals = firestoreService.fetchMealEntries()
-            val localMeals = localRepo.observeHistoryMeals().first()
-            val localMealIds = localMeals.map { it.id }.toSet()
+            val localEntries = localRepo.getAllMealEntries()
+            val localEntryMap = localEntries.associateBy { it.id }
 
             val toAdd = mutableListOf<MealEntryEntity>()
             for (cloudMeal in cloudMeals) {
-                if (cloudMeal.id !in localMealIds) {
+                val local = localEntryMap[cloudMeal.id]
+                if (local == null) {
                     toAdd.add(cloudMeal)
+                } else if (local.deleted != cloudMeal.deleted) {
+                    toAdd.add(cloudMeal) // REPLACE strategy updates the row
                 }
             }
 

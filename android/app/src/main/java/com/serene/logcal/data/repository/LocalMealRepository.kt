@@ -128,4 +128,8 @@ class LocalMealRepository(
         DebugLogger.d("DEBUG: [LocalMealRepository] insertMeals() count=${meals.size}")
         meals.forEach { mealDao.insertMeal(it) }
     }
+
+    suspend fun getAllMealEntries(): List<MealEntryEntity> = withContext(Dispatchers.IO) {
+        mealDao.getAllMeals()
+    }
 }

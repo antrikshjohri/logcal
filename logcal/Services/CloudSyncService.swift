@@ -112,12 +112,19 @@ class CloudSyncService: ObservableObject {
             // Create a set of local meal IDs for quick lookup
             let localMealIds = Set(localMeals.map { $0.id })
             
-            // Add cloud meals that don't exist locally
+            // Add cloud meals that don't exist locally, and merge deletions/updates
             var addedCount = 0
             for cloudMeal in cloudMeals {
                 if !localMealIds.contains(cloudMeal.id) {
                     modelContext.insert(cloudMeal)
                     addedCount += 1
+                } else {
+                    if let localMeal = localMeals.first(where: { $0.id == cloudMeal.id }) {
+                        if localMeal.deleted != cloudMeal.deleted {
+                            localMeal.deleted = cloudMeal.deleted
+                            addedCount += 1
+                        }
+                    }
                 }
             }
             

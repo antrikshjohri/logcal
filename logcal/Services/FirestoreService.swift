@@ -46,7 +46,8 @@ struct FirestoreService {
             "mealType": entry.mealType,
             "totalCalories": entry.totalCalories,
             "rawResponseJson": entry.rawResponseJson,
-            "hasImage": entry.hasImageValue
+            "hasImage": entry.hasImageValue,
+            "deleted": entry.deleted
         ]
         if let sourceSavedMealId = entry.sourceSavedMealId {
             mealData["sourceSavedMealId"] = sourceSavedMealId.uuidString
@@ -71,7 +72,8 @@ struct FirestoreService {
             "mealType": entry.mealType,
             "totalCalories": entry.totalCalories,
             "hasImage": entry.hasImageValue,
-            "timestamp": Timestamp(date: entry.timestamp)
+            "timestamp": Timestamp(date: entry.timestamp),
+            "deleted": entry.deleted
         ]
         let mealLogRef = db.collection("mealLogs").document(entry.id.uuidString)
         do {
@@ -113,6 +115,7 @@ struct FirestoreService {
                 
                 let sourceSavedMealIdString = data["sourceSavedMealId"] as? String
                 let sourceSavedMealId = sourceSavedMealIdString != nil ? UUID(uuidString: sourceSavedMealIdString!) : nil
+                let deleted = data["deleted"] as? Bool ?? false
                 
                 let entry = MealEntry(
                     id: id,
@@ -123,7 +126,8 @@ struct FirestoreService {
                     totalCalories: totalCalories,
                     rawResponseJson: rawResponseJson,
                     hasImage: hasImage,
-                    sourceSavedMealId: sourceSavedMealId
+                    sourceSavedMealId: sourceSavedMealId,
+                    deleted: deleted
                 )
                 
                 entries.append(entry)
@@ -146,15 +150,16 @@ struct FirestoreService {
         
         let idStringUpper = entry.id.uuidString
         let idStringLower = entry.id.uuidString.lowercased()
+        let updates: [String: Any] = ["deleted": true]
         
         do {
-            // Delete both uppercase and lowercase document IDs to be robust (e.g. client vs backend UUID generation)
-            try await db.collection("users").document(userId).collection("meals").document(idStringUpper).delete()
-            try await db.collection("users").document(userId).collection("meals").document(idStringLower).delete()
-            print("DEBUG: Successfully deleted meal entry from Firestore: \(entry.id)")
+            // Soft-delete both uppercase and lowercase document IDs to be robust (e.g. client vs backend UUID generation)
+            try await db.collection("users").document(userId).collection("meals").document(idStringUpper).setData(updates, merge: true)
+            try? await db.collection("users").document(userId).collection("meals").document(idStringLower).setData(updates, merge: true)
+            print("DEBUG: Successfully soft-deleted meal entry in Firestore: \(entry.id)")
             
-            try? await db.collection("mealLogs").document(idStringUpper).delete()
-            try? await db.collection("mealLogs").document(idStringLower).delete()
+            try? await db.collection("mealLogs").document(idStringUpper).setData(updates, merge: true)
+            try? await db.collection("mealLogs").document(idStringLower).setData(updates, merge: true)
         } catch {
             print("DEBUG: Error deleting meal from Firestore: \(error)")
             throw AppError.unknown(error)
@@ -182,7 +187,8 @@ struct FirestoreService {
                 "mealType": entry.mealType,
                 "totalCalories": entry.totalCalories,
                 "rawResponseJson": entry.rawResponseJson,
-                "hasImage": entry.hasImageValue
+                "hasImage": entry.hasImageValue,
+                "deleted": entry.deleted
             ]
             let mealRef = db.collection("users").document(userId).collection("meals").document(entry.id.uuidString)
             batch.setData(mealData, forDocument: mealRef)
@@ -194,7 +200,8 @@ struct FirestoreService {
                 "mealType": entry.mealType,
                 "totalCalories": entry.totalCalories,
                 "hasImage": entry.hasImageValue,
-                "timestamp": Timestamp(date: entry.timestamp)
+                "timestamp": Timestamp(date: entry.timestamp),
+                "deleted": entry.deleted
             ]
             let mealLogRef = db.collection("mealLogs").document(entry.id.uuidString)
             batch.setData(mealLogData, forDocument: mealLogRef)

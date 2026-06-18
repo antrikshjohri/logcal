@@ -9,10 +9,10 @@ import SwiftUI
 import SwiftData
 
 struct DashboardView: View {
-    @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
+    @Query(filter: #Predicate<MealEntry> { !$0.deleted }, sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
     
     private var activeMeals: [MealEntry] {
-        meals.filter { $0.modelContext != nil && !$0.isDeleted }
+        meals.filter { $0.modelContext != nil && !$0.isDeleted && !$0.deleted }
     }
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext

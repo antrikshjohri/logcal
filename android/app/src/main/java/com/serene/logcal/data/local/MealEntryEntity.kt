@@ -17,6 +17,7 @@ data class MealEntryEntity(
     /** Set when the meal was logged with a photo (parity with iOS hasImage). */
     val hasImage: Boolean = false,
     val sourceSavedMealId: String? = null,
+    val deleted: Boolean = false,
 )
 
 data class HistoryMeal(

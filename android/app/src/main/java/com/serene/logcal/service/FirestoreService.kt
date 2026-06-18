@@ -54,7 +54,8 @@ class FirestoreService {
             "mealType" to entry.mealType,
             "totalCalories" to entry.totalCalories,
             "rawResponseJson" to entry.rawResponseJson,
-            "hasImage" to entry.hasImage
+            "hasImage" to entry.hasImage,
+            "deleted" to entry.deleted
         )
         entry.sourceSavedMealId?.let { mealData["sourceSavedMealId"] = it }
 
@@ -77,7 +78,8 @@ class FirestoreService {
             "mealType" to entry.mealType,
             "totalCalories" to entry.totalCalories,
             "hasImage" to entry.hasImage,
-            "timestamp" to Timestamp(Date(entry.timestampMillis))
+            "timestamp" to Timestamp(Date(entry.timestampMillis)),
+            "deleted" to entry.deleted
         )
         try {
             db.collection("mealLogs").document(entry.id).set(mealLogData).await()
@@ -105,6 +107,7 @@ class FirestoreService {
                 val rawResponseJson = data["rawResponseJson"] as? String ?: continue
                 val hasImage = data["hasImage"] as? Boolean ?: false
                 val sourceSavedMealId = data["sourceSavedMealId"] as? String
+                val deleted = data["deleted"] as? Boolean ?: false
 
                 entries.add(
                     MealEntryEntity(
@@ -116,7 +119,8 @@ class FirestoreService {
                         totalCalories = totalCalories,
                         rawResponseJson = rawResponseJson,
                         hasImage = hasImage,
-                        sourceSavedMealId = sourceSavedMealId
+                        sourceSavedMealId = sourceSavedMealId,
+                        deleted = deleted
                     )
                 )
             }
@@ -132,15 +136,16 @@ class FirestoreService {
         val userId = currentUserId ?: return
         val idUpper = id
         val idLower = id.lowercase()
+        val updates = hashMapOf<String, Any>("deleted" to true)
 
         try {
-            // Delete both uppercase and lowercase keys like iOS for robustness
-            db.collection("users").document(userId).collection("meals").document(idUpper).delete().await()
-            db.collection("users").document(userId).collection("meals").document(idLower).delete().await()
-            DebugLogger.d("DEBUG: [FirestoreService] Deleted meal entry: $id")
+            // Soft-delete both uppercase and lowercase keys like iOS for robustness
+            db.collection("users").document(userId).collection("meals").document(idUpper).set(updates, SetOptions.merge()).await()
+            db.collection("users").document(userId).collection("meals").document(idLower).set(updates, SetOptions.merge()).await()
+            DebugLogger.d("DEBUG: [FirestoreService] Soft-deleted meal entry: $id")
 
-            db.collection("mealLogs").document(idUpper).delete().await()
-            db.collection("mealLogs").document(idLower).delete().await()
+            db.collection("mealLogs").document(idUpper).set(updates, SetOptions.merge()).await()
+            db.collection("mealLogs").document(idLower).set(updates, SetOptions.merge()).await()
         } catch (e: Exception) {
             DebugLogger.e("DEBUG: [FirestoreService] Error deleting meal from Firestore", e)
             throw e
@@ -164,7 +169,8 @@ class FirestoreService {
                 "mealType" to entry.mealType,
                 "totalCalories" to entry.totalCalories,
                 "rawResponseJson" to entry.rawResponseJson,
-                "hasImage" to entry.hasImage
+                "hasImage" to entry.hasImage,
+                "deleted" to entry.deleted
             )
             entry.sourceSavedMealId?.let { mealData["sourceSavedMealId"] = it }
             batch.set(mealRef, mealData)
@@ -177,7 +183,8 @@ class FirestoreService {
                 "mealType" to entry.mealType,
                 "totalCalories" to entry.totalCalories,
                 "hasImage" to entry.hasImage,
-                "timestamp" to Timestamp(Date(entry.timestampMillis))
+                "timestamp" to Timestamp(Date(entry.timestampMillis)),
+                "deleted" to entry.deleted
             )
             batch.set(logRef, logData)
             ops++

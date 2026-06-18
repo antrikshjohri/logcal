@@ -10,10 +10,10 @@ import SwiftData
 import FirebaseAuth
 
 struct HistoryView: View {
-    @Query(sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
+    @Query(filter: #Predicate<MealEntry> { !$0.deleted }, sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
     
     private var activeMeals: [MealEntry] {
-        meals.filter { $0.modelContext != nil && !$0.isDeleted }
+        meals.filter { $0.modelContext != nil && !$0.isDeleted && !$0.deleted }
     }
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
@@ -405,7 +405,7 @@ struct HistoryView: View {
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }
-            modelContext.delete(meal)
+            meal.deleted = true
         }
         
         try? modelContext.save()
@@ -418,7 +418,7 @@ struct HistoryView: View {
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }
-            modelContext.delete(meal)
+            meal.deleted = true
         }
         
         selectedMeals.removeAll()
@@ -437,7 +437,7 @@ struct HistoryView: View {
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }
-            modelContext.delete(meal)
+            meal.deleted = true
         }
         
         try? modelContext.save()
