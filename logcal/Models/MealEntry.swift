@@ -75,5 +75,9 @@ final class MealEntry: Identifiable {
     nonisolated var fat: Double? {
         response?.resolvedMealMacrosForDisplay()?.fat
     }
+
+    nonisolated var fiber: Double? {
+        response?.resolvedMealMacrosForDisplay()?.fiber
+    }
 }
 

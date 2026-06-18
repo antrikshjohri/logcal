@@ -60,6 +60,7 @@ interface MealLogResponse {
   protein?: number;  // grams
   carbs?: number;    // grams
   fat?: number;      // grams
+  fiber?: number;    // grams
   items: Array<{
     name: string;
     quantity: string;
@@ -67,6 +68,7 @@ interface MealLogResponse {
     protein?: number;  // grams
     carbs?: number;    // grams
     fat?: number;      // grams
+    fiber?: number;    // grams
     assumptions?: string;
     confidence: number;
   }>;
@@ -139,6 +141,7 @@ const MEAL_LOG_JSON_SCHEMA = {
       protein: { type: "number" },
       carbs: { type: "number" },
       fat: { type: "number" },
+      fiber: { type: "number" },
       items: {
         type: "array",
         items: {
@@ -151,16 +154,17 @@ const MEAL_LOG_JSON_SCHEMA = {
             protein: { type: "number" },
             carbs: { type: "number" },
             fat: { type: "number" },
+            fiber: { type: "number" },
             assumptions: { type: "string" },
             confidence: { type: "number" },
           },
-          required: ["name", "quantity", "calories", "protein", "carbs", "fat", "assumptions", "confidence"],
+          required: ["name", "quantity", "calories", "protein", "carbs", "fat", "fiber", "assumptions", "confidence"],
         },
       },
       needs_clarification: { type: "boolean" },
       clarifying_question: { type: "string" },
     },
-    required: ["meal_type", "total_calories", "protein", "carbs", "fat", "items", "needs_clarification"],
+    required: ["meal_type", "total_calories", "protein", "carbs", "fat", "fiber", "items", "needs_clarification"],
   },
 };
 
@@ -424,9 +428,9 @@ async function callOpenAI(
   // Build system prompt based on country
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   } else {
-    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
+    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   }
   
   console.log("DEBUG: System prompt:", systemPrompt);
@@ -564,8 +568,20 @@ function alignMealMacrosToItemSum(response: MealLogResponse): MealLogResponse {
     c += i.carbs as number;
     f += i.fat as number;
   }
-  console.log("DEBUG: alignMealMacrosToItemSum applied", { protein: p, carbs: c, fat: f, itemCount: items.length });
-  return { ...response, protein: p, carbs: c, fat: f };
+  
+  const allFiberComplete = items.every(
+    (i) => typeof i.fiber === "number" && !Number.isNaN(i.fiber)
+  );
+  let fib = undefined;
+  if (allFiberComplete) {
+    fib = 0;
+    for (const i of items) {
+      fib += i.fiber as number;
+    }
+  }
+
+  console.log("DEBUG: alignMealMacrosToItemSum applied", { protein: p, carbs: c, fat: f, fiber: fib, itemCount: items.length });
+  return { ...response, protein: p, carbs: c, fat: f, fiber: fib !== undefined ? fib : response.fiber };
 }
 
 /**
@@ -588,10 +604,10 @@ async function callOpenAIRefineMeal(
 
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, and fat must equal the sum of the same fields across all items (grams).`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (grams).`;
   } else {
     systemPrompt =
-      "You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, and fat must equal the sum of the same fields across all items (grams).";
+      "You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (grams).";
   }
 
   const previousJson = JSON.stringify(previousEstimate);
@@ -1401,6 +1417,7 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
           let totalProtein = 0;
           let totalCarbs = 0;
           let totalFat = 0;
+          let totalFiber = 0;
           
           mealsSnapshot.forEach((doc: any) => {
             const data = doc.data();
@@ -1413,6 +1430,7 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
                 totalProtein += resJson.protein || 0;
                 totalCarbs += resJson.carbs || 0;
                 totalFat += resJson.fat || 0;
+                totalFiber += resJson.fiber || 0;
               } catch (e) {
                 // Ignore
               }
@@ -1424,12 +1442,14 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
           const proteinGoal = userData.proteinGoal || 150;
           const carbsGoal = userData.carbsGoal || 200;
           const fatGoal = userData.fatGoal || 65;
+          const fiberGoal = (dailyGoal / 1000) * 14;
           
           const summaryText = `📊 *Today's Progress (IST)*\n\n` +
             `🔥 Calories: *${totalCalories.toFixed(0)} / ${dailyGoal.toFixed(0)} kcal*\n` +
             `💪 Protein: *${totalProtein.toFixed(0)}g / ${proteinGoal.toFixed(0)}g*\n` +
             `🍞 Carbs: *${totalCarbs.toFixed(0)}g / ${carbsGoal.toFixed(0)}g*\n` +
-            `🥑 Fat: *${totalFat.toFixed(0)}g / ${fatGoal.toFixed(0)}g*`;
+            `🥑 Fat: *${totalFat.toFixed(0)}g / ${fatGoal.toFixed(0)}g*\n` +
+            `🌿 Fiber: *${totalFiber.toFixed(0)}g / ${fiberGoal.toFixed(0)}g*`;
             
           await sendWhatsAppButtons(
             from, 
@@ -1499,8 +1519,9 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
       const protein = openaiResponse.protein || 0;
       const carbs = openaiResponse.carbs || 0;
       const fat = openaiResponse.fat || 0;
+      const fiber = openaiResponse.fiber || 0;
 
-      const replyMessage = `🍳 Logged *${mealName}*:\n"${text.trim()}"\n\n🔥 *${calories} kcal*\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*`;
+      const replyMessage = `🍳 Logged *${mealName}*:\n"${text.trim()}"\n\n🔥 *${calories} kcal*\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*\n🌿 Fiber: *${fiber}g*`;
       
       await sendWhatsAppButtons(
         from,

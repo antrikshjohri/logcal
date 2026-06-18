@@ -12,6 +12,7 @@ data class MealLogResponse(
     val protein: Double? = null,
     val carbs: Double? = null,
     val fat: Double? = null,
+    val fiber: Double? = null,
     val items: List<MealItem> = emptyList(),
     @SerialName("needs_clarification")
     val needsClarification: Boolean = false,
@@ -27,6 +28,7 @@ data class MealItem(
     val protein: Double? = null,
     val carbs: Double? = null,
     val fat: Double? = null,
+    val fiber: Double? = null,
     val assumptions: String? = null,
     val confidence: Double? = null,
 )

@@ -142,6 +142,7 @@ fun MealDetailScreen(
             val p = m.response.protein
             val c = m.response.carbs
             val f = m.response.fat
+            val fib = m.response.fiber
             if (p != null && c != null && f != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -150,6 +151,9 @@ fun MealDetailScreen(
                     MacroColumn(label = "Protein", value = "${p.toInt()}g")
                     MacroColumn(label = "Carbs", value = "${c.toInt()}g")
                     MacroColumn(label = "Fat", value = "${f.toInt()}g")
+                    if (fib != null) {
+                        MacroColumn(label = "Fiber", value = "${fib.toInt()}g")
+                    }
                 }
             }
             if (m.response.items.isNotEmpty()) {

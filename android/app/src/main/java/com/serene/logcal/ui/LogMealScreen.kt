@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -1174,13 +1176,18 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
                                 // Macros chips
                                 if (result.protein != null && result.carbs != null && result.fat != null) {
-                                    Row(
+                                    @OptIn(ExperimentalLayoutApi::class)
+                                    FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         MacroIndicatorBlock("Protein", "${result.protein.toInt()}g", colors.protein)
                                         MacroIndicatorBlock("Carbs", "${result.carbs.toInt()}g", colors.carbs)
                                         MacroIndicatorBlock("Fat", "${result.fat.toInt()}g", colors.fat)
+                                        if (result.fiber != null) {
+                                            MacroIndicatorBlock("Fiber", "${result.fiber.toInt()}g", colors.fiber)
+                                        }
                                     }
                                 }
 
@@ -1222,8 +1229,13 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                 color = colors.mutedText
                                             )
                                             if (item.protein != null && item.carbs != null && item.fat != null) {
+                                                val itemMacros = if (item.fiber != null) {
+                                                    "Protein: ${item.protein.toInt()}g · Carbs: ${item.carbs.toInt()}g · Fat: ${item.fat.toInt()}g · Fiber: ${item.fiber.toInt()}g"
+                                                } else {
+                                                    "Protein: ${item.protein.toInt()}g · Carbs: ${item.carbs.toInt()}g · Fat: ${item.fat.toInt()}g"
+                                                }
                                                 Text(
-                                                    "Protein: ${item.protein.toInt()}g · Carbs: ${item.carbs.toInt()}g · Fat: ${item.fat.toInt()}g",
+                                                    itemMacros,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = colors.quietText
                                                 )
@@ -1590,10 +1602,16 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             val protein = ((response.protein ?: 0.0) * servingMultiplier).toInt()
                             val carbs = ((response.carbs ?: 0.0) * servingMultiplier).toInt()
                             val fat = ((response.fat ?: 0.0) * servingMultiplier).toInt()
+                            val fiber = response.fiber?.let { (it * servingMultiplier).toInt() }
                             if (protein > 0 || carbs > 0 || fat > 0) {
                                 Spacer(modifier = Modifier.height(2.dp))
+                                val macrosText = if (fiber != null) {
+                                    "P: ${protein}g  C: ${carbs}g  F: ${fat}g  Fib: ${fiber}g"
+                                } else {
+                                    "P: ${protein}g  C: ${carbs}g  F: ${fat}g"
+                                }
                                 Text(
-                                    "P: ${protein}g  C: ${carbs}g  F: ${fat}g",
+                                    macrosText,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.mutedText
                                 )
@@ -2258,20 +2276,22 @@ private fun MacroIndicatorBlock(label: String, value: String, barColor: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(barColor.copy(alpha = 0.12f))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(6.dp)
                 .background(barColor, CircleShape)
         )
         Text(
             "$value $label",
             fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.primaryText
+            fontSize = 12.sp,
+            color = colors.primaryText,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

@@ -406,6 +406,7 @@ fun MealEditScreen(
             val protein = activeMeal.response.protein ?: 0.0
             val carbs = activeMeal.response.carbs ?: 0.0
             val fat = activeMeal.response.fat ?: 0.0
+            val fiber = activeMeal.response.fiber
             if (protein > 0.0 || carbs > 0.0 || fat > 0.0) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -417,6 +418,10 @@ fun MealEditScreen(
                     MacroBlockItem("Carbs", "${carbs.toInt()}g", colors.carbs)
                     Spacer(modifier = Modifier.width(8.dp))
                     MacroBlockItem("Fat", "${fat.toInt()}g", colors.fat)
+                    if (fiber != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        MacroBlockItem("Fiber", "${fiber.toInt()}g", colors.fiber)
+                    }
                 }
             }
 
@@ -767,8 +772,13 @@ fun MealEditScreen(
                                 }
                                 Text(item.quantity, style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
                                 if (item.protein != null && item.carbs != null && item.fat != null) {
+                                    val itemMacros = if (item.fiber != null) {
+                                        "Protein: ${item.protein.toInt()}g · Carbs: ${item.carbs.toInt()}g · Fat: ${item.fat.toInt()}g · Fiber: ${item.fiber.toInt()}g"
+                                    } else {
+                                        "Protein: ${item.protein.toInt()}g · Carbs: ${item.carbs.toInt()}g · Fat: ${item.fat.toInt()}g"
+                                    }
                                     Text(
-                                        "Protein: ${item.protein.toInt()}g · Carbs: ${item.carbs.toInt()}g · Fat: ${item.fat.toInt()}g",
+                                        itemMacros,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.quietText
                                     )
@@ -1067,16 +1077,18 @@ private fun MacroBlockItem(label: String, value: String, barColor: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(barColor.copy(alpha = 0.12f))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Box(modifier = Modifier.size(8.dp).background(barColor, CircleShape))
+        Box(modifier = Modifier.size(6.dp).background(barColor, CircleShape))
         Text(
             "$value $label",
             fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodySmall,
-            color = LogCalTheme.colors.primaryText
+            fontSize = 12.sp,
+            color = LogCalTheme.colors.primaryText,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

@@ -12,9 +12,11 @@ struct TodaysMacrosCard: View {
     let protein: Double
     let carbs: Double
     let fat: Double
+    let fiber: Double
     let proteinGoal: Double
     let carbsGoal: Double
     let fatGoal: Double
+    let fiberGoal: Double
     var onDetailsTapped: (() -> Void)? = nil
     
     private var proteinProgress: Double {
@@ -27,6 +29,10 @@ struct TodaysMacrosCard: View {
     
     private var fatProgress: Double {
         fatGoal > 0 ? fat / fatGoal : 0
+    }
+    
+    private var fiberProgress: Double {
+        fiberGoal > 0 ? fiber / fiberGoal : 0
     }
     
     var body: some View {
@@ -82,6 +88,16 @@ struct TodaysMacrosCard: View {
                 progress: fatProgress,
                 color: Theme.fatColor,
                 percentColor: Theme.fatColor
+            )
+            
+            // Fiber Row
+            MacroRow(
+                title: "Fiber",
+                current: fiber,
+                goal: fiberGoal,
+                progress: fiberProgress,
+                color: Theme.fiberColor,
+                percentColor: Theme.fiberColor
             )
         }
         .padding(16)
@@ -156,9 +172,11 @@ private struct MacroRow: View {
         protein: 120,
         carbs: 200,
         fat: 65,
+        fiber: 25,
         proteinGoal: 150,
         carbsGoal: 200,
-        fatGoal: 65
+        fatGoal: 65,
+        fiberGoal: 28
     )
     .padding()
 }

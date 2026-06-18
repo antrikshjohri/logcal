@@ -59,6 +59,10 @@ final class SavedMeal: Identifiable {
     nonisolated var fat: Double? {
         response?.resolvedMealMacrosForDisplay()?.fat
     }
+
+    nonisolated var fiber: Double? {
+        response?.resolvedMealMacrosForDisplay()?.fiber
+    }
 }
 
 enum SavedMealTitle {

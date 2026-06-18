@@ -482,6 +482,8 @@ private fun DaySectionCard(
     val sumProtein = section.meals.mapNotNull { it.response.protein }.sum()
     val sumCarbs = section.meals.mapNotNull { it.response.carbs }.sum()
     val sumFat = section.meals.mapNotNull { it.response.fat }.sum()
+    val sumFiber = section.meals.mapNotNull { it.response.fiber }.sum()
+    val hasFiber = section.meals.any { it.response.fiber != null }
 
     Card(
         modifier = Modifier
@@ -567,8 +569,13 @@ private fun DaySectionCard(
                         color = colors.mutedText,
                         fontWeight = FontWeight.Medium
                     )
+                    val macrosText = if (hasFiber) {
+                        "P: ${sumProtein.toInt()}g  ·  C: ${sumCarbs.toInt()}g  ·  F: ${sumFat.toInt()}g  ·  Fib: ${sumFiber.toInt()}g"
+                    } else {
+                        "P: ${sumProtein.toInt()}g  ·  C: ${sumCarbs.toInt()}g  ·  F: ${sumFat.toInt()}g"
+                    }
                     Text(
-                        text = "P: ${sumProtein.toInt()}g  ·  C: ${sumCarbs.toInt()}g  ·  F: ${sumFat.toInt()}g",
+                        text = macrosText,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.mutedText,
                         fontWeight = FontWeight.Medium
@@ -681,6 +688,7 @@ private fun HistoryMealRow(
     val p = meal.response.protein
     val c = meal.response.carbs
     val f = meal.response.fat
+    val fib = meal.response.fiber
     val macroCompact = buildString {
         if (p != null) append("P: ${p.toInt()}g")
         if (c != null) {
@@ -690,6 +698,10 @@ private fun HistoryMealRow(
         if (f != null) {
             if (isNotEmpty()) append("  ·  ")
             append("F: ${f.toInt()}g")
+        }
+        if (fib != null) {
+            if (isNotEmpty()) append("  ·  ")
+            append("Fib: ${fib.toInt()}g")
         }
     }
 

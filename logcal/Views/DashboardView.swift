@@ -93,6 +93,19 @@ struct DashboardView: View {
             .compactMap { $0.fat }
             .reduce(0, +)
     }
+
+    private var todayFiber: Double {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: selectedDate)
+        return activeMeals
+            .filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+            .compactMap { $0.fiber }
+            .reduce(0, +)
+    }
+
+    private var fiberGoal: Double {
+        (dailyGoal / 1000.0) * 14.0
+    }
     
     // Weekly data centered around selectedDate
     private var weeklyData: [(day: String, calories: Double, isToday: Bool)] {
@@ -393,9 +406,11 @@ struct DashboardView: View {
                                     protein: todayProtein,
                                     carbs: todayCarbs,
                                     fat: todayFat,
+                                    fiber: todayFiber,
                                     proteinGoal: proteinGoal,
                                     carbsGoal: carbsGoal,
                                     fatGoal: fatGoal,
+                                    fiberGoal: fiberGoal,
                                     onDetailsTapped: {
                                         navigateToDateTimestamp = selectedDate.timeIntervalSince1970
                                         selectedTab = 2
@@ -440,9 +455,11 @@ struct DashboardView: View {
                             protein: todayProtein,
                             carbs: todayCarbs,
                             fat: todayFat,
+                            fiber: todayFiber,
                             proteinGoal: proteinGoal,
                             carbsGoal: carbsGoal,
                             fatGoal: fatGoal,
+                            fiberGoal: fiberGoal,
                             onDetailsTapped: {
                                 navigateToDateTimestamp = selectedDate.timeIntervalSince1970
                                 selectedTab = 2

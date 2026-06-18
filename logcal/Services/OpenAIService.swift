@@ -120,7 +120,7 @@ struct OpenAIService {
 
     private func logMealDirect(foodText: String, mealType: String, images: [UIImage], apiKey: String) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, and fat must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, use both together: identify foods and portions from the photo and use the text for context; if they disagree on something visible in the image, trust the image. When a photo is present, each item's assumptions should mention what you inferred from the photo (e.g. visible portion, condiments), not only text-based guesses.
+        You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, use both together: identify foods and portions from the photo and use the text for context; if they disagree on something visible in the image, trust the image. When a photo is present, each item's assumptions should mention what you inferred from the photo (e.g. visible portion, condiments), not only text-based guesses.
         """
         
         // Build user message content
@@ -176,6 +176,7 @@ struct OpenAIService {
                     "protein": ["type": "number"],
                     "carbs": ["type": "number"],
                     "fat": ["type": "number"],
+                    "fiber": ["type": "number"],
                     "items": [
                         "type": "array",
                         "items": [
@@ -188,16 +189,17 @@ struct OpenAIService {
                                 "protein": ["type": "number"],
                                 "carbs": ["type": "number"],
                                 "fat": ["type": "number"],
+                                "fiber": ["type": "number"],
                                 "assumptions": ["type": "string"],
                                 "confidence": ["type": "number"]
                             ],
-                            "required": ["name", "quantity", "calories", "protein", "carbs", "fat", "assumptions", "confidence"]
+                            "required": ["name", "quantity", "calories", "protein", "carbs", "fat", "fiber", "assumptions", "confidence"]
                         ]
                     ],
                     "needs_clarification": ["type": "boolean"],
                     "clarifying_question": ["type": "string"]
                 ],
-                "required": ["meal_type", "total_calories", "protein", "carbs", "fat", "items", "needs_clarification"]
+                "required": ["meal_type", "total_calories", "protein", "carbs", "fat", "fiber", "items", "needs_clarification"]
             ]
         ]
         
@@ -297,7 +299,7 @@ struct OpenAIService {
         apiKey: String
     ) async throws -> MealLogResponse {
         let systemPrompt = """
-        You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, and fat must equal the sum of the same fields across all items (grams).
+        You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (grams).
         """
 
         let encoder = JSONEncoder()
@@ -334,6 +336,7 @@ struct OpenAIService {
                     "protein": ["type": "number"],
                     "carbs": ["type": "number"],
                     "fat": ["type": "number"],
+                    "fiber": ["type": "number"],
                     "items": [
                         "type": "array",
                         "items": [
@@ -346,16 +349,17 @@ struct OpenAIService {
                                 "protein": ["type": "number"],
                                 "carbs": ["type": "number"],
                                 "fat": ["type": "number"],
+                                "fiber": ["type": "number"],
                                 "assumptions": ["type": "string"],
                                 "confidence": ["type": "number"]
                             ],
-                            "required": ["name", "quantity", "calories", "protein", "carbs", "fat", "assumptions", "confidence"]
+                            "required": ["name", "quantity", "calories", "protein", "carbs", "fat", "fiber", "assumptions", "confidence"]
                         ]
                     ],
                     "needs_clarification": ["type": "boolean"],
                     "clarifying_question": ["type": "string"]
                 ],
-                "required": ["meal_type", "total_calories", "protein", "carbs", "fat", "items", "needs_clarification"]
+                "required": ["meal_type", "total_calories", "protein", "carbs", "fat", "fiber", "items", "needs_clarification"]
             ]
         ]
 

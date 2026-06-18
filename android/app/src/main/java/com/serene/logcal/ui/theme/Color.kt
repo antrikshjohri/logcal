@@ -9,6 +9,7 @@ val DangerRed = Color(0xFFC6332D)
 val ProteinColor = Color(0xFF1C7247)
 val CarbsColor = Color(0xFFC98C2D)
 val FatColor = Color(0xFFD89919)
+val FiberColor = Color(0xFF79883B)
 
 // Light Theme
 val LightBackground = Color(0xFFF4F2E8)

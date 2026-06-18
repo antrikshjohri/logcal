@@ -32,6 +32,7 @@ struct DailyGoalView: View {
     
     @State private var showHelperSheet = false
     @State private var isSaving = false
+    @State private var showFiberExplanationAlert = false
     
     var body: some View {
         ScrollView {
@@ -313,6 +314,16 @@ struct DailyGoalView: View {
                         color: Theme.fatColor,
                         kcal: grams.fat * 9
                     )
+                    
+                    let calculatedFiber = (currentGoal / 1000.0) * 14.0
+                    macroPreviewRow(
+                        name: "Fiber",
+                        grams: calculatedFiber,
+                        percent: nil,
+                        color: Theme.fiberColor,
+                        kcal: nil,
+                        showInfoButton: true
+                    )
                 }
                 .padding(Constants.Spacing.extraLarge)
                 .background(Theme.cardBackground(colorScheme: colorScheme))
@@ -391,6 +402,11 @@ struct DailyGoalView: View {
                 }
             }
         }
+        .alert("Fiber Goal Calculation", isPresented: $showFiberExplanationAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your fiber goal is calculated as 14g of fiber per 1,000 calories, based on standard dietary guidelines.")
+        }
         .onChange(of: currentProteinPercent) { _, newValue in
             AnalyticsService.trackCustomMacroStepperTapped(macroName: "Protein", newValue: newValue)
         }
@@ -405,12 +421,13 @@ struct DailyGoalView: View {
     private func macroPreviewRow(
         name: String,
         grams: Double,
-        percent: Double,
+        percent: Double? = nil,
         color: Color,
-        kcal: Double
+        kcal: Double? = nil,
+        showInfoButton: Bool = false
     ) -> some View {
         VStack(spacing: 6) {
-            HStack {
+            HStack(alignment: .center) {
                 HStack(spacing: 8) {
                     Circle()
                         .fill(color)
@@ -418,6 +435,17 @@ struct DailyGoalView: View {
                     Text(name)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                    
+                    if showInfoButton {
+                        Button(action: {
+                            showFiberExplanationAlert = true
+                        }) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 13))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
                 
                 Spacer()
@@ -426,9 +454,11 @@ struct DailyGoalView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                 
-                Text("(\(Int(round(percent * 100)))% • \(Int(round(kcal))) kcal)")
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                if let percent = percent, let kcal = kcal {
+                    Text("(\(Int(round(percent * 100)))% • \(Int(round(kcal))) kcal)")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                }
             }
             
             // Progress Bar
@@ -440,7 +470,7 @@ struct DailyGoalView: View {
                     
                     Capsule()
                         .fill(color)
-                        .frame(width: geo.size.width * CGFloat(percent), height: 6)
+                        .frame(width: geo.size.width * CGFloat(percent ?? 1.0), height: 6)
                 }
             }
             .frame(height: 6)

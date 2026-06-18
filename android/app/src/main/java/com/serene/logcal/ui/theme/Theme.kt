@@ -51,6 +51,7 @@ data class LogCalColors(
     val protein: Color = ProteinColor,
     val carbs: Color = CarbsColor,
     val fat: Color = FatColor,
+    val fiber: Color = FiberColor,
     
     val background: Color,
     val cardBackground: Color,

@@ -571,10 +571,16 @@ fun SavedMealsScreen(
                                 val protein = response.protein ?: 0.0
                                 val carbs = response.carbs ?: 0.0
                                 val fat = response.fat ?: 0.0
+                                val fiber = response.fiber
                                 if (protein > 0.0 || carbs > 0.0 || fat > 0.0) {
                                     Text("·", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
+                                    val macrosText = if (fiber != null) {
+                                        "P: ${protein.roundToInt()}g  C: ${carbs.roundToInt()}g  F: ${fat.roundToInt()}g  Fib: ${fiber.roundToInt()}g"
+                                    } else {
+                                        "P: ${protein.roundToInt()}g  C: ${carbs.roundToInt()}g  F: ${fat.roundToInt()}g"
+                                    }
                                     Text(
-                                        "P: ${protein.roundToInt()}g  C: ${carbs.roundToInt()}g  F: ${fat.roundToInt()}g",
+                                        macrosText,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.mutedText
                                     )

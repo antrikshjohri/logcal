@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -88,6 +90,7 @@ fun DailyGoalScreen(
     var currentFatPercent by remember { mutableStateOf(30.0) }
 
     var isSaving by remember { mutableStateOf(false) }
+    var showFiberExplanation by remember { mutableStateOf(false) }
 
     // Load initial preferences
     LaunchedEffect(Unit) {
@@ -515,6 +518,18 @@ fun DailyGoalScreen(
                     color = colors.fat,
                     kcal = calculatedGrams.third * 9.0
                 )
+
+                // Fiber Row
+                val calculatedFiber = (currentGoal / 1000.0) * 14.0
+                CalculatedTargetRow(
+                    name = "Fiber",
+                    grams = calculatedFiber,
+                    percentage = null,
+                    color = colors.fiber,
+                    kcal = null,
+                    showInfoButton = true,
+                    onInfoClick = { showFiberExplanation = true }
+                )
             }
 
             // Save Button
@@ -539,6 +554,77 @@ fun DailyGoalScreen(
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
                 } else {
                     Text("Save Goal", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+
+            if (showFiberExplanation) {
+                androidx.compose.ui.window.Dialog(onDismissRequest = { showFiberExplanation = false }) {
+                    androidx.compose.material3.Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = colors.cardBackground,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.cardBorder)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.softAccentBackground),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = colors.primaryGreen,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Fiber Goal Calculation",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.primaryText,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = "Your fiber goal is calculated as 14g of fiber per 1,000 calories, based on standard dietary guidelines.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.mutedText,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            Button(
+                                onClick = { showFiberExplanation = false },
+                                modifier = Modifier
+                                    .fillMaxWidth(0.5f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = colors.primaryGreen,
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(
+                                    "OK",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -635,13 +721,13 @@ private fun CustomMacroStepperRow(
 private fun CalculatedTargetRow(
     name: String,
     grams: Double,
-    percentage: Double,
+    percentage: Double?,
     color: Color,
-    kcal: Double
+    kcal: Double?,
+    showInfoButton: Boolean = false,
+    onInfoClick: (() -> Unit)? = null
 ) {
     val colors = LogCalTheme.colors
-    val pctVal = percentage * 100.0
-    val pctDisplay = if (pctVal % 1.0 == 0.0) "${pctVal.toInt()}%" else "$pctVal%"
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -659,11 +745,28 @@ private fun CalculatedTargetRow(
                         .background(color)
                 )
                 Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
+                if (showInfoButton && onInfoClick != null) {
+                    androidx.compose.material3.IconButton(
+                        onClick = onInfoClick,
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Info",
+                            tint = colors.mutedText,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("${grams.roundToInt()}g", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
-                Text("($pctDisplay • ${kcal.roundToInt()} kcal)", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
+                if (percentage != null && kcal != null) {
+                    val pctVal = percentage * 100.0
+                    val pctDisplay = if (pctVal % 1.0 == 0.0) "${pctVal.toInt()}%" else "$pctVal%"
+                    Text("($pctDisplay • ${kcal.roundToInt()} kcal)", style = MaterialTheme.typography.bodySmall, color = colors.mutedText)
+                }
             }
         }
 
@@ -677,7 +780,7 @@ private fun CalculatedTargetRow(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(percentage.toFloat())
+                    .fillMaxWidth(percentage?.toFloat() ?: 1.0f)
                     .height(6.dp)
                     .clip(CircleShape)
                     .background(color)

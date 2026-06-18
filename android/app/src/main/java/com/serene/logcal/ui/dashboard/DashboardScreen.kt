@@ -438,10 +438,12 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 val proteinGoal = if (uiState.macroProteinPercent > 0) (uiState.proteinGrams * 100 / uiState.macroProteinPercent) else 0
                 val carbsGoal = if (uiState.macroCarbsPercent > 0) (uiState.carbsGrams * 100 / uiState.macroCarbsPercent) else 0
                 val fatGoal = if (uiState.macroFatPercent > 0) (uiState.fatGrams * 100 / uiState.macroFatPercent) else 0
+                val fiberGoal = uiState.fiberGoal.roundToInt()
                 
                 MacroLinearRow("Protein", uiState.proteinGrams, proteinGoal, uiState.macroProteinPercent, LogCalTheme.colors.protein)
                 MacroLinearRow("Carbs", uiState.carbsGrams, carbsGoal, uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
                 MacroLinearRow("Fat", uiState.fatGrams, fatGoal, uiState.macroFatPercent, LogCalTheme.colors.fat)
+                MacroLinearRow("Fiber", uiState.fiberGrams.roundToInt(), fiberGoal, uiState.macroFiberPercent, LogCalTheme.colors.fiber)
             }
         }
 

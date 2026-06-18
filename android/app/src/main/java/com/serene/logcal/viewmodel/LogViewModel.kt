@@ -263,13 +263,20 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             if (servingMultiplier != 1.0) {
                 // Scale protein, carbs, fat, items calories
                 val scaledItems = decoded.items.map {
-                    it.copy(calories = it.calories * servingMultiplier)
+                    it.copy(
+                        calories = it.calories * servingMultiplier,
+                        protein = it.protein?.let { it * servingMultiplier },
+                        carbs = it.carbs?.let { it * servingMultiplier },
+                        fat = it.fat?.let { it * servingMultiplier },
+                        fiber = it.fiber?.let { it * servingMultiplier }
+                    )
                 }
                 decoded.copy(
                     totalCalories = decoded.totalCalories * servingMultiplier,
                     protein = decoded.protein?.let { it * servingMultiplier },
                     carbs = decoded.carbs?.let { it * servingMultiplier },
                     fat = decoded.fat?.let { it * servingMultiplier },
+                    fiber = decoded.fiber?.let { it * servingMultiplier },
                     items = scaledItems
                 )
             } else {

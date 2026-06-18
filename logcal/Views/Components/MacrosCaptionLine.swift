@@ -11,10 +11,15 @@ struct MacrosCaptionLine: View {
     let protein: Double
     let carbs: Double
     let fat: Double
+    var fiber: Double? = nil
     var font: Font = .caption
 
     var body: some View {
-        Text("P: \(Int(protein))g  ·  C: \(Int(carbs))g  ·  F: \(Int(fat))g")
+        var text = "P: \(Int(protein))g  ·  C: \(Int(carbs))g  ·  F: \(Int(fat))g"
+        if let fiber = fiber {
+            text += "  ·  Fib: \(Int(fiber))g"
+        }
+        return Text(text)
             .font(font)
             .foregroundColor(.secondary)
     }

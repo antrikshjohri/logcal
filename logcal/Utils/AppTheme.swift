@@ -82,6 +82,7 @@ struct Theme {
     static let proteinColor = Color(red: 0.11, green: 0.45, blue: 0.28)
     static let carbsColor = Color(red: 0.79, green: 0.55, blue: 0.18)
     static let fatColor = Color(red: 0.85, green: 0.60, blue: 0.10)
+    static let fiberColor = Color(red: 0.47, green: 0.53, blue: 0.23) // Warm Olive
 
     // Compatibility aliases while the rest of the app is migrated screen by screen.
     static let accentBlue = primaryGreen

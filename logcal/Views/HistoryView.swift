@@ -510,6 +510,12 @@ struct MealRowView: View {
                                 .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                             Text("F: \(Int(fat))g")
                                 .foregroundColor(Theme.fatColor)
+                            if let fiber = meal.fiber {
+                                Text("·")
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                Text("Fib: \(Int(fiber))g")
+                                    .foregroundColor(Theme.fiberColor)
+                            }
                         }
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .fixedSize(horizontal: true, vertical: false)
@@ -641,6 +647,9 @@ struct DayCardView: View {
                     let dailyC = dayGroup.meals.reduce(0.0) { $0 + ($1.carbs ?? 0) }
                     let dailyF = dayGroup.meals.reduce(0.0) { $0 + ($1.fat ?? 0) }
                     
+                    let hasFiber = dayGroup.meals.contains { $0.fiber != nil }
+                    let dailyFib = dayGroup.meals.reduce(0.0) { $0 + ($1.fiber ?? 0) }
+                    
                     VStack(spacing: 0) {
                         if dailyP > 0 || dailyC > 0 || dailyF > 0 {
                             HStack {
@@ -654,6 +663,7 @@ struct DayCardView: View {
                                     protein: dailyP,
                                     carbs: dailyC,
                                     fat: dailyF,
+                                    fiber: hasFiber ? dailyFib : nil,
                                     font: .system(size: 12, weight: .bold, design: .rounded)
                                 )
                             }

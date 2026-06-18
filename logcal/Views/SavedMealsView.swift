@@ -72,7 +72,7 @@ struct SavedMealsView: View {
                                 Text("·")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                Text("P: \(Int(p))g  C: \(Int(c))g  F: \(Int(f))g")
+                                Text("P: \(Int(p))g  C: \(Int(c))g  F: \(Int(f))g\(savedMeal.fiber.map { "  Fib: \(Int($0))g" } ?? "")")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

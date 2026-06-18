@@ -13,6 +13,7 @@ struct MealLogResponse: Codable, Equatable {
     let protein: Double?  // grams
     let carbs: Double?    // grams
     let fat: Double?      // grams
+    let fiber: Double?    // grams
     let items: [MealItem]
     let needsClarification: Bool
     let clarifyingQuestion: String?
@@ -25,6 +26,7 @@ struct MealLogResponse: Codable, Equatable {
         case protein
         case carbs
         case fat
+        case fiber
         case items
         case needsClarification = "needs_clarification"
         case needsClarificationCamel = "needsClarification"
@@ -38,6 +40,7 @@ struct MealLogResponse: Codable, Equatable {
         protein: Double?,
         carbs: Double?,
         fat: Double?,
+        fiber: Double? = nil,
         items: [MealItem],
         needsClarification: Bool,
         clarifyingQuestion: String?
@@ -47,6 +50,7 @@ struct MealLogResponse: Codable, Equatable {
         self.protein = protein
         self.carbs = carbs
         self.fat = fat
+        self.fiber = fiber
         self.items = items
         self.needsClarification = needsClarification
         self.clarifyingQuestion = clarifyingQuestion
@@ -71,6 +75,7 @@ struct MealLogResponse: Codable, Equatable {
         self.protein = try container.decodeIfPresent(Double.self, forKey: .protein)
         self.carbs = try container.decodeIfPresent(Double.self, forKey: .carbs)
         self.fat = try container.decodeIfPresent(Double.self, forKey: .fat)
+        self.fiber = try container.decodeIfPresent(Double.self, forKey: .fiber)
         self.items = try container.decode([MealItem].self, forKey: .items)
         
         if let needsClar = try? container.decode(Bool.self, forKey: .needsClarification) {
@@ -97,6 +102,7 @@ struct MealLogResponse: Codable, Equatable {
         try container.encodeIfPresent(protein, forKey: .protein)
         try container.encodeIfPresent(carbs, forKey: .carbs)
         try container.encodeIfPresent(fat, forKey: .fat)
+        try container.encodeIfPresent(fiber, forKey: .fiber)
         try container.encode(items, forKey: .items)
         try container.encode(needsClarification, forKey: .needsClarification)
         try container.encodeIfPresent(clarifyingQuestion, forKey: .clarifyingQuestion)
@@ -110,6 +116,7 @@ struct MealItem: Codable, Equatable {
     let protein: Double?  // grams
     let carbs: Double?    // grams
     let fat: Double?      // grams
+    let fiber: Double?    // grams
     let assumptions: String?
     let confidence: Double?
 }
@@ -122,6 +129,7 @@ extension MealLogResponse {
             protein: protein.map { $0 * multiplier },
             carbs: carbs.map { $0 * multiplier },
             fat: fat.map { $0 * multiplier },
+            fiber: fiber.map { $0 * multiplier },
             items: items.map { item in
                 MealItem(
                     name: item.name,
@@ -130,6 +138,7 @@ extension MealLogResponse {
                     protein: item.protein.map { $0 * multiplier },
                     carbs: item.carbs.map { $0 * multiplier },
                     fat: item.fat.map { $0 * multiplier },
+                    fiber: item.fiber.map { $0 * multiplier },
                     assumptions: item.assumptions,
                     confidence: item.confidence
                 )
@@ -148,14 +157,19 @@ extension MealLogResponse {
         let p = items.reduce(0.0) { $0 + ($1.protein ?? 0) }
         let c = items.reduce(0.0) { $0 + ($1.carbs ?? 0) }
         let f = items.reduce(0.0) { $0 + ($1.fat ?? 0) }
+        
+        let allHaveFiber = items.allSatisfy { $0.fiber != nil }
+        let fib = allHaveFiber ? items.reduce(0.0) { $0 + ($1.fiber ?? 0) } : self.fiber
+        
         let cal = items.reduce(0.0) { $0 + $1.calories }
-        print("DEBUG: [MealLogResponse] withMealMacrosAlignedToItems P=\(p) C=\(c) F=\(f) cal=\(cal) items=\(items.count)")
+        print("DEBUG: [MealLogResponse] withMealMacrosAlignedToItems P=\(p) C=\(c) F=\(f) Fib=\(String(describing: fib)) cal=\(cal) items=\(items.count)")
         return MealLogResponse(
             mealType: mealType,
             totalCalories: cal,
             protein: p,
             carbs: c,
             fat: f,
+            fiber: fib,
             items: items,
             needsClarification: needsClarification,
             clarifyingQuestion: clarifyingQuestion
@@ -163,12 +177,14 @@ extension MealLogResponse {
     }
 
     /// Macros for UI: prefer sum of items when every item has P/C/F; else meal-level fields; else sum of items that have all three.
-    func resolvedMealMacrosForDisplay() -> (protein: Double, carbs: Double, fat: Double)? {
+    func resolvedMealMacrosForDisplay() -> (protein: Double, carbs: Double, fat: Double, fiber: Double?)? {
         let aligned = withMealMacrosAlignedToItems()
         if let p = aligned.protein, let c = aligned.carbs, let f = aligned.fat {
-            return (protein: p, carbs: c, fat: f)
+            return (protein: p, carbs: c, fat: f, fiber: aligned.fiber)
         }
         var sp = 0.0, sc = 0.0, sf = 0.0
+        var sfib = 0.0
+        var hasFiber = false
         var n = 0
         for item in aligned.items {
             if let p = item.protein, let c = item.carbs, let f = item.fat {
@@ -176,9 +192,13 @@ extension MealLogResponse {
                 sc += c
                 sf += f
                 n += 1
+                if let fib = item.fiber {
+                    sfib += fib
+                    hasFiber = true
+                }
             }
         }
         guard n > 0 else { return nil }
-        return (protein: sp, carbs: sc, fat: sf)
+        return (protein: sp, carbs: sc, fat: sf, fiber: hasFiber ? sfib : aligned.fiber)
     }
 }

@@ -232,6 +232,21 @@ struct MealEditView: View {
                         .padding(.vertical, 6)
                         .background(Theme.fatColor.opacity(0.12))
                         .cornerRadius(12)
+                        
+                        if let fiber = macros.fiber {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(Theme.fiberColor)
+                                    .frame(width: 8, height: 8)
+                                Text("\(Int(fiber))g Fiber")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Theme.fiberColor.opacity(0.12))
+                            .cornerRadius(12)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
@@ -409,7 +424,7 @@ struct MealEditView: View {
                                         .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
                                     
                                     if let p = item.protein, let c = item.carbs, let f = item.fat {
-                                        MacrosCaptionLine(protein: p, carbs: c, fat: f, font: .system(size: 12, design: .rounded))
+                                        MacrosCaptionLine(protein: p, carbs: c, fat: f, fiber: item.fiber, font: .system(size: 12, design: .rounded))
                                             .padding(.top, 2)
                                     }
                                     
@@ -622,6 +637,7 @@ struct MealEditView: View {
             protein: originalItem.protein,
             carbs: originalItem.carbs,
             fat: originalItem.fat,
+            fiber: originalItem.fiber,
             assumptions: originalItem.assumptions,
             confidence: originalItem.confidence
         )
@@ -633,6 +649,7 @@ struct MealEditView: View {
             protein: response.protein,
             carbs: response.carbs,
             fat: response.fat,
+            fiber: response.fiber,
             items: [updatedItem],
             needsClarification: response.needsClarification,
             clarifyingQuestion: response.clarifyingQuestion
@@ -740,6 +757,7 @@ struct MealEditView: View {
                 protein: nil,
                 carbs: nil,
                 fat: nil,
+                fiber: nil,
                 items: [],
                 needsClarification: false,
                 clarifyingQuestion: nil

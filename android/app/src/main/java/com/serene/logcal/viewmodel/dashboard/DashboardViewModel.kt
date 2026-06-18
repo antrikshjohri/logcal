@@ -39,9 +39,12 @@ data class DashboardUiState(
     val proteinGrams: Int = 0,
     val carbsGrams: Int = 0,
     val fatGrams: Int = 0,
+    val fiberGrams: Double = 0.0,
+    val fiberGoal: Double = 0.0,
     val macroProteinPercent: Int = 0,
     val macroCarbsPercent: Int = 0,
     val macroFatPercent: Int = 0,
+    val macroFiberPercent: Int = 0,
     val weeklyStats: List<WeeklyDayStat> = emptyList(),
     val weeklyAverageCalories: Int = 0,
     val streakDays: Int = 0,
@@ -160,6 +163,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val protein = dayMeals.sumOf { it.response.protein ?: 0.0 }.roundToInt()
         val carbs = dayMeals.sumOf { it.response.carbs ?: 0.0 }.roundToInt()
         val fat = dayMeals.sumOf { it.response.fat ?: 0.0 }.roundToInt()
+        val fiber = dayMeals.sumOf { it.response.fiber ?: 0.0 }
         val remainingCalories = (goal - todayCalories).coerceAtLeast(0)
 
         val today = LocalDate.now(zone)
@@ -176,6 +180,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val proteinTarget = prefManager.proteinGoal.roundToInt().coerceAtLeast(1)
         val carbsTarget = prefManager.carbsGoal.roundToInt().coerceAtLeast(1)
         val fatTarget = prefManager.fatGoal.roundToInt().coerceAtLeast(1)
+        val fiberTarget = (goal / 1000.0) * 14.0
 
         return DashboardUiState(
             isLoading = false,
@@ -185,9 +190,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             proteinGrams = protein,
             carbsGrams = carbs,
             fatGrams = fat,
+            fiberGrams = fiber,
+            fiberGoal = fiberTarget,
             macroProteinPercent = ((protein.toFloat() / proteinTarget.toFloat()) * 100f).roundToInt().coerceIn(0, 999),
             macroCarbsPercent = ((carbs.toFloat() / carbsTarget.toFloat()) * 100f).roundToInt().coerceIn(0, 999),
             macroFatPercent = ((fat.toFloat() / fatTarget.toFloat()) * 100f).roundToInt().coerceIn(0, 999),
+            macroFiberPercent = if (fiberTarget > 0.0) {
+                ((fiber.toFloat() / fiberTarget.toFloat()) * 100f).roundToInt().coerceIn(0, 999)
+            } else {
+                0
+            },
             weeklyStats = weekly,
             weeklyAverageCalories = weeklyAverage,
             streakDays = streakDays,
