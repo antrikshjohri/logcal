@@ -19,7 +19,7 @@ class RatingService {
     private let ratingRequestCountKey = "ratingRequestCount"
     
     // Milestone meal logs when rating should be shown
-    private let ratingMilestones: [Int] = [2, 5, 10]
+    private let ratingMilestones: [Int] = [1, 3, 5]
     
     // Minimum days between rating requests (to avoid spamming)
     private let minDaysBetweenRequests = 1 // Allow at least 1 day between requests

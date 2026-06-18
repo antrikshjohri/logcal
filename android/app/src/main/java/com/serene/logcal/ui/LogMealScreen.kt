@@ -1,9 +1,11 @@
 package com.serene.logcal.ui
 
+import android.app.Activity
 import com.serene.logcal.ui.profile.FeedbackDialog
 import android.Manifest
 import com.serene.logcal.ui.components.CalendarBottomSheet
 import android.content.Context
+import com.serene.logcal.service.RatingService
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
@@ -233,6 +235,24 @@ fun LogMealScreen(viewModel: LogViewModel) {
         val msg = uiState.speechErrorMessage
         if (msg != null) {
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(uiState.showRatingPrompt) {
+        if (uiState.showRatingPrompt) {
+            var currentContext = context
+            var activity: Activity? = null
+            while (currentContext is android.content.ContextWrapper) {
+                if (currentContext is Activity) {
+                    activity = currentContext
+                    break
+                }
+                currentContext = currentContext.baseContext
+            }
+            if (activity != null) {
+                RatingService.requestRating(activity)
+            }
+            viewModel.onRatingPromptShown()
         }
     }
 

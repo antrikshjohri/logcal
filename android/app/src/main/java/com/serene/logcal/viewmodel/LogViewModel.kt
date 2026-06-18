@@ -19,9 +19,11 @@ import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
 import com.serene.logcal.service.CloudSyncService
 import com.serene.logcal.service.AnalyticsService
+import com.serene.logcal.service.RatingService
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.MealImageEncoder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +57,8 @@ data class LogUiState(
     val isTranscribingSpeech: Boolean = false,
     val speechErrorMessage: String? = null,
     val speechTarget: SpeechTarget = SpeechTarget.MAIN,
-    val waveformSamples: List<Float> = List(64) { 0.08f }
+    val waveformSamples: List<Float> = List(64) { 0.08f },
+    val showRatingPrompt: Boolean = false
 )
 
 class LogViewModel(application: Application) : AndroidViewModel(application) {
@@ -216,6 +219,10 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(latestResult = null, sourceSavedMealId = null)
     }
 
+    fun onRatingPromptShown() {
+        _uiState.value = _uiState.value.copy(showRatingPrompt = false)
+    }
+
     // --- Favourites/Saved Meals ---
 
     fun saveLatestMealAsFavorite(renameTitle: String? = null): SavedMealEntity? {
@@ -325,6 +332,13 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     itemCount = response?.items?.size ?: 0,
                     hasImage = false
                 )
+                RatingService.incrementMealLogCount(getApplication())
+                if (RatingService.shouldShowRatingDialog(getApplication())) {
+                    launch {
+                        delay(2000)
+                        _uiState.value = _uiState.value.copy(showRatingPrompt = true)
+                    }
+                }
             } catch (e: Exception) {
                 DebugLogger.e("DEBUG: [LogViewModel] logSavedMealAsIs failed", e)
                 _uiState.value = _uiState.value.copy(errorMessage = "Failed to log favorite meal.")
@@ -577,6 +591,13 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         itemCount = response.items.size,
                         hasImage = imageBase64s.isNotEmpty()
                     )
+                    RatingService.incrementMealLogCount(getApplication())
+                    if (RatingService.shouldShowRatingDialog(getApplication())) {
+                        launch {
+                            delay(2000)
+                            _uiState.value = _uiState.value.copy(showRatingPrompt = true)
+                        }
+                    }
                 },
                 onFailure = { t ->
                     DebugLogger.e("DEBUG: [LogViewModel] logMeal() failed", t)

@@ -47,23 +47,22 @@ If you have a debug/settings screen, add the reset function there.
 
 ### Step 3: Trigger Rating Prompts
 
-#### Test 2nd Meal Log:
+#### Test 1st Meal Log:
 1. Reset rating state (using method from Step 1)
-2. Log your **1st meal** - no prompt should appear
-3. Log your **2nd meal** - rating dialog should appear ~2 seconds after success animation
-4. Check Xcode console for: `DEBUG: [RatingService] Requesting rating dialog - meal log count: 2`
+2. Log your **1st meal** - rating dialog should appear ~2 seconds after success animation
+3. Check Xcode console for: `DEBUG: [RatingService] Requesting rating dialog - meal log count: 1`
+
+#### Test 3rd Meal Log:
+1. Reset rating state
+2. Log meals 1-2 (no prompts, or prompt on 1st then wait 1 day before 3rd)
+3. Log your **3rd meal** - rating dialog should appear
+4. Check console for: `DEBUG: [RatingService] Requesting rating dialog - meal log count: 3`
 
 #### Test 5th Meal Log:
 1. Reset rating state
-2. Log meals 1-4 (no prompts)
+2. Log meals 1-4
 3. Log your **5th meal** - rating dialog should appear
 4. Check console for: `DEBUG: [RatingService] Requesting rating dialog - meal log count: 5`
-
-#### Test 10th Meal Log:
-1. Reset rating state
-2. Log meals 1-9 (no prompts)
-3. Log your **10th meal** - rating dialog should appear
-4. Check console for: `DEBUG: [RatingService] Requesting rating dialog - meal log count: 10`
 
 ### Step 4: Test Safeguards
 
@@ -146,7 +145,7 @@ Then call it from a debug button to test if the dialog appears at all.
 
 - Verify `incrementMealLogCount()` is being called after successful logs
 - Check that `shouldShowRatingDialog()` returns true
-- Verify milestones array contains [2, 5, 10]
+- Verify milestones array contains [1, 3, 5]
 - Check that you're not hitting max requests limit
 
 ## Production Checklist
@@ -162,13 +161,12 @@ Before releasing:
 ## Expected Behavior
 
 ✅ **Should appear:**
-- On 2nd meal log (if conditions met)
-- On 5th meal log (if at least 1 day since last request)
-- On 10th meal log (if at least 1 day since last request and < 3 total requests)
+- On 1st meal log (if conditions met)
+- On 3rd meal log (if at least 1 day since last request)
+- On 5th meal log (if at least 1 day since last request and < 3 total requests)
 
 ❌ **Should NOT appear:**
-- On 1st meal log
-- On 3rd, 4th, 6th, 7th, 8th, 9th meal logs
+- On 2nd, 4th, 6th, etc. meal logs
 - If user already rated
 - If 3 requests already made
 - If less than 1 day since last request

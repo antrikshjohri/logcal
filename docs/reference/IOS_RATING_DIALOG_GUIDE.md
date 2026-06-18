@@ -47,7 +47,7 @@ class RatingService {
     private let ratingRequestCountKey = "ratingRequestCount"
     
     // Minimum requirements before showing rating
-    private let minMealLogs = 5 // User must log at least 5 meals
+    private let minMealLogs = 1 
     private let minDaysSinceLastRequest = 90 // 90 days between requests
     private let maxRatingRequests = 3 // Apple's limit
     
@@ -86,8 +86,8 @@ class RatingService {
             }
         }
         
-        // Show on milestone meal logs (5th, 10th, 20th, etc.)
-        return mealLogCount == 5 || mealLogCount == 10 || mealLogCount == 20 || mealLogCount == 50
+        // Show on milestone meal logs (1st, 3rd, 5th)
+        return mealLogCount == 1 || mealLogCount == 3 || mealLogCount == 5
     }
     
     /// Request app rating (call when conditions are met)
@@ -156,7 +156,7 @@ if streakCount == 7 || streakCount == 30 || streakCount == 100 {
 
 1. **After Successful Meal Log** (Best)
    - Location: `LogViewModel.swift` - after `logMeal()` succeeds
-   - Trigger: After 5th, 10th, 20th, or 50th meal logged
+   - Trigger: After 1st, 3rd, or 5th meal logged
    - Timing: 2 seconds after success animation
 
 2. **After Reaching Streak Milestone**
@@ -187,8 +187,8 @@ if streakCount == 7 || streakCount == 30 || streakCount == 100 {
 
 ### Testing Steps:
 1. Reset rating state: `RatingService.shared.resetForTesting()`
-2. Log 5 meals
-3. On 5th meal log, rating dialog should appear (on real device)
+2. Log meals
+3. On 1st, 3rd, or 5th meal log, rating dialog should appear (on real device)
 4. Test timing and user experience
 
 ## Implementation Checklist
