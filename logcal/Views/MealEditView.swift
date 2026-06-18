@@ -73,11 +73,9 @@ struct MealEditView: View {
         }
         
         // Check if calories were manually overridden
-        // This would be stored in a separate field, but for now we'll infer from response
         if let response = meal.response {
-            let totalFromItems = response.items.reduce(0) { $0 + $1.calories }
-            // If total calories don't match sum of items, it was manually overridden
-            _caloriesManuallyOverridden = State(initialValue: abs(totalFromItems - meal.totalCalories) > 0.01)
+            // If total calories don't match the top-level calories stored in response, it was manually overridden
+            _caloriesManuallyOverridden = State(initialValue: abs(response.totalCalories - meal.totalCalories) > 0.01)
         }
         _originalResponseJson = State(initialValue: meal.rawResponseJson)
         

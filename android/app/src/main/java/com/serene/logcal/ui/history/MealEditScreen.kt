@@ -160,8 +160,7 @@ fun MealEditScreen(
             modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), m.response)
 
             // Check override status
-            val sumOfItems = m.response.items.sumOf { it.calories }
-            caloriesManuallyOverridden = kotlin.math.abs(sumOfItems - m.totalCalories) > 0.01
+            caloriesManuallyOverridden = kotlin.math.abs(m.response.totalCalories - m.totalCalories) > 0.01
 
             // Check favorites link
             val fav = viewModel.getLinkedFavorite(mealId)

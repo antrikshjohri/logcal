@@ -148,10 +148,11 @@ extension MealLogResponse {
         let p = items.reduce(0.0) { $0 + ($1.protein ?? 0) }
         let c = items.reduce(0.0) { $0 + ($1.carbs ?? 0) }
         let f = items.reduce(0.0) { $0 + ($1.fat ?? 0) }
-        print("DEBUG: [MealLogResponse] withMealMacrosAlignedToItems P=\(p) C=\(c) F=\(f) items=\(items.count)")
+        let cal = items.reduce(0.0) { $0 + $1.calories }
+        print("DEBUG: [MealLogResponse] withMealMacrosAlignedToItems P=\(p) C=\(c) F=\(f) cal=\(cal) items=\(items.count)")
         return MealLogResponse(
             mealType: mealType,
-            totalCalories: totalCalories,
+            totalCalories: cal,
             protein: p,
             carbs: c,
             fat: f,
