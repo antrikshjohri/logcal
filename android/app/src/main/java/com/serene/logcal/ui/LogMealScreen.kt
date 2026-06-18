@@ -1405,19 +1405,24 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                     }
 
                                     // Full-width update button below the input
-                                    OutlinedButton(
+                                    val canSubmitUpdate = uiState.quickEditFoodText.isNotBlank() && !uiState.isRefiningMeal
+                                    Button(
                                         onClick = {
                                             focusManager.clearFocus()
                                             viewModel.quickRefineLoggedMeal(uiState.quickEditFoodText)
                                         },
-                                        enabled = !uiState.isRefiningMeal && uiState.quickEditFoodText.isNotBlank(),
+                                        enabled = canSubmitUpdate,
                                         shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            contentColor = colors.primaryText,
-                                            disabledContentColor = colors.mutedText
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (canSubmitUpdate) colors.primaryGreen else colors.primaryText.copy(alpha = 0.06f),
+                                            contentColor = if (canSubmitUpdate) Color.White else colors.mutedText,
+                                            disabledContainerColor = if (uiState.isRefiningMeal) Color.Gray.copy(alpha = 0.3f) else colors.primaryText.copy(alpha = 0.06f),
+                                            disabledContentColor = if (uiState.isRefiningMeal) Color.White else colors.mutedText
                                         ),
-                                        border = BorderStroke(1.dp, colors.cardBorder)
+                                        border = if (canSubmitUpdate || uiState.isRefiningMeal) null else BorderStroke(1.dp, colors.cardBorder),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp)
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
@@ -1426,7 +1431,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                             if (uiState.isRefiningMeal) {
                                                 CircularProgressIndicator(
                                                     modifier = Modifier.size(16.dp),
-                                                    color = colors.primaryGreen,
+                                                    color = Color.White,
                                                     strokeWidth = 2.dp
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -360,79 +361,85 @@ private fun CustomFloatingBottomNavigation(
     modifier: Modifier = Modifier
 ) {
     val colors = LogCalTheme.colors
-    Card(
+    Box(
         modifier = modifier
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 10.dp)
             .fillMaxWidth()
-            .height(72.dp)
-            .shadow(
-                elevation = 4.dp,
-                shape = CircleShape,
-                ambientColor = colors.shadowColor,
-                spotColor = colors.shadowColor
-            ),
-        shape = CircleShape,
-        colors = CardDefaults.cardColors(containerColor = colors.cardBackground.copy(alpha = 0.95f)),
-        border = BorderStroke(0.8.dp, colors.cardBorder.copy(alpha = 0.6f))
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = CircleShape,
+                    ambientColor = colors.shadowColor,
+                    spotColor = colors.shadowColor
+                ),
+            shape = CircleShape,
+            colors = CardDefaults.cardColors(containerColor = colors.cardBackground.copy(alpha = 0.95f)),
+            border = BorderStroke(0.8.dp, colors.cardBorder.copy(alpha = 0.6f))
         ) {
-            RootTab.entries.forEach { tab ->
-                val isActive = selectedTab == tab
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RootTab.entries.forEach { tab ->
+                    val isActive = selectedTab == tab
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val contentColor = if (isActive) colors.primaryGreen else colors.primaryText
-                    val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Bold
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .clickable { onTabSelected(tab) }
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        val icon = when (tab) {
-                            RootTab.HOME -> if (isActive) Icons.Default.Home else Icons.Outlined.Home
-                            RootTab.LOG -> if (isActive) Icons.Default.AddCircle else Icons.Outlined.AddCircle
-                            RootTab.HISTORY -> if (isActive) Icons.Default.List else Icons.Outlined.List
-                            RootTab.PROFILE -> if (isActive) Icons.Default.Person else Icons.Outlined.Person
-                        }
+                        val contentColor = if (isActive) colors.primaryGreen else colors.primaryText
+                        val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Bold
 
-                        Box(
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
                             modifier = Modifier
-                                .width(54.dp)
-                                .height(32.dp)
-                                .clip(CircleShape)
-                                .background(if (isActive) colors.softAccentBackground else Color.Transparent),
-                            contentAlignment = Alignment.Center
+                                .fillMaxSize()
+                                .clickable { onTabSelected(tab) }
                         ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = tab.name,
-                                tint = contentColor,
-                                modifier = Modifier.size(26.dp)
+                            val icon = when (tab) {
+                                RootTab.HOME -> if (isActive) Icons.Default.Home else Icons.Outlined.Home
+                                RootTab.LOG -> if (isActive) Icons.Default.AddCircle else Icons.Outlined.AddCircle
+                                RootTab.HISTORY -> if (isActive) Icons.Default.List else Icons.Outlined.List
+                                RootTab.PROFILE -> if (isActive) Icons.Default.Person else Icons.Outlined.Person
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .width(56.dp)
+                                    .height(32.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isActive) colors.softAccentBackground else Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = tab.name,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = when (tab) {
+                                    RootTab.HOME -> "Home"
+                                    RootTab.LOG -> "Log"
+                                    RootTab.HISTORY -> "History"
+                                    RootTab.PROFILE -> "Profile"
+                                },
+                                fontWeight = fontWeight,
+                                fontSize = 12.sp,
+                                color = contentColor
                             )
                         }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = when (tab) {
-                                RootTab.HOME -> "Home"
-                                RootTab.LOG -> "Log"
-                                RootTab.HISTORY -> "History"
-                                RootTab.PROFILE -> "Profile"
-                            },
-                            fontWeight = fontWeight,
-                            fontSize = 10.sp,
-                            color = contentColor
-                        )
                     }
                 }
             }

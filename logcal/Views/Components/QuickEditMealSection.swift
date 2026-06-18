@@ -139,6 +139,7 @@ struct QuickEditMealSection: View {
                 RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius, style: .continuous)
                     .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
             )
+            let canSubmit = !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             Button(action: {
                 print("DEBUG: [QuickEditMealSection] Apply tapped promptLen=\(prompt.count)")
                 onApply()
@@ -152,10 +153,32 @@ struct QuickEditMealSection: View {
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    isLoading
+                        ? Color.gray.opacity(0.3)
+                        : (canSubmit
+                            ? Theme.primaryGreen
+                            : Color.primary.opacity(0.06))
+                )
+                .foregroundColor(
+                    isLoading
+                        ? .white
+                        : (canSubmit
+                            ? .white
+                            : .secondary)
+                )
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            canSubmit || isLoading ? Color.clear : Theme.cardBorder(colorScheme: colorScheme),
+                            lineWidth: 1
+                        )
+                )
             }
-            .buttonStyle(.bordered)
-            .tint(.primary)
-            .disabled(isLoading || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .buttonStyle(PlainButtonStyle())
+            .disabled(isLoading || !canSubmit)
 
             if let errorMessage = errorMessage ?? dictation.errorMessage, !errorMessage.isEmpty {
                 Text(errorMessage)
