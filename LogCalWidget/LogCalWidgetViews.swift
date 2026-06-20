@@ -130,12 +130,15 @@ struct WidgetMacroCell: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 2) {
                 Text(label)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 9.5, weight: .semibold))
                     .foregroundColor(WidgetTheme.primaryText)
-                Spacer()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
                 Text("\(Int(value))g")
-                    .font(.system(size: 9, weight: .bold).monospacedDigit())
+                    .font(.system(size: 9.5, weight: .bold).monospacedDigit())
                     .foregroundColor(color)
+                    .lineLimit(1)
             }
             
             // Progress Bar
@@ -154,8 +157,8 @@ struct WidgetMacroCell: View {
             }
             .frame(height: 3)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(WidgetTheme.darkElevatedBackground)
@@ -173,23 +176,23 @@ struct CaloriesWidgetView: View {
     }
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
             Spacer(minLength: 0)
             
             WidgetProgressRing(
                 consumed: entry.calories,
                 goal: entry.dailyGoal,
-                size: 82,
-                strokeWidth: 8,
+                size: 90,
+                strokeWidth: 9,
                 color: WidgetTheme.calorieGreen
             )
             .overlay(
-                VStack(spacing: 0) {
+                VStack(spacing: -1) {
                     Text("\(Int(entry.calories))")
-                        .font(.system(size: 20, weight: .bold).monospacedDigit())
+                        .font(.system(size: 22, weight: .bold).monospacedDigit())
                         .foregroundColor(WidgetTheme.primaryText)
                     Text("cal")
-                        .font(.system(size: 11, weight: .regular))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundColor(WidgetTheme.mutedText)
                 }
             )
@@ -197,28 +200,30 @@ struct CaloriesWidgetView: View {
             Spacer(minLength: 0)
             
             if entry.dailyGoal > 0 {
-                VStack(spacing: 1) {
+                VStack(spacing: 2) {
                     HStack(spacing: 3) {
                         Text("\(remaining)")
-                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                            .font(.system(size: 12, weight: .semibold).monospacedDigit())
                             .foregroundColor(WidgetTheme.calorieGreen)
                         Text("cal left")
-                            .font(.system(size: 11, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundColor(WidgetTheme.primaryText)
                     }
                     
                     Text("of \(Int(entry.dailyGoal)) cal")
-                        .font(.system(size: 9, weight: .regular))
+                        .font(.system(size: 9.5, weight: .regular))
                         .foregroundColor(WidgetTheme.quietText)
                 }
             } else {
                 Text("No goal set")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(WidgetTheme.quietText)
             }
             
             Spacer(minLength: 0)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
         .widgetURL(URL(string: "logcal://dashboard"))
@@ -231,14 +236,14 @@ struct MacrosWidgetView: View {
     let entry: SimpleEntry
     
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 7) {
             WidgetMacroRow(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
             WidgetMacroRow(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
             WidgetMacroRow(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
             WidgetMacroRow(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
         .widgetURL(URL(string: "logcal://dashboard"))
@@ -257,21 +262,22 @@ struct DailySummaryWidgetView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Upper Calorie Section (58% height)
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
+                Spacer(minLength: 2)
                 WidgetProgressRing(
                     consumed: entry.calories,
                     goal: entry.dailyGoal,
-                    size: 50,
-                    strokeWidth: 5,
+                    size: 58,
+                    strokeWidth: 6,
                     color: WidgetTheme.calorieGreen
                 )
                 .overlay(
                     VStack(spacing: -2) {
                         Text("\(Int(entry.calories))")
-                            .font(.system(size: 12, weight: .bold).monospacedDigit())
+                            .font(.system(size: 14, weight: .bold).monospacedDigit())
                             .foregroundColor(WidgetTheme.primaryText)
                         Text("cal")
-                            .font(.system(size: 8, weight: .regular))
+                            .font(.system(size: 9, weight: .regular))
                             .foregroundColor(WidgetTheme.mutedText)
                     }
                 )
@@ -279,34 +285,36 @@ struct DailySummaryWidgetView: View {
                 if entry.dailyGoal > 0 {
                     HStack(spacing: 2) {
                         Text("\(remaining)")
-                            .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
                             .foregroundColor(WidgetTheme.calorieGreen)
                         Text("left")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.system(size: 11, weight: .regular))
                             .foregroundColor(WidgetTheme.mutedText)
                     }
                 } else {
                     Text("No goal")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(WidgetTheme.quietText)
                 }
             }
             .frame(maxHeight: .infinity)
             
+            Spacer(minLength: 6)
+            
             // Lower Macro Section (42% height)
-            VStack(spacing: 4) {
-                HStack(spacing: 4) {
+            VStack(spacing: 5) {
+                HStack(spacing: 5) {
                     WidgetMacroCell(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
                     WidgetMacroCell(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
                 }
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     WidgetMacroCell(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
                     WidgetMacroCell(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
         .widgetURL(URL(string: "logcal://dashboard"))
@@ -325,10 +333,10 @@ struct QuickLogWidgetView: View {
                 ZStack {
                     Circle()
                         .fill(Color.orange)
-                        .frame(width: 52, height: 52)
+                        .frame(width: 56, height: 56)
                     
                     Image(systemName: "mic.fill")
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
@@ -340,10 +348,10 @@ struct QuickLogWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(WidgetTheme.darkElevatedBackground)
-                            .frame(height: 38)
+                            .frame(height: 40)
                         
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(WidgetTheme.proteinGreen)
                     }
                 }
@@ -353,10 +361,10 @@ struct QuickLogWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(WidgetTheme.darkElevatedBackground)
-                            .frame(height: 38)
+                            .frame(height: 40)
                         
                         Image(systemName: "photo.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(WidgetTheme.carbsBlue)
                     }
                 }
@@ -366,21 +374,20 @@ struct QuickLogWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(WidgetTheme.darkElevatedBackground)
-                            .frame(height: 38)
+                            .frame(height: 40)
                         
                         Image(systemName: "keyboard.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(WidgetTheme.carbsBlue)
                     }
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
-        .widgetURL(URL(string: "logcal://log")!)
     }
 }
 
@@ -390,38 +397,38 @@ struct CaloriesAndLogWidgetView: View {
     let entry: SimpleEntry
     
     var body: some View {
-        VStack(spacing: 8) {
-            Spacer(minLength: 0)
+        VStack(spacing: 0) {
+            Spacer(minLength: 4)
             
             // Calorie Ring Section
             WidgetProgressRing(
                 consumed: entry.calories,
                 goal: entry.dailyGoal,
-                size: 70,
-                strokeWidth: 7,
+                size: 82,
+                strokeWidth: 8,
                 color: WidgetTheme.calorieGreen
             )
             .overlay(
                 VStack(spacing: -1) {
                     Text("\(Int(entry.calories))")
-                        .font(.system(size: 16, weight: .bold).monospacedDigit())
+                        .font(.system(size: 18, weight: .bold).monospacedDigit())
                         .foregroundColor(WidgetTheme.primaryText)
                     Text("cal")
-                        .font(.system(size: 9, weight: .regular))
+                        .font(.system(size: 10, weight: .regular))
                         .foregroundColor(WidgetTheme.mutedText)
                     if entry.dailyGoal > 0 {
                         Text("of \(Int(entry.dailyGoal)) cal")
-                            .font(.system(size: 7, weight: .regular))
+                            .font(.system(size: 8, weight: .regular))
                             .foregroundColor(WidgetTheme.quietText)
                     } else {
                         Text("No goal")
-                            .font(.system(size: 7, weight: .regular))
+                            .font(.system(size: 8, weight: .regular))
                             .foregroundColor(WidgetTheme.quietText)
                     }
                 }
             )
             
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
             
             // Bottom Shortcut Row
             HStack(spacing: 8) {
@@ -468,11 +475,10 @@ struct CaloriesAndLogWidgetView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
-        .widgetURL(URL(string: "logcal://dashboard"))
     }
 }
 
@@ -495,25 +501,25 @@ struct DailyDashboardWidgetView: View {
                         WidgetProgressRing(
                             consumed: entry.calories,
                             goal: entry.dailyGoal,
-                            size: 68,
-                            strokeWidth: 7,
+                            size: 76,
+                            strokeWidth: 8,
                             color: WidgetTheme.calorieGreen
                         )
                         .overlay(
                             VStack(spacing: -1) {
                                 Text("\(Int(entry.calories))")
-                                    .font(.system(size: 15, weight: .bold).monospacedDigit())
+                                    .font(.system(size: 16, weight: .bold).monospacedDigit())
                                     .foregroundColor(WidgetTheme.primaryText)
-                                  Text("cal")
-                                    .font(.system(size: 9, weight: .regular))
+                                Text("cal")
+                                    .font(.system(size: 10, weight: .regular))
                                     .foregroundColor(WidgetTheme.mutedText)
                                 if entry.dailyGoal > 0 {
                                     Text("of \(Int(entry.dailyGoal)) cal")
-                                        .font(.system(size: 7, weight: .regular))
+                                        .font(.system(size: 8, weight: .regular))
                                         .foregroundColor(WidgetTheme.quietText)
                                 } else {
                                     Text("No goal")
-                                        .font(.system(size: 7, weight: .regular))
+                                        .font(.system(size: 8, weight: .regular))
                                         .foregroundColor(WidgetTheme.quietText)
                                 }
                             }
@@ -522,15 +528,15 @@ struct DailyDashboardWidgetView: View {
                         if entry.dailyGoal > 0 {
                             HStack(spacing: 3) {
                                 Text("\(remaining)")
-                                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
                                     .foregroundColor(WidgetTheme.calorieGreen)
                                 Text("cal left")
-                                    .font(.system(size: 11, weight: .regular))
+                                    .font(.system(size: 12, weight: .regular))
                                     .foregroundColor(WidgetTheme.mutedText)
                             }
                         } else {
                             Text("No goal set")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(WidgetTheme.quietText)
                         }
                     }
@@ -551,7 +557,7 @@ struct DailyDashboardWidgetView: View {
                         WidgetMacroRow(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
                         WidgetMacroRow(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
                     }
-                    .padding(.leading, 12)
+                    .padding(.leading, 14)
                     .frame(maxWidth: .infinity)
                 }
             }
@@ -569,10 +575,10 @@ struct DailyDashboardWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(WidgetTheme.darkElevatedBackground)
-                            .frame(width: 36, height: 32)
+                            .frame(width: 38, height: 34)
                         
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(WidgetTheme.proteinGreen)
                     }
                 }
@@ -582,10 +588,10 @@ struct DailyDashboardWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(WidgetTheme.darkElevatedBackground)
-                            .frame(width: 36, height: 32)
+                            .frame(width: 38, height: 34)
                         
                         Image(systemName: "photo.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(WidgetTheme.carbsBlue)
                     }
                 }
@@ -594,12 +600,12 @@ struct DailyDashboardWidgetView: View {
                 Link(destination: URL(string: "logcal://log?action=text")!) {
                     HStack {
                         Text("Type a meal...")
-                            .font(.system(size: 12, weight: .regular))
+                            .font(.system(size: 13, weight: .regular))
                             .foregroundColor(WidgetTheme.mutedText)
-                            .padding(.leading, 10)
+                            .padding(.leading, 12)
                         Spacer()
                     }
-                    .frame(height: 32)
+                    .frame(height: 34)
                     .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
@@ -612,10 +618,10 @@ struct DailyDashboardWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.orange)
-                            .frame(width: 36, height: 32)
+                            .frame(width: 38, height: 34)
                         
                         Image(systemName: "mic.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
@@ -623,7 +629,7 @@ struct DailyDashboardWidgetView: View {
             .padding(.top, 8)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
     }

@@ -110,57 +110,6 @@ struct Provider: TimelineProvider {
 }
 
 
-struct LogShortcutIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log Shortcut"
-    static var openAppWhenRun: Bool = true
-    
-    @Parameter(title: "Action")
-    var action: String?
-    
-    @Parameter(title: "Meal Type")
-    var mealType: String?
-    
-    init() {}
-    
-    init(action: String? = nil, mealType: String? = nil) {
-        self.action = action
-        self.mealType = mealType
-    }
-    
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        var urlString = "logcal://log"
-        var queryItems: [URLQueryItem] = []
-        if let action {
-            queryItems.append(URLQueryItem(name: "action", value: action))
-        }
-        if let mealType {
-            queryItems.append(URLQueryItem(name: "mealType", value: mealType))
-        }
-        
-        var components = URLComponents(string: urlString)
-        if !queryItems.isEmpty {
-            components?.queryItems = queryItems
-        }
-        
-        let destinationURL = components?.url ?? URL(string: "logcal://dashboard")!
-        
-        // Open URL dynamically to avoid extension target compilation warnings/errors
-        if let applicationClass = NSClassFromString("UIApplication") as? NSObject.Type {
-            let sharedSelector = Selector(("sharedApplication"))
-            if applicationClass.responds(to: sharedSelector) {
-                let sharedApplication = applicationClass.perform(sharedSelector).takeUnretainedValue()
-                let openURLSelector = Selector(("openURL:"))
-                if sharedApplication.responds(to: openURLSelector) {
-                    _ = sharedApplication.perform(openURLSelector, with: destinationURL)
-                }
-            }
-        }
-        
-        return .result()
-    }
-}
-
 struct CaloriesWidget: Widget {
     let kind: String = "CaloriesWidget"
 
@@ -171,6 +120,7 @@ struct CaloriesWidget: Widget {
         .configurationDisplayName("Calories")
         .description("See today’s calorie progress and remaining calories.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -184,6 +134,7 @@ struct MacrosWidget: Widget {
         .configurationDisplayName("Macros")
         .description("Track protein, carbs, fat and fibre.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -197,6 +148,7 @@ struct DailySummaryWidget: Widget {
         .configurationDisplayName("Daily Summary")
         .description("See calories and key nutrition progress together.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -210,6 +162,7 @@ struct QuickLogWidget: Widget {
         .configurationDisplayName("Quick Log")
         .description("Start voice, camera, gallery or manual logging.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -223,6 +176,7 @@ struct CaloriesAndLogWidget: Widget {
         .configurationDisplayName("Calories & Log")
         .description("Check calories and quickly log your next meal.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -236,6 +190,7 @@ struct DailyDashboardWidget: Widget {
         .configurationDisplayName("Daily Dashboard")
         .description("View calories, nutrition progress and logging shortcuts.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 

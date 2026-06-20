@@ -14,7 +14,16 @@
 				<string>com.googleusercontent.apps.1023141890322-empsla7r8hbflkbkrsjqsoqpcedo4cuh</string>
 			</array>
 		</dict>
-		<dict/>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.serene.logcal</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>logcal</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>LogCal needs access to your photo library to attach food images for calorie logging.</string>

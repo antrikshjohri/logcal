@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import AppIntents
+import Foundation
 
 enum AppTheme: String, CaseIterable {
     case system = "system"
@@ -108,3 +110,69 @@ struct Theme {
     private static let darkSecondaryText = Color(red: 0.68, green: 0.75, blue: 0.66)
     private static let darkTertiaryText = Color(red: 0.48, green: 0.56, blue: 0.49)
 }
+
+struct LogShortcutIntent: AppIntent {
+    static var title: LocalizedStringResource = "Log Shortcut"
+    static var openAppWhenRun: Bool = true
+    
+    @Parameter(title: "Action")
+    var action: String?
+    
+    @Parameter(title: "Meal Type")
+    var mealType: String?
+    
+    init() {}
+    
+    init(action: String? = nil, mealType: String? = nil) {
+        self.action = action
+        self.mealType = mealType
+    }
+    
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        print("DEBUG: [LogShortcutIntent] perform called. action=\(action ?? "nil"), mealType=\(mealType ?? "nil")")
+        
+        var urlString = "logcal://log"
+        var queryItems: [URLQueryItem] = []
+        if let action {
+            queryItems.append(URLQueryItem(name: "action", value: action))
+        }
+        if let mealType {
+            queryItems.append(URLQueryItem(name: "mealType", value: mealType))
+        }
+        
+        var components = URLComponents(string: urlString)
+        if !queryItems.isEmpty {
+            components?.queryItems = queryItems
+        }
+        
+        let destinationURL = components?.url ?? URL(string: "logcal://dashboard")!
+        print("DEBUG: [LogShortcutIntent] generated destination URL: \(destinationURL.absoluteString)")
+        
+        // Open URL dynamically to avoid extension target compilation warnings/errors
+        if let applicationClass = NSClassFromString("UIApplication") as? NSObject.Type {
+            let sharedSelector = Selector(("sharedApplication"))
+            if applicationClass.responds(to: sharedSelector) {
+                let sharedApplication = applicationClass.perform(sharedSelector).takeUnretainedValue()
+                let openSelector = Selector(("openURL:options:completionHandler:"))
+                if sharedApplication.responds(to: openSelector) {
+                    print("DEBUG: [LogShortcutIntent] calling UIApplication openURL:options:completionHandler: with: \(destinationURL.absoluteString)")
+                    
+                    typealias OpenSignature = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, (@convention(block) (Bool) -> Void)?) -> Void
+                    let method = sharedApplication.method(for: openSelector)
+                    let openBlock = unsafeBitCast(method, to: OpenSignature.self)
+                    openBlock(sharedApplication, openSelector, destinationURL as NSURL, [:] as NSDictionary, nil)
+                } else {
+                    print("ERROR: [LogShortcutIntent] UIApplication shared does not respond to openURL:options:completionHandler:")
+                }
+            } else {
+                print("ERROR: [LogShortcutIntent] UIApplication does not respond to sharedApplication")
+            }
+        } else {
+            print("ERROR: [LogShortcutIntent] NSClassFromString('UIApplication') returned nil")
+        }
+        
+        return .result()
+    }
+}
+

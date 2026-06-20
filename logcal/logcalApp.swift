@@ -157,6 +157,11 @@ struct logcalApp: App {
             
             AnalyticsService.trackDeepLinkOpened(host: "log", action: action)
             
+            // Save to UserDefaults as a backup for cold start
+            let defaults = UserDefaults.standard
+            defaults.set(action, forKey: "pendingDeepLinkAction")
+            defaults.set(mealType, forKey: "pendingDeepLinkMealType")
+            
             // Post notification for HomeView/LogViewModel to handle
             NotificationCenter.default.post(
                 name: NSNotification.Name("HandleDeepLinkAction"),

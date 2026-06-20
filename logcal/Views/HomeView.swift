@@ -236,6 +236,9 @@ struct HomeView: View {
                 } message: {
                     Text("Are you sure you want to remove this meal from your favourites?")
                 }
+                .onAppear {
+                    checkForPendingDeepLink()
+                }
         }
     }
     
@@ -1146,6 +1149,48 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 36)
+    }
+    
+    private func checkForPendingDeepLink() {
+        let defaults = UserDefaults.standard
+        if let actionString = defaults.string(forKey: "pendingDeepLinkAction") {
+            print("DEBUG: [HomeView] Found pending deep link action: \(actionString)")
+            
+            // Handle mealType if provided
+            if let mealTypeString = defaults.string(forKey: "pendingDeepLinkMealType") {
+                if mealTypeString == "auto" {
+                    let inferred = MealTypeInference.inferMealTypeFromISTNow()
+                    viewModel.selectedMealType = inferred
+                    viewModel.isMealTypeManuallySet = true
+                } else if let mealType = MealType(rawValue: mealTypeString) {
+                    viewModel.selectedMealType = mealType
+                    viewModel.isMealTypeManuallySet = true
+                }
+            }
+            
+            // Clear pending values first to avoid duplicate runs
+            defaults.removeObject(forKey: "pendingDeepLinkAction")
+            defaults.removeObject(forKey: "pendingDeepLinkMealType")
+            
+            // Trigger action with a tiny delay to ensure view is fully settled
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                switch actionString {
+                case "voice":
+                    viewModel.isListening = false
+                    viewModel.toggleSpeechRecognition()
+                case "camera":
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        viewModel.showCameraPicker = true
+                    }
+                case "gallery":
+                    viewModel.showImagePicker = true
+                case "text":
+                    isTextFieldFocused = true
+                default:
+                    break
+                }
+            }
+        }
     }
 }
 
