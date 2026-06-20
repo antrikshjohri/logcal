@@ -9,6 +9,7 @@ import Foundation
 import SwiftData
 import FirebaseAuth
 import Combine
+import WidgetKit
 
 @MainActor
 class CloudSyncService: ObservableObject {
@@ -204,6 +205,7 @@ class CloudSyncService: ObservableObject {
             }
             
             isSyncing = false
+            WidgetCenter.shared.reloadAllTimelines()
             // Update lastSyncTime even if no meals were added to trigger any pending updates
             if addedCount == 0 {
                 lastSyncTime = Date()
@@ -267,10 +269,12 @@ class CloudSyncService: ObservableObject {
             }
             
             isSyncing = false
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             print("DEBUG: Error migrating to cloud: \(error)")
             syncError = "Failed to migrate to cloud: \(error.localizedDescription)"
             isSyncing = false
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     
@@ -351,6 +355,7 @@ class CloudSyncService: ObservableObject {
         
         // Clear persisted user ID when clearing data
         userDefaults.removeObject(forKey: lastUserIdKey)
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     /// Initialize anonymous session (clear authenticated data when switching to anonymous)

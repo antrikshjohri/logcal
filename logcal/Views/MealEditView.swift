@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import WidgetKit
 
 struct MealEditView: View {
     @Environment(\.dismiss) var dismiss
@@ -711,6 +712,7 @@ struct MealEditView: View {
         
         do {
             try modelContext.save()
+            WidgetCenter.shared.reloadAllTimelines()
             
             // Sync to cloud
             Task {
@@ -836,6 +838,7 @@ struct MealEditView: View {
         
         do {
             try modelContext.save()
+            WidgetCenter.shared.reloadAllTimelines()
             dismiss()
         } catch {
             print("DEBUG: Error deleting meal: \(error)")
@@ -868,6 +871,7 @@ struct MealEditView: View {
             caloriesManuallyOverridden = false
             updateLinkedFavoriteIfNeeded()
             try? modelContext.save()
+            WidgetCenter.shared.reloadAllTimelines()
             quickEditPrompt = ""
             withAnimation(.easeInOut(duration: 0.2)) {
                 showQuickEdit = false

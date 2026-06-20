@@ -100,6 +100,42 @@ struct HomeView: View {
                         viewModel.isMealTypeManuallySet = true
                     }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HandleDeepLinkAction"))) { notification in
+                    if let userInfo = notification.userInfo {
+                        // 1. Handle mealType if provided
+                        if let mealTypeString = userInfo["mealType"] as? String {
+                            if mealTypeString == "auto" {
+                                let inferred = MealTypeInference.inferMealTypeFromISTNow()
+                                viewModel.selectedMealType = inferred
+                                viewModel.isMealTypeManuallySet = true
+                            } else if let mealType = MealType(rawValue: mealTypeString) {
+                                viewModel.selectedMealType = mealType
+                                viewModel.isMealTypeManuallySet = true
+                            }
+                        }
+                        
+                        // 2. Handle action
+                        if let actionString = userInfo["action"] as? String {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                switch actionString {
+                                case "voice":
+                                    viewModel.isListening = false
+                                    viewModel.toggleSpeechRecognition()
+                                case "camera":
+                                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                        viewModel.showCameraPicker = true
+                                    }
+                                case "gallery":
+                                    viewModel.showImagePicker = true
+                                case "text":
+                                    isTextFieldFocused = true
+                                default:
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
                 .modifier(HomeViewModifiers(
                     viewModel: viewModel,
                     modelContext: modelContext,

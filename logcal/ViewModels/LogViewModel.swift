@@ -10,6 +10,7 @@ import SwiftUI
 import SwiftData
 import Combine
 import UIKit
+import WidgetKit
 
 @MainActor
 class LogViewModel: ObservableObject {
@@ -185,6 +186,7 @@ class LogViewModel: ObservableObject {
         context.insert(entry)
         do {
             try context.save()
+            WidgetCenter.shared.reloadAllTimelines()
             lastLoggedMealId = entry.id
             latestResult = response ?? savedMeal.response
 
@@ -240,6 +242,7 @@ class LogViewModel: ObservableObject {
         do {
             entry.sourceSavedMealId = savedMeal.id
             try context.save()
+            WidgetCenter.shared.reloadAllTimelines()
             Task { @MainActor in
                 await cloudSyncService.syncSavedMealsToCloud(modelContext: context)
             }
@@ -386,6 +389,7 @@ class LogViewModel: ObservableObject {
                 
                 context.insert(entry)
                 try context.save()
+                WidgetCenter.shared.reloadAllTimelines()
                 lastLoggedMealId = entry.id
                 perf.mark("swiftdata_saved", metadata: [
                     "entryId": entry.id.uuidString,

@@ -31,7 +31,19 @@ struct logcalApp: App {
             MealEntry.self,
             SavedMeal.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let appGroup = "group.com.serene.logcal"
+        let fileManager = FileManager.default
+        let modelConfiguration: ModelConfiguration
+        
+        if let containerURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroup) {
+            let storeURL = containerURL.appendingPathComponent("default.store")
+            modelConfiguration = ModelConfiguration(url: storeURL)
+            print("DEBUG: ModelContainer using shared URL: \(storeURL.path)")
+        } else {
+            modelConfiguration = ModelConfiguration(isStoredInMemoryOnly: false)
+            print("DEBUG: ModelContainer using default URL (fallback)")
+        }
+        
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
@@ -41,17 +53,120 @@ struct logcalApp: App {
     
     init() {
         print("DEBUG: App initializing...")
+        // Migrate data to App Group shared container first
+        migrateUserDefaultsToSharedContainerIfNeeded()
+        migrateToSharedContainerIfNeeded()
+        
         // Initialize Firebase
         FirebaseApp.configure()
         print("DEBUG: Firebase configured")
         
         // Initialize Firebase Analytics
-        // Analytics is automatically initialized with FirebaseApp.configure()
         print("DEBUG: Firebase Analytics initialized")
         
         // Set up notification delegate
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
         print("DEBUG: Notification delegate configured")
+    }
+    
+    private func migrateToSharedContainerIfNeeded() {
+        let appGroup = "group.com.serene.logcal"
+        let fileManager = FileManager.default
+        
+        guard let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+        let defaultStoreURL = appSupportURL.appendingPathComponent("default.store")
+        let defaultShmURL = appSupportURL.appendingPathComponent("default.store-shm")
+        let defaultWalURL = appSupportURL.appendingPathComponent("default.store-wal")
+        
+        guard let containerURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {
+            print("DEBUG: Shared container not available for SwiftData migration")
+            return
+        }
+        let sharedStoreURL = containerURL.appendingPathComponent("default.store")
+        let sharedShmURL = containerURL.appendingPathComponent("default.store-shm")
+        let sharedWalURL = containerURL.appendingPathComponent("default.store-wal")
+        
+        if fileManager.fileExists(atPath: sharedStoreURL.path) {
+            print("DEBUG: Shared store already exists, skipping SwiftData migration")
+            return
+        }
+        
+        if fileManager.fileExists(atPath: defaultStoreURL.path) {
+            print("DEBUG: Found default SwiftData store, migrating to shared container...")
+            do {
+                try fileManager.createDirectory(at: containerURL, withIntermediateDirectories: true, attributes: nil)
+                try fileManager.copyItem(at: defaultStoreURL, to: sharedStoreURL)
+                
+                if fileManager.fileExists(atPath: defaultShmURL.path) {
+                    try fileManager.copyItem(at: defaultShmURL, to: sharedShmURL)
+                }
+                
+                if fileManager.fileExists(atPath: defaultWalURL.path) {
+                    try fileManager.copyItem(at: defaultWalURL, to: sharedWalURL)
+                }
+                print("DEBUG: SwiftData database successfully migrated to shared container.")
+            } catch {
+                print("DEBUG: Failed to migrate SwiftData database: \(error)")
+            }
+        }
+    }
+    
+    private func migrateUserDefaultsToSharedContainerIfNeeded() {
+        let appGroup = "group.com.serene.logcal"
+        guard let sharedDefaults = UserDefaults(suiteName: appGroup) else { return }
+        let standardDefaults = UserDefaults.standard
+        
+        if !sharedDefaults.bool(forKey: "didMigrateUserDefaults") {
+            let keysToMigrate = [
+                "dailyGoal", "proteinGoal", "carbsGoal", "fatGoal", "dietStyle",
+                "customProteinPercent", "customCarbsPercent", "customFatPercent",
+                "appTheme", "mealRemindersEnabled"
+            ]
+            
+            for key in keysToMigrate {
+                if let value = standardDefaults.value(forKey: key) {
+                    sharedDefaults.set(value, forKey: key)
+                }
+            }
+            sharedDefaults.set(true, forKey: "didMigrateUserDefaults")
+            sharedDefaults.synchronize()
+            print("DEBUG: UserDefaults successfully migrated to shared container.")
+        }
+    }
+    
+    private var sharedUserDefaults: UserDefaults {
+        UserDefaults(suiteName: "group.com.serene.logcal") ?? UserDefaults.standard
+    }
+    
+    private func handleDeepLink(_ url: URL) {
+        guard let host = url.host else { return }
+        print("DEBUG: Received deep link: \(url.absoluteString)")
+        
+        if host == "dashboard" {
+            selectedTab = 0
+            AnalyticsService.trackDeepLinkOpened(host: "dashboard", action: nil as String?)
+        } else if host == "log" {
+            selectedTab = 1
+            
+            // Parse query parameters
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let action = components?.queryItems?.first(where: { $0.name == "action" })?.value
+            let mealType = components?.queryItems?.first(where: { $0.name == "mealType" })?.value
+            
+            AnalyticsService.trackDeepLinkOpened(host: "log", action: action)
+            
+            // Post notification for HomeView/LogViewModel to handle
+            NotificationCenter.default.post(
+                name: NSNotification.Name("HandleDeepLinkAction"),
+                object: nil,
+                userInfo: [
+                    "action": action as Any,
+                    "mealType": mealType as Any
+                ]
+            )
+        }
     }
     
     var body: some Scene {
@@ -176,6 +291,10 @@ struct logcalApp: App {
                     }
                 }
             }
+            .onOpenURL { url in
+                handleDeepLink(url)
+            }
+            .defaultAppStorage(sharedUserDefaults)
         }
     }
     

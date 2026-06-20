@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 struct DailyGoalView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -358,6 +359,8 @@ struct DailyGoalView: View {
                         proteinGoal = finalProtein
                         carbsGoal = finalCarbs
                         fatGoal = finalFat
+                        
+                        WidgetCenter.shared.reloadAllTimelines()
                         
                         // Sync to cloud
                         await cloudSyncService.syncUserPreferencesToCloud(

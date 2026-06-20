@@ -417,6 +417,17 @@ struct AnalyticsService {
         logEvent("profile_send_feedback_tapped", parameters: nil)
     }
     
+    // MARK: - Deep Link Events
+    
+    /// Track when app is opened via deep link
+    static func trackDeepLinkOpened(host: String, action: String?) {
+        var params: [String: Any] = ["host": host]
+        if let action = action {
+            params["action"] = action
+        }
+        logEvent("deep_link_opened", parameters: params)
+    }
+    
     // MARK: - Private Helper
     
     /// Internal method to log events with Firebase Analytics

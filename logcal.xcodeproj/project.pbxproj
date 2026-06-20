@@ -7,8 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		001370081F55A5424FC607D7 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8380B175D99767AA3CD59F40 /* AppTheme.swift */; };
+		028570D1E3476C50D9F980F9 /* MealLogResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F760A6A6F9019F5AC89FCC27 /* MealLogResponse.swift */; };
+		063D996A85D5B68EE42CF565 /* DietStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 650D3A7CB757FAE31573AD15 /* DietStyle.swift */; };
 		154C5B3DF37219AF6282BF8C /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F6735907299460362922DFA5 /* FirebaseCrashlytics */; };
 		242B52DDCEC0AE3AC5F626FC /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2C88D45160A287CD2A3C3D54 /* GoogleService-Info.plist */; };
+		29BF2F5C5868E157403160F6 /* LogCalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B596081B537E07E20CB224 /* LogCalWidget.swift */; };
+		2D198668FE731FD22B216B22 /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57412CA14B03E8A19CE1A65 /* MealEntry.swift */; };
+		65E52FC970D8BF31D949CAF6 /* SavedMeal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A160E2322C14BEB15F351D8 /* SavedMeal.swift */; };
 		9B2C80A22EFB39F100707824 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80A12EFB39F100707824 /* FirebaseAuth */; };
 		9B2C80A42EFB39F100707824 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80A32EFB39F100707824 /* FirebaseCore */; };
 		9B2C80A62EFB39F100707824 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80A52EFB39F100707824 /* FirebaseFunctions */; };
@@ -18,7 +24,19 @@
 		9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E52EFB4D0000707824 /* FirebaseFirestore */; };
 		9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFCBA2F0D938B00C7FD92 /* Lottie */; };
 		9B9BFDCB2F0E5D2200C7FD92 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFDCA2F0E5D2200C7FD92 /* FirebaseAnalytics */; };
+		A10E8CDE945F2EBDC404CB9C /* LogCalWidget.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3F6782AACBB5B343792F6A3A /* LogCalWidget.appex */; };
+		F0AD0BB40C5A758BF8394A31 /* LogCalWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1D4AE3F098F361C1F1F2703 /* LogCalWidgetViews.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9AF882C210D128B2A9419F6A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9B2C7FBC2EEF6FE400707824 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3D3F1889FE00907722BE0D4E;
+			remoteInfo = LogCalWidget;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		9B9BFCB82F0D900C00C7FD92 /* Embed Frameworks */ = {
@@ -31,15 +49,35 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E13E80C9C4D14FC8646DD8A8 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10E8CDE945F2EBDC404CB9C /* LogCalWidget.appex in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2A160E2322C14BEB15F351D8 /* SavedMeal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavedMeal.swift; path = logcal/Models/SavedMeal.swift; sourceTree = "<group>"; };
 		2C88D45160A287CD2A3C3D54 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = text.plist; name = "GoogleService-Info.plist"; path = "logcal/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		2F5E21500D335FA610C7D8E4 /* LogCalWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LogCalWidget.entitlements; sourceTree = "<group>"; };
+		3F6782AACBB5B343792F6A3A /* LogCalWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = LogCalWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		650D3A7CB757FAE31573AD15 /* DietStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DietStyle.swift; path = logcal/Models/DietStyle.swift; sourceTree = "<group>"; };
+		8380B175D99767AA3CD59F40 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppTheme.swift; path = logcal/Utils/AppTheme.swift; sourceTree = "<group>"; };
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1D4AE3F098F361C1F1F2703 /* LogCalWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWidgetViews.swift; sourceTree = "<group>"; };
+		A6B596081B537E07E20CB224 /* LogCalWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWidget.swift; sourceTree = "<group>"; };
+		AD365F0B5729A32292CE6E28 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F57412CA14B03E8A19CE1A65 /* MealEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MealEntry.swift; path = logcal/Models/MealEntry.swift; sourceTree = "<group>"; };
+		F760A6A6F9019F5AC89FCC27 /* MealLogResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MealLogResponse.swift; path = logcal/Models/MealLogResponse.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */ = {
+		9B2C80E32EFB4C6100707824 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -52,7 +90,7 @@
 		9B2C7FC62EEF6FE400707824 /* logcal */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */,
+				9B2C80E32EFB4C6100707824 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
 			);
 			path = logcal;
 			sourceTree = "<group>";
@@ -60,6 +98,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		4CE7DD104B3132A5407B96C9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9B2C7FC12EEF6FE400707824 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -80,6 +125,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		79F16BDEA23C15298C74FE7C /* LogCalWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A6B596081B537E07E20CB224 /* LogCalWidget.swift */,
+				A1D4AE3F098F361C1F1F2703 /* LogCalWidgetViews.swift */,
+				2F5E21500D335FA610C7D8E4 /* LogCalWidget.entitlements */,
+				AD365F0B5729A32292CE6E28 /* Info.plist */,
+			);
+			path = LogCalWidget;
+			sourceTree = "<group>";
+		};
 		9B2C7FBB2EEF6FE400707824 = {
 			isa = PBXGroup;
 			children = (
@@ -87,6 +143,12 @@
 				9B9BFCB62F0D8F3B00C7FD92 /* Frameworks */,
 				9B2C7FC52EEF6FE400707824 /* Products */,
 				2C88D45160A287CD2A3C3D54 /* GoogleService-Info.plist */,
+				79F16BDEA23C15298C74FE7C /* LogCalWidget */,
+				F57412CA14B03E8A19CE1A65 /* MealEntry.swift */,
+				2A160E2322C14BEB15F351D8 /* SavedMeal.swift */,
+				F760A6A6F9019F5AC89FCC27 /* MealLogResponse.swift */,
+				650D3A7CB757FAE31573AD15 /* DietStyle.swift */,
+				8380B175D99767AA3CD59F40 /* AppTheme.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -94,6 +156,7 @@
 			isa = PBXGroup;
 			children = (
 				9B2C7FC42EEF6FE400707824 /* logcal.app */,
+				3F6782AACBB5B343792F6A3A /* LogCalWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,6 +171,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3D3F1889FE00907722BE0D4E /* LogCalWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C1E251D5B11547CC06A6A2D2 /* Build configuration list for PBXNativeTarget "LogCalWidget" */;
+			buildPhases = (
+				1B4253171AA2E39C9D8118E8 /* Sources */,
+				4CE7DD104B3132A5407B96C9 /* Frameworks */,
+				02FA2046EA88386F8E4D6A54 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LogCalWidget;
+			packageProductDependencies = (
+			);
+			productName = LogCalWidget;
+			productReference = 3F6782AACBB5B343792F6A3A /* LogCalWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		9B2C7FC32EEF6FE400707824 /* logcal */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9B2C7FCF2EEF6FE700707824 /* Build configuration list for PBXNativeTarget "logcal" */;
@@ -116,11 +198,13 @@
 				9B2C7FC12EEF6FE400707824 /* Frameworks */,
 				9B2C7FC22EEF6FE400707824 /* Resources */,
 				9B9BFCB82F0D900C00C7FD92 /* Embed Frameworks */,
+				E13E80C9C4D14FC8646DD8A8 /* CopyFiles */,
 				F038DA0DF246748A35F8AFD9 /* ShellScript */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D59E5E05CC6ADCA87E102862 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9B2C7FC62EEF6FE400707824 /* logcal */,
@@ -177,11 +261,19 @@
 			projectRoot = "";
 			targets = (
 				9B2C7FC32EEF6FE400707824 /* logcal */,
+				3D3F1889FE00907722BE0D4E /* LogCalWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		02FA2046EA88386F8E4D6A54 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9B2C7FC22EEF6FE400707824 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -215,6 +307,20 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1B4253171AA2E39C9D8118E8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				29BF2F5C5868E157403160F6 /* LogCalWidget.swift in Sources */,
+				F0AD0BB40C5A758BF8394A31 /* LogCalWidgetViews.swift in Sources */,
+				2D198668FE731FD22B216B22 /* MealEntry.swift in Sources */,
+				65E52FC970D8BF31D949CAF6 /* SavedMeal.swift in Sources */,
+				028570D1E3476C50D9F980F9 /* MealLogResponse.swift in Sources */,
+				063D996A85D5B68EE42CF565 /* DietStyle.swift in Sources */,
+				001370081F55A5424FC607D7 /* AppTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9B2C7FC02EEF6FE400707824 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -224,7 +330,69 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		D59E5E05CC6ADCA87E102862 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3D3F1889FE00907722BE0D4E /* LogCalWidget */;
+			targetProxy = 9AF882C210D128B2A9419F6A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		6B190CC3406FFA2F1BC40D4A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LogCalWidget/LogCalWidget.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 11;
+				DEVELOPMENT_TEAM = Z5M4U33NJF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LogCalWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal.LogCalWidget;
+				PRODUCT_NAME = LogCalWidget;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		6E9EE50F4BCEB1A161CD1DE5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LogCalWidget/LogCalWidget.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 11;
+				DEVELOPMENT_TEAM = Z5M4U33NJF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LogCalWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal.LogCalWidget;
+				PRODUCT_NAME = LogCalWidget;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		9B2C7FCD2EEF6FE700707824 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -449,6 +617,15 @@
 			buildConfigurations = (
 				9B2C7FD02EEF6FE700707824 /* Debug */,
 				9B2C7FD12EEF6FE700707824 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C1E251D5B11547CC06A6A2D2 /* Build configuration list for PBXNativeTarget "LogCalWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B190CC3406FFA2F1BC40D4A /* Debug */,
+				6E9EE50F4BCEB1A161CD1DE5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

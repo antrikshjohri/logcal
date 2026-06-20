@@ -1,0 +1,744 @@
+//
+//  LogCalWidgetViews.swift
+//  LogCalWidget
+//
+//  Created by Antriksh Johri on 19/06/26.
+//
+
+import SwiftUI
+import WidgetKit
+import AppIntents
+
+// MARK: - Widget Theme Tokens
+
+struct WidgetTheme {
+    static let darkBackground = Color(red: 0.08, green: 0.13, blue: 0.10) // App's dark card token
+    static let darkElevatedBackground = Color(red: 0.11, green: 0.17, blue: 0.13) // elevated surface
+    
+    // Macro colors
+    static let calorieGreen = Theme.primaryGreen
+    static let proteinGreen = Theme.proteinColor
+    static let carbsBlue = Color(red: 0.12, green: 0.53, blue: 0.90) // bright electric blue
+    static let fatOrange = Color(red: 0.93, green: 0.48, blue: 0.12) // bright orange
+    static let fiberPurple = Color(red: 0.58, green: 0.30, blue: 0.90) // bright purple
+    
+    // Track colors
+    static let darkNeutralTrack = Color(red: 0.14, green: 0.18, blue: 0.16)
+    
+    // Text colors
+    static let primaryText = Theme.primaryText(colorScheme: .dark)
+    static let mutedText = Theme.mutedText(colorScheme: .dark)
+    static let quietText = Theme.quietText(colorScheme: .dark)
+}
+
+// MARK: - Shared Views
+
+struct WidgetProgressRing: View {
+    let consumed: Double
+    let goal: Double
+    let size: CGFloat
+    let strokeWidth: CGFloat
+    let color: Color
+    
+    var progress: Double {
+        goal > 0 ? min(max(consumed / goal, 0.0), 1.0) : 0.0
+    }
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(WidgetTheme.darkNeutralTrack, lineWidth: strokeWidth)
+            
+            if goal > 0 && progress > 0 {
+                Circle()
+                    .trim(from: 0, to: CGFloat(progress))
+                    .stroke(
+                        color,
+                        style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+struct WidgetMacroRow: View {
+    let label: String
+    let value: Double
+    let goal: Double
+    let color: Color
+    
+    var progress: Double {
+        goal > 0 ? min(max(value / goal, 0.0), 1.0) : 0.0
+    }
+    
+    var body: some View {
+        VStack(spacing: 3) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(WidgetTheme.primaryText)
+                
+                Spacer()
+                
+                if goal > 0 {
+                    HStack(spacing: 0) {
+                        Text("\(Int(value))")
+                            .foregroundColor(color)
+                        Text(" / \(Int(goal))g")
+                            .foregroundColor(WidgetTheme.mutedText)
+                    }
+                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                } else {
+                    Text("\(Int(value))g")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundColor(color)
+                }
+            }
+            
+            // Progress Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(WidgetTheme.darkNeutralTrack)
+                        .frame(height: 4)
+                    
+                    if progress > 0 {
+                        Capsule()
+                            .fill(color)
+                            .frame(width: geo.size.width * CGFloat(progress), height: 4)
+                    }
+                }
+            }
+            .frame(height: 4)
+        }
+    }
+}
+
+struct WidgetMacroCell: View {
+    let label: String
+    let value: Double
+    let goal: Double
+    let color: Color
+    
+    var progress: Double {
+        goal > 0 ? min(max(value / goal, 0.0), 1.0) : 0.0
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 2) {
+                Text(label)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(WidgetTheme.primaryText)
+                Spacer()
+                Text("\(Int(value))g")
+                    .font(.system(size: 9, weight: .bold).monospacedDigit())
+                    .foregroundColor(color)
+            }
+            
+            // Progress Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(WidgetTheme.darkNeutralTrack)
+                        .frame(height: 3)
+                    
+                    if progress > 0 {
+                        Capsule()
+                            .fill(color)
+                            .frame(width: geo.size.width * CGFloat(progress), height: 3)
+                    }
+                }
+            }
+            .frame(height: 3)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(WidgetTheme.darkElevatedBackground)
+        )
+    }
+}
+
+// MARK: - 1. Small Widget: Calories
+
+struct CaloriesWidgetView: View {
+    let entry: SimpleEntry
+    
+    var remaining: Int {
+        Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
+            
+            WidgetProgressRing(
+                consumed: entry.calories,
+                goal: entry.dailyGoal,
+                size: 82,
+                strokeWidth: 8,
+                color: WidgetTheme.calorieGreen
+            )
+            .overlay(
+                VStack(spacing: 0) {
+                    Text("\(Int(entry.calories))")
+                        .font(.system(size: 20, weight: .bold).monospacedDigit())
+                        .foregroundColor(WidgetTheme.primaryText)
+                    Text("cal")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(WidgetTheme.mutedText)
+                }
+            )
+            
+            Spacer(minLength: 0)
+            
+            if entry.dailyGoal > 0 {
+                VStack(spacing: 1) {
+                    HStack(spacing: 3) {
+                        Text("\(remaining)")
+                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                            .foregroundColor(WidgetTheme.calorieGreen)
+                        Text("cal left")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(WidgetTheme.primaryText)
+                    }
+                    
+                    Text("of \(Int(entry.dailyGoal)) cal")
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundColor(WidgetTheme.quietText)
+                }
+            } else {
+                Text("No goal set")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(WidgetTheme.quietText)
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(WidgetTheme.darkBackground, for: .widget)
+        .widgetURL(URL(string: "logcal://dashboard"))
+    }
+}
+
+// MARK: - 2. Small Widget: Macros
+
+struct MacrosWidgetView: View {
+    let entry: SimpleEntry
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            WidgetMacroRow(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
+            WidgetMacroRow(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
+            WidgetMacroRow(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
+            WidgetMacroRow(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(WidgetTheme.darkBackground, for: .widget)
+        .widgetURL(URL(string: "logcal://dashboard"))
+    }
+}
+
+// MARK: - 3. Small Widget: Calories and Macros (Daily Summary)
+
+struct DailySummaryWidgetView: View {
+    let entry: SimpleEntry
+    
+    var remaining: Int {
+        Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Upper Calorie Section (58% height)
+            VStack(spacing: 3) {
+                WidgetProgressRing(
+                    consumed: entry.calories,
+                    goal: entry.dailyGoal,
+                    size: 50,
+                    strokeWidth: 5,
+                    color: WidgetTheme.calorieGreen
+                )
+                .overlay(
+                    VStack(spacing: -2) {
+                        Text("\(Int(entry.calories))")
+                            .font(.system(size: 12, weight: .bold).monospacedDigit())
+                            .foregroundColor(WidgetTheme.primaryText)
+                        Text("cal")
+                            .font(.system(size: 8, weight: .regular))
+                            .foregroundColor(WidgetTheme.mutedText)
+                    }
+                )
+                
+                if entry.dailyGoal > 0 {
+                    HStack(spacing: 2) {
+                        Text("\(remaining)")
+                            .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                            .foregroundColor(WidgetTheme.calorieGreen)
+                        Text("left")
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundColor(WidgetTheme.mutedText)
+                    }
+                } else {
+                    Text("No goal")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(WidgetTheme.quietText)
+                }
+            }
+            .frame(maxHeight: .infinity)
+            
+            // Lower Macro Section (42% height)
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    WidgetMacroCell(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
+                    WidgetMacroCell(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
+                }
+                HStack(spacing: 4) {
+                    WidgetMacroCell(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
+                    WidgetMacroCell(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(WidgetTheme.darkBackground, for: .widget)
+        .widgetURL(URL(string: "logcal://dashboard"))
+    }
+}
+
+// MARK: - 4. Small Widget: Quick Log
+
+struct QuickLogWidgetView: View {
+    let entry: SimpleEntry
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Large Voice Area at the top
+            Button(intent: LogShortcutIntent(action: "voice")) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 52, height: 52)
+                    
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+            .buttonStyle(.plain)
+            
+            // Bottom Shortcuts (Camera, Gallery, Keyboard)
+            HStack(spacing: 8) {
+                Button(intent: LogShortcutIntent(action: "camera")) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(height: 38)
+                        
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(WidgetTheme.proteinGreen)
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                Button(intent: LogShortcutIntent(action: "gallery")) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(height: 38)
+                        
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(WidgetTheme.carbsBlue)
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                Button(intent: LogShortcutIntent(action: "text")) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(height: 38)
+                        
+                        Image(systemName: "keyboard.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(WidgetTheme.carbsBlue)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(WidgetTheme.darkBackground, for: .widget)
+        .widgetURL(URL(string: "logcal://log")!)
+    }
+}
+
+// MARK: - 5. Small Widget: Calories and Log
+
+struct CaloriesAndLogWidgetView: View {
+    let entry: SimpleEntry
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
+            
+            // Calorie Ring Section
+            WidgetProgressRing(
+                consumed: entry.calories,
+                goal: entry.dailyGoal,
+                size: 70,
+                strokeWidth: 7,
+                color: WidgetTheme.calorieGreen
+            )
+            .overlay(
+                VStack(spacing: -1) {
+                    Text("\(Int(entry.calories))")
+                        .font(.system(size: 16, weight: .bold).monospacedDigit())
+                        .foregroundColor(WidgetTheme.primaryText)
+                    Text("cal")
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundColor(WidgetTheme.mutedText)
+                    if entry.dailyGoal > 0 {
+                        Text("of \(Int(entry.dailyGoal)) cal")
+                            .font(.system(size: 7, weight: .regular))
+                            .foregroundColor(WidgetTheme.quietText)
+                    } else {
+                        Text("No goal")
+                            .font(.system(size: 7, weight: .regular))
+                            .foregroundColor(WidgetTheme.quietText)
+                    }
+                }
+            )
+            
+            Spacer(minLength: 0)
+            
+            // Bottom Shortcut Row
+            HStack(spacing: 8) {
+                // Voice (Orange)
+                Button(intent: LogShortcutIntent(action: "voice")) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.orange)
+                            .frame(height: 38)
+                        
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                // Keyboard (Dark Neutral, White Icon)
+                Button(intent: LogShortcutIntent(action: "text")) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(height: 38)
+                        
+                        Image(systemName: "keyboard.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                // Camera (Dark Neutral, White Icon)
+                Button(intent: LogShortcutIntent(action: "camera")) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(height: 38)
+                        
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(WidgetTheme.darkBackground, for: .widget)
+        .widgetURL(URL(string: "logcal://dashboard"))
+    }
+}
+
+// MARK: - 6. Medium Widget: Daily Dashboard (Calories, Macros, and Log)
+
+struct DailyDashboardWidgetView: View {
+    let entry: SimpleEntry
+    
+    var remaining: Int {
+        Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Upper Content Section (72% height)
+            HStack(spacing: 0) {
+                // Left Column: Calories (43% width)
+                Link(destination: URL(string: "logcal://dashboard")!) {
+                    VStack(spacing: 4) {
+                        WidgetProgressRing(
+                            consumed: entry.calories,
+                            goal: entry.dailyGoal,
+                            size: 68,
+                            strokeWidth: 7,
+                            color: WidgetTheme.calorieGreen
+                        )
+                        .overlay(
+                            VStack(spacing: -1) {
+                                Text("\(Int(entry.calories))")
+                                    .font(.system(size: 15, weight: .bold).monospacedDigit())
+                                    .foregroundColor(WidgetTheme.primaryText)
+                                  Text("cal")
+                                    .font(.system(size: 9, weight: .regular))
+                                    .foregroundColor(WidgetTheme.mutedText)
+                                if entry.dailyGoal > 0 {
+                                    Text("of \(Int(entry.dailyGoal)) cal")
+                                        .font(.system(size: 7, weight: .regular))
+                                        .foregroundColor(WidgetTheme.quietText)
+                                } else {
+                                    Text("No goal")
+                                        .font(.system(size: 7, weight: .regular))
+                                        .foregroundColor(WidgetTheme.quietText)
+                                }
+                            }
+                        )
+                        
+                        if entry.dailyGoal > 0 {
+                            HStack(spacing: 3) {
+                                Text("\(remaining)")
+                                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                    .foregroundColor(WidgetTheme.calorieGreen)
+                                Text("cal left")
+                                    .font(.system(size: 11, weight: .regular))
+                                    .foregroundColor(WidgetTheme.mutedText)
+                            }
+                        } else {
+                            Text("No goal set")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(WidgetTheme.quietText)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                
+                // Subtle Vertical Divider
+                Rectangle()
+                    .fill(WidgetTheme.darkNeutralTrack)
+                    .frame(width: 1)
+                    .padding(.vertical, 8)
+                
+                // Right Column: Macros (57% width)
+                Link(destination: URL(string: "logcal://dashboard")!) {
+                    VStack(spacing: 6) {
+                        WidgetMacroRow(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
+                        WidgetMacroRow(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
+                        WidgetMacroRow(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
+                        WidgetMacroRow(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
+                    }
+                    .padding(.leading, 12)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(maxHeight: .infinity)
+            
+            // Subtle Horizontal Divider
+            Rectangle()
+                .fill(WidgetTheme.darkNeutralTrack)
+                .frame(height: 1)
+            
+            // Bottom Logging Row (28% height)
+            HStack(spacing: 8) {
+                // Camera
+                Link(destination: URL(string: "logcal://log?action=camera")!) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(width: 36, height: 32)
+                        
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(WidgetTheme.proteinGreen)
+                    }
+                }
+                
+                // Gallery
+                Link(destination: URL(string: "logcal://log?action=gallery")!) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                            .frame(width: 36, height: 32)
+                        
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(WidgetTheme.carbsBlue)
+                    }
+                }
+                
+                // Manual text entry visual shortcut (widest)
+                Link(destination: URL(string: "logcal://log?action=text")!) {
+                    HStack {
+                        Text("Type a meal...")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(WidgetTheme.mutedText)
+                            .padding(.leading, 10)
+                        Spacer()
+                    }
+                    .frame(height: 32)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(WidgetTheme.darkElevatedBackground)
+                    )
+                }
+                
+                // Voice
+                Link(destination: URL(string: "logcal://log?action=voice")!) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.orange)
+                            .frame(width: 36, height: 32)
+                        
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(.top, 8)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(WidgetTheme.darkBackground, for: .widget)
+    }
+}
+
+// MARK: - Previews
+
+struct LogCalWidgetViews_Previews: PreviewProvider {
+    static var previews: some View {
+        let normal = SimpleEntry(
+            date: Date(),
+            calories: 1420,
+            dailyGoal: 2000,
+            protein: 82,
+            carbs: 146,
+            fat: 41,
+            fiber: 18,
+            proteinGoal: 120,
+            carbsGoal: 220,
+            fatGoal: 65,
+            fiberGoal: 30
+        )
+        
+        let zero = SimpleEntry(
+            date: Date(),
+            calories: 0,
+            dailyGoal: 2000,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            proteinGoal: 120,
+            carbsGoal: 220,
+            fatGoal: 65,
+            fiberGoal: 30
+        )
+        
+        let exceeded = SimpleEntry(
+            date: Date(),
+            calories: 2200,
+            dailyGoal: 2000,
+            protein: 130,
+            carbs: 240,
+            fat: 75,
+            fiber: 35,
+            proteinGoal: 120,
+            carbsGoal: 220,
+            fatGoal: 65,
+            fiberGoal: 30
+        )
+        
+        let missingGoals = SimpleEntry(
+            date: Date(),
+            calories: 1420,
+            dailyGoal: 0,
+            protein: 82,
+            carbs: 146,
+            fat: 41,
+            fiber: 18,
+            proteinGoal: 0,
+            carbsGoal: 0,
+            fatGoal: 0,
+            fiberGoal: 0
+        )
+
+        Group {
+            // Previews for Calories Widget
+            CaloriesWidgetView(entry: normal)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Calories - Normal")
+            
+            CaloriesWidgetView(entry: missingGoals)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Calories - No Goals")
+
+            // Previews for Macros Widget
+            MacrosWidgetView(entry: normal)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Macros - Normal")
+            
+            MacrosWidgetView(entry: exceeded)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Macros - Exceeded")
+
+            // Previews for Daily Summary
+            DailySummaryWidgetView(entry: normal)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Summary - Normal")
+
+            DailySummaryWidgetView(entry: missingGoals)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Summary - No Goals")
+
+            // Previews for Quick Log
+            QuickLogWidgetView(entry: zero)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Quick Log")
+
+            // Previews for Calories and Log
+            CaloriesAndLogWidgetView(entry: normal)
+                .previewContext(WidgetPreviewContext(family: .systemSmall))
+                .previewDisplayName("Cal & Log - Normal")
+
+            // Previews for Daily Dashboard (Medium)
+            DailyDashboardWidgetView(entry: normal)
+                .previewContext(WidgetPreviewContext(family: .systemMedium))
+                .previewDisplayName("Dashboard - Normal")
+            
+            DailyDashboardWidgetView(entry: zero)
+                .previewContext(WidgetPreviewContext(family: .systemMedium))
+                .previewDisplayName("Dashboard - Zero")
+
+            DailyDashboardWidgetView(entry: missingGoals)
+                .previewContext(WidgetPreviewContext(family: .systemMedium))
+                .previewDisplayName("Dashboard - No Goals")
+        }
+    }
+}

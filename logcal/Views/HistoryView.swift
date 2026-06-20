@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import FirebaseAuth
+import WidgetKit
 
 struct HistoryView: View {
     @Query(filter: #Predicate<MealEntry> { !$0.deleted }, sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
@@ -409,6 +410,7 @@ struct HistoryView: View {
         }
         
         try? modelContext.save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     private func deleteSelectedMeals() {
@@ -425,6 +427,7 @@ struct HistoryView: View {
         
         do {
             try modelContext.save()
+            WidgetCenter.shared.reloadAllTimelines()
             expandedDates = savedExpandedDates
             editMode = .inactive
         } catch {
@@ -441,6 +444,7 @@ struct HistoryView: View {
         }
         
         try? modelContext.save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     private func refreshFromCloud() async {
