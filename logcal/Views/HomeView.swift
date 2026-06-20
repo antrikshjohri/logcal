@@ -128,7 +128,7 @@ struct HomeView: View {
                                 case "gallery":
                                     viewModel.showImagePicker = true
                                 case "text":
-                                    isTextFieldFocused = true
+                                    triggerKeyboardFocus()
                                 default:
                                     break
                                 }
@@ -157,7 +157,7 @@ struct HomeView: View {
                         onEdit: {
                             viewModel.prepareSavedMealForEditing(savedMeal)
                             selectedSavedMeal = nil
-                            isTextFieldFocused = true
+                            triggerKeyboardFocus()
                         }
                     )
                 }
@@ -1185,11 +1185,26 @@ struct HomeView: View {
                 case "gallery":
                     viewModel.showImagePicker = true
                 case "text":
-                    isTextFieldFocused = true
+                    triggerKeyboardFocus()
                 default:
                     break
                 }
             }
+        }
+    }
+    
+    private func triggerKeyboardFocus() {
+        print("DEBUG: [HomeView] triggerKeyboardFocus() called. Current focus state: \(isTextFieldFocused)")
+        isTextFieldFocused = true
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            print("DEBUG: [HomeView] triggerKeyboardFocus retry 0.3s. Focus state before set: \(isTextFieldFocused)")
+            isTextFieldFocused = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            print("DEBUG: [HomeView] triggerKeyboardFocus retry 0.6s. Focus state before set: \(isTextFieldFocused)")
+            isTextFieldFocused = true
         }
     }
 }
