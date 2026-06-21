@@ -909,63 +909,76 @@ struct HomeView: View {
                 // Macros Row
                 if let macros = result.resolvedMealMacrosForDisplay() {
                     let hasThreeDigits = macros.protein >= 100 || macros.carbs >= 100 || macros.fat >= 100 || (macros.fiber ?? 0) >= 100
-                    let fontSize: CGFloat = hasThreeDigits ? 10.5 : 12.0
-                    let horizontalPadding: CGFloat = hasThreeDigits ? 8.0 : 10.0
+                    let fontSize: CGFloat = hasThreeDigits ? 9.5 : 10.5
+                    let horizontalPadding: CGFloat = hasThreeDigits ? 6.0 : 8.0
                     let verticalPadding: CGFloat = hasThreeDigits ? 5.0 : 6.0
+                    let dotSize: CGFloat = hasThreeDigits ? 5.0 : 6.0
                     
-                    HStack(spacing: hasThreeDigits ? 6 : 8) {
-                        HStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        HStack(spacing: 3) {
                             Circle()
                                 .fill(Theme.proteinColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: dotSize, height: dotSize)
                             Text("\(Int(macros.protein))g Protein")
                                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .allowsTightening(true)
+                                .minimumScaleFactor(0.5)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, verticalPadding)
                         .background(Theme.proteinColor.opacity(0.12))
                         .cornerRadius(12)
                         
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Circle()
                                 .fill(Theme.carbsColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: dotSize, height: dotSize)
                             Text("\(Int(macros.carbs))g Carbs")
                                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .allowsTightening(true)
+                                .minimumScaleFactor(0.5)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, verticalPadding)
                         .background(Theme.carbsColor.opacity(0.12))
                         .cornerRadius(12)
                         
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Circle()
                                 .fill(Theme.fatColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: dotSize, height: dotSize)
                             Text("\(Int(macros.fat))g Fat")
                                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .allowsTightening(true)
+                                .minimumScaleFactor(0.5)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, verticalPadding)
                         .background(Theme.fatColor.opacity(0.12))
                         .cornerRadius(12)
                         
                         if let fiber = macros.fiber {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 3) {
                                 Circle()
                                     .fill(Theme.fiberColor)
-                                    .frame(width: 8, height: 8)
+                                    .frame(width: dotSize, height: dotSize)
                                 Text("\(Int(fiber))g Fiber")
                                     .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                     .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                     .lineLimit(1)
+                                    .allowsTightening(true)
+                                    .minimumScaleFactor(0.5)
                             }
+                            .frame(maxWidth: .infinity)
                             .padding(.horizontal, horizontalPadding)
                             .padding(.vertical, verticalPadding)
                             .background(Theme.fiberColor.opacity(0.12))

@@ -407,6 +407,7 @@ struct HistoryView: View {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }
             meal.deleted = true
+            ImageUtils.deleteMealImageLocally(forMealId: meal.id)
         }
         
         try? modelContext.save()
@@ -421,6 +422,7 @@ struct HistoryView: View {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }
             meal.deleted = true
+            ImageUtils.deleteMealImageLocally(forMealId: meal.id)
         }
         
         selectedMeals.removeAll()
@@ -441,6 +443,7 @@ struct HistoryView: View {
                 await cloudSyncService.deleteMealFromCloud(meal)
             }
             meal.deleted = true
+            ImageUtils.deleteMealImageLocally(forMealId: meal.id)
         }
         
         try? modelContext.save()

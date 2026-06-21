@@ -19,6 +19,7 @@ struct MealEditView: View {
     
     let meal: MealEntry
     @State private var editedDate: Date
+    @State private var showFullScreenImage: Bool = false
     @State private var editedMealType: String
     @State private var editedCalories: Double
     @State private var isEditingCalories: Bool = false
@@ -195,63 +196,76 @@ struct MealEditView: View {
                 // Macros Row (uses modifiedResponse if present to remain reactive)
                 if let macros = (modifiedResponse ?? meal.response)?.resolvedMealMacrosForDisplay() {
                     let hasThreeDigits = macros.protein >= 100 || macros.carbs >= 100 || macros.fat >= 100 || (macros.fiber ?? 0) >= 100
-                    let fontSize: CGFloat = hasThreeDigits ? 10.5 : 12.0
-                    let horizontalPadding: CGFloat = hasThreeDigits ? 8.0 : 10.0
+                    let fontSize: CGFloat = hasThreeDigits ? 9.5 : 10.5
+                    let horizontalPadding: CGFloat = hasThreeDigits ? 6.0 : 8.0
                     let verticalPadding: CGFloat = hasThreeDigits ? 5.0 : 6.0
+                    let dotSize: CGFloat = hasThreeDigits ? 5.0 : 6.0
                     
-                    HStack(spacing: hasThreeDigits ? 6 : 8) {
-                        HStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        HStack(spacing: 3) {
                             Circle()
                                 .fill(Theme.proteinColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: dotSize, height: dotSize)
                             Text("\(Int(macros.protein))g Protein")
                                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .allowsTightening(true)
+                                .minimumScaleFactor(0.5)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, verticalPadding)
                         .background(Theme.proteinColor.opacity(0.12))
                         .cornerRadius(12)
                         
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Circle()
                                 .fill(Theme.carbsColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: dotSize, height: dotSize)
                             Text("\(Int(macros.carbs))g Carbs")
                                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .allowsTightening(true)
+                                .minimumScaleFactor(0.5)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, verticalPadding)
                         .background(Theme.carbsColor.opacity(0.12))
                         .cornerRadius(12)
                         
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Circle()
                                 .fill(Theme.fatColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: dotSize, height: dotSize)
                             Text("\(Int(macros.fat))g Fat")
                                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .allowsTightening(true)
+                                .minimumScaleFactor(0.5)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, verticalPadding)
                         .background(Theme.fatColor.opacity(0.12))
                         .cornerRadius(12)
                         
                         if let fiber = macros.fiber {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 3) {
                                 Circle()
                                     .fill(Theme.fiberColor)
-                                    .frame(width: 8, height: 8)
+                                    .frame(width: dotSize, height: dotSize)
                                 Text("\(Int(fiber))g Fiber")
                                     .font(.system(size: fontSize, weight: .bold, design: .rounded))
                                     .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                     .lineLimit(1)
+                                    .allowsTightening(true)
+                                    .minimumScaleFactor(0.5)
                             }
+                            .frame(maxWidth: .infinity)
                             .padding(.horizontal, horizontalPadding)
                             .padding(.vertical, verticalPadding)
                             .background(Theme.fiberColor.opacity(0.12))
@@ -377,13 +391,34 @@ struct MealEditView: View {
                             }
                         }
                         
-                        Text(meal.foodText)
-                            .font(.system(size: 15, design: .rounded))
-                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(12)
-                            .background(Theme.insetBackground(colorScheme: colorScheme))
-                            .cornerRadius(10)
+                        HStack(alignment: .center, spacing: 12) {
+                            if meal.hasImageValue, let localImage = ImageUtils.loadMealImageLocally(forMealId: meal.id) {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        showFullScreenImage = true
+                                    }
+                                } label: {
+                                    Image(uiImage: localImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 64, height: 64)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            
+                            Text(meal.foodText)
+                                .font(.system(size: 15, design: .rounded))
+                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(12)
+                        .background(Theme.insetBackground(colorScheme: colorScheme))
+                        .cornerRadius(10)
                         
                         if showQuickEdit {
                             QuickEditMealSection(
@@ -608,6 +643,38 @@ struct MealEditView: View {
                 }
             } else if oldValue && !newValue {
                 autoSaveChanges()
+            }
+        }
+        .fullScreenCover(isPresented: $showFullScreenImage) {
+            ZStack {
+                Color.black
+                    .ignoresSafeArea()
+                
+                if let img = ImageUtils.loadMealImageLocally(forMealId: meal.id) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding(20)
+                }
+                
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            showFullScreenImage = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding()
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    Spacer()
+                }
+            }
+            .onTapGesture {
+                showFullScreenImage = false
             }
         }
     }
@@ -844,6 +911,7 @@ struct MealEditView: View {
         }
         
         meal.deleted = true
+        ImageUtils.deleteMealImageLocally(forMealId: meal.id)
         
         do {
             try modelContext.save()

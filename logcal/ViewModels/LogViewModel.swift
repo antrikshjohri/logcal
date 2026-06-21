@@ -389,6 +389,12 @@ class LogViewModel: ObservableObject {
                 
                 context.insert(entry)
                 try context.save()
+                
+                // Save image locally if present
+                if hadImage, let firstImage = selectedImages.first {
+                    ImageUtils.saveMealImageLocally(image: firstImage, forMealId: entry.id)
+                }
+                
                 WidgetCenter.shared.reloadAllTimelines()
                 lastLoggedMealId = entry.id
                 perf.mark("swiftdata_saved", metadata: [

@@ -125,4 +125,66 @@ struct ImageUtils {
         image.draw(in: CGRect(origin: .zero, size: newSize))
         return UIGraphicsGetImageFromCurrentImageContext() ?? image
     }
+    
+    /// Get the directory URL where meal images are stored locally
+    static func getMealImagesDirectory() -> URL {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        let imagesDirectory = paths[0].appendingPathComponent("meal_images", isDirectory: true)
+        
+        // Ensure the directory exists
+        if !FileManager.default.fileExists(atPath: imagesDirectory.path) {
+            try? FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+        }
+        return imagesDirectory
+    }
+    
+    /// Save a logged meal image locally as a compressed thumbnail to save storage
+    /// - Parameters:
+    ///   - image: The UIImage to save
+    ///   - mealId: The UUID of the meal log
+    static func saveMealImageLocally(image: UIImage, forMealId mealId: UUID) {
+        let directory = getMealImagesDirectory()
+        let fileURL = directory.appendingPathComponent("\(mealId.uuidString).jpg")
+        
+        // Resize to a maximum of 400x400 points to keep storage footprint very small
+        let resized = resizeImage(image, maxWidth: 400, maxHeight: 400)
+        
+        // Compress as JPEG (0.7 quality is excellent for thumbnails while reducing file size to 20-30KB)
+        guard let data = resized.jpegData(compressionQuality: 0.7) else {
+            print("DEBUG: [ImageUtils] Failed to convert image to JPEG data for local save")
+            return
+        }
+        
+        do {
+            try data.write(to: fileURL, options: .atomic)
+            print("DEBUG: [ImageUtils] Saved compressed local image to \(fileURL.lastPathComponent) (\(data.count / 1024) KB)")
+        } catch {
+            print("DEBUG: [ImageUtils] Failed to write local image data: \(error)")
+        }
+    }
+    
+    /// Load a locally saved meal image
+    /// - Parameter mealId: The UUID of the meal log
+    /// - Returns: UIImage if found, nil otherwise
+    static func loadMealImageLocally(forMealId mealId: UUID) -> UIImage? {
+        let directory = getMealImagesDirectory()
+        let fileURL = directory.appendingPathComponent("\(mealId.uuidString).jpg")
+        
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            return UIImage(contentsOfFile: fileURL.path)
+        }
+        return nil
+    }
+    
+    /// Delete a locally saved meal image
+    /// - Parameter mealId: The UUID of the meal log
+    static func deleteMealImageLocally(forMealId mealId: UUID) {
+        let directory = getMealImagesDirectory()
+        let fileURL = directory.appendingPathComponent("\(mealId.uuidString).jpg")
+        
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            try? FileManager.default.removeItem(at: fileURL)
+            print("DEBUG: [ImageUtils] Deleted local image: \(fileURL.lastPathComponent)")
+        }
+    }
 }
