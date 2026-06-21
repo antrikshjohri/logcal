@@ -119,7 +119,7 @@ struct CaloriesWidget: Widget {
         }
         .configurationDisplayName("Calories")
         .description("See today’s calorie progress and remaining calories.")
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryInline])
         .contentMarginsDisabled()
     }
 }
@@ -133,7 +133,7 @@ struct MacrosWidget: Widget {
         }
         .configurationDisplayName("Macros")
         .description("Track protein, carbs, fat and fibre.")
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([.systemSmall, .accessoryRectangular])
         .contentMarginsDisabled()
     }
 }
@@ -194,6 +194,48 @@ struct DailyDashboardWidget: Widget {
     }
 }
 
+struct LockScreenCameraWidget: Widget {
+    let kind: String = "LockScreenCameraWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            LockScreenCameraWidgetView()
+        }
+        .configurationDisplayName("Scan Shortcut")
+        .description("Lock screen shortcut to scan meals with the camera.")
+        .supportedFamilies([.accessoryCircular])
+        .contentMarginsDisabled()
+    }
+}
+
+struct LockScreenMicWidget: Widget {
+    let kind: String = "LockScreenMicWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            LockScreenMicWidgetView()
+        }
+        .configurationDisplayName("Voice Shortcut")
+        .description("Lock screen shortcut to log meals using your voice.")
+        .supportedFamilies([.accessoryCircular])
+        .contentMarginsDisabled()
+    }
+}
+
+struct LockScreenCalorieAndLogWidget: Widget {
+    let kind: String = "LockScreenCalorieAndLogWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            LockScreenCalorieAndLogWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Calorie & Log Summary")
+        .description("View calorie progress and tap to log.")
+        .supportedFamilies([.accessoryRectangular])
+        .contentMarginsDisabled()
+    }
+}
+
 @main
 struct LogCalWidgetBundle: WidgetBundle {
     var body: some Widget {
@@ -203,6 +245,9 @@ struct LogCalWidgetBundle: WidgetBundle {
         QuickLogWidget()
         CaloriesAndLogWidget()
         DailyDashboardWidget()
+        LockScreenCameraWidget()
+        LockScreenMicWidget()
+        LockScreenCalorieAndLogWidget()
     }
 }
 

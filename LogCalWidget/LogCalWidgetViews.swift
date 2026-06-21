@@ -170,6 +170,7 @@ struct WidgetMacroCell: View {
 // MARK: - 1. Small Widget: Calories
 
 struct CaloriesWidgetView: View {
+    @Environment(\.widgetFamily) var family
     let entry: SimpleEntry
     
     var isOverGoal: Bool {
@@ -189,88 +190,193 @@ struct CaloriesWidgetView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            
+        switch family {
+        case .accessoryCircular:
             WidgetProgressRing(
                 consumed: entry.calories,
                 goal: entry.dailyGoal,
-                size: 90,
-                strokeWidth: 9,
-                color: calorieRingColor
+                size: 50,
+                strokeWidth: 5,
+                color: .primary
             )
             .overlay(
-                VStack(spacing: -1) {
-                    Text("\(Int(entry.calories))")
-                        .font(.system(size: 22, weight: .bold).monospacedDigit())
-                        .foregroundColor(WidgetTheme.primaryText)
-                    Text("cal")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(WidgetTheme.mutedText)
+                VStack(spacing: -2) {
+                    Text("\(isOverGoal ? overdue : remaining)")
+                        .font(.system(size: 13, weight: .bold).monospacedDigit())
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                    Text(isOverGoal ? "over" : "left")
+                        .font(.system(size: 8, weight: .semibold))
+                        .minimumScaleFactor(0.8)
+                        .lineLimit(1)
                 }
             )
+            .containerBackground(for: .widget) {}
+            .widgetURL(URL(string: "logcal://dashboard"))
             
-            Spacer(minLength: 0)
+        case .accessoryInline:
+            HStack(spacing: 3) {
+                Image(systemName: "leaf.fill")
+                Text("\(isOverGoal ? overdue : remaining) cal \(isOverGoal ? "overdue" : "left")")
+            }
+            .containerBackground(for: .widget) {}
+            .widgetURL(URL(string: "logcal://dashboard"))
             
-            if entry.dailyGoal > 0 {
-                VStack(spacing: 2) {
-                    if isOverGoal {
-                        HStack(spacing: 3) {
-                            Text("\(overdue)")
-                                .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                                .foregroundColor(WidgetTheme.calorieExceededOrange)
-                            Text("cal overdue")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(WidgetTheme.calorieExceededOrange)
-                        }
-                    } else {
-                        HStack(spacing: 3) {
-                            Text("\(remaining)")
-                                .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                                .foregroundColor(WidgetTheme.calorieGreen)
-                            Text("cal left")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(WidgetTheme.primaryText)
-                        }
+        default:
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                
+                WidgetProgressRing(
+                    consumed: entry.calories,
+                    goal: entry.dailyGoal,
+                    size: 90,
+                    strokeWidth: 9,
+                    color: calorieRingColor
+                )
+                .overlay(
+                    VStack(spacing: -1) {
+                        Text("\(Int(entry.calories))")
+                            .font(.system(size: 22, weight: .bold).monospacedDigit())
+                            .foregroundColor(WidgetTheme.primaryText)
+                        Text("cal")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(WidgetTheme.mutedText)
                     }
-                    
-                    Text("of \(Int(entry.dailyGoal)) cal")
-                        .font(.system(size: 9.5, weight: .regular))
+                )
+                
+                Spacer(minLength: 0)
+                
+                if entry.dailyGoal > 0 {
+                    VStack(spacing: 2) {
+                        if isOverGoal {
+                            HStack(spacing: 3) {
+                                Text("\(overdue)")
+                                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                    .foregroundColor(WidgetTheme.calorieExceededOrange)
+                                Text("cal overdue")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(WidgetTheme.calorieExceededOrange)
+                            }
+                        } else {
+                            HStack(spacing: 3) {
+                                Text("\(remaining)")
+                                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                    .foregroundColor(WidgetTheme.calorieGreen)
+                                Text("cal left")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(WidgetTheme.primaryText)
+                            }
+                        }
+                        
+                        Text("of \(Int(entry.dailyGoal)) cal")
+                            .font(.system(size: 9.5, weight: .regular))
+                            .foregroundColor(WidgetTheme.quietText)
+                    }
+                } else {
+                    Text("No goal set")
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(WidgetTheme.quietText)
                 }
-            } else {
-                Text("No goal set")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(WidgetTheme.quietText)
+                
+                Spacer(minLength: 0)
             }
-            
-            Spacer(minLength: 0)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .containerBackground(WidgetTheme.darkBackground, for: .widget)
+            .widgetURL(URL(string: "logcal://dashboard"))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .containerBackground(WidgetTheme.darkBackground, for: .widget)
-        .widgetURL(URL(string: "logcal://dashboard"))
     }
 }
 
 // MARK: - 2. Small Widget: Macros
 
 struct MacrosWidgetView: View {
+    @Environment(\.widgetFamily) var family
     let entry: SimpleEntry
     
     var body: some View {
-        VStack(spacing: 7) {
-            WidgetMacroRow(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
-            WidgetMacroRow(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
-            WidgetMacroRow(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
-            WidgetMacroRow(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
+        switch family {
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 4) {
+                // Calorie Progress Row
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("Calories")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        if entry.dailyGoal > 0 {
+                            Text("\(Int(entry.calories)) / \(Int(entry.dailyGoal)) cal")
+                                .bold()
+                        } else {
+                            Text("\(Int(entry.calories)) cal")
+                                .bold()
+                        }
+                    }
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    
+                    if entry.dailyGoal > 0 {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color.primary.opacity(0.15))
+                                if entry.calories > 0 {
+                                    let progress = min(max(entry.calories / entry.dailyGoal, 0.0), 1.0)
+                                    Capsule()
+                                        .fill(Color.primary)
+                                        .frame(width: geo.size.width * CGFloat(progress))
+                                }
+                            }
+                        }
+                        .frame(height: 4)
+                    }
+                }
+                .padding(.bottom, 1)
+                
+                // Macros 2x2 Grid
+                VStack(spacing: 3) {
+                    HStack(spacing: 0) {
+                        Text("Protein ")
+                            .foregroundColor(.secondary)
+                        Text("\(Int(entry.protein))g")
+                            .bold()
+                        Spacer()
+                        Text("Carbs ")
+                            .foregroundColor(.secondary)
+                        Text("\(Int(entry.carbs))g")
+                            .bold()
+                    }
+                    HStack(spacing: 0) {
+                        Text("Fat ")
+                            .foregroundColor(.secondary)
+                        Text("\(Int(entry.fat))g")
+                            .bold()
+                        Spacer()
+                        Text("Fiber ")
+                            .foregroundColor(.secondary)
+                        Text("\(Int(entry.fiber))g")
+                            .bold()
+                    }
+                }
+                .font(.system(size: 10, design: .rounded))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .containerBackground(for: .widget) {}
+            .widgetURL(URL(string: "logcal://dashboard"))
+            
+        default:
+            VStack(spacing: 7) {
+                WidgetMacroRow(label: "Protein", value: entry.protein, goal: entry.proteinGoal, color: WidgetTheme.proteinGreen)
+                WidgetMacroRow(label: "Carbs", value: entry.carbs, goal: entry.carbsGoal, color: WidgetTheme.carbsBlue)
+                WidgetMacroRow(label: "Fat", value: entry.fat, goal: entry.fatGoal, color: WidgetTheme.fatOrange)
+                WidgetMacroRow(label: "Fiber", value: entry.fiber, goal: entry.fiberGoal, color: WidgetTheme.fiberPurple)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .containerBackground(WidgetTheme.darkBackground, for: .widget)
+            .widgetURL(URL(string: "logcal://dashboard"))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .containerBackground(WidgetTheme.darkBackground, for: .widget)
-        .widgetURL(URL(string: "logcal://dashboard"))
     }
 }
 
@@ -710,6 +816,114 @@ struct DailyDashboardWidgetView: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(WidgetTheme.darkBackground, for: .widget)
+    }
+}
+
+struct LockScreenCameraWidgetView: View {
+    var body: some View {
+        VStack(spacing: 5) {
+            Image(systemName: "camera.fill")
+                .font(.system(size: 20))
+            Text("Log Meal")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(for: .widget) {
+            AccessoryWidgetBackground()
+        }
+        .widgetURL(URL(string: "logcal://log?action=camera"))
+    }
+}
+
+struct LockScreenMicWidgetView: View {
+    var body: some View {
+        VStack(spacing: 5) {
+            Image(systemName: "mic.fill")
+                .font(.system(size: 20))
+            Text("Log Meal")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(for: .widget) {
+            AccessoryWidgetBackground()
+        }
+        .widgetURL(URL(string: "logcal://log?action=voice"))
+    }
+}
+
+struct LockScreenCalorieAndLogWidgetView: View {
+    let entry: SimpleEntry
+    
+    var isOverGoal: Bool {
+        entry.dailyGoal > 0 && entry.calories > entry.dailyGoal
+    }
+    
+    var remaining: Int {
+        Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var overdue: Int {
+        Int(max(entry.calories - entry.dailyGoal, 0))
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Top: Calorie Progress
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Calories")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    if entry.dailyGoal > 0 {
+                        if isOverGoal {
+                            Text("\(overdue) cal overdue")
+                                .bold()
+                        } else {
+                            Text("\(remaining) cal left")
+                                .bold()
+                        }
+                    } else {
+                        Text("\(Int(entry.calories)) cal")
+                            .bold()
+                    }
+                }
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                
+                if entry.dailyGoal > 0 {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.primary.opacity(0.15))
+                            if entry.calories > 0 {
+                                let progress = min(max(entry.calories / entry.dailyGoal, 0.0), 1.0)
+                                Capsule()
+                                    .fill(Color.primary)
+                                    .frame(width: geo.size.width * CGFloat(progress))
+                            }
+                        }
+                    }
+                    .frame(height: 12)
+                }
+            }
+            
+            Spacer(minLength: 0)
+            
+            // Bottom: Tap to log text
+            HStack {
+                Text("Tap to log meal")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+        }
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .containerBackground(for: .widget) {}
+        .widgetURL(URL(string: "logcal://log"))
     }
 }
 
