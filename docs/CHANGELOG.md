@@ -2,6 +2,38 @@
 
 This changelog tracks notable project changes from the point we adopted the new documentation structure.
 
+## 2026-06-22 (v2.1)
+
+- Prepared App Store release notes for v2.1 and bumped the iOS app marketing version to `2.1` (build `12`)
+- Implemented iOS Lock Screen complications (Accessory Circular, Rectangular, and Inline) to track daily calories and macro breakdown
+- Added circular lock screen shortcuts to launch directly to meal scanning or voice logging
+- Configured lock screen widgets to dynamically update remaining and overdue calories with warning styles
+- Resolved widget keyboard issue and mapped widget launch targets to deep link actions
+- Implemented a full-screen image preview overlay for history meal images, respecting safe areas for the close button
+- Optimized macro preview badging with auto-tightening and text scaling to prevent label truncation on smaller screens
+
+## 2026-06-15 (v2.0)
+
+- Bumped the iOS app marketing version to `2.0` (build `11`)
+- Added dietary fiber tracking to daily goals, calculated as 14g per 1,000 calories
+- Info ("i") popup added to the Daily Goals screens explaining standard USDA guideline formulas
+- warmOlive macro progress row added to the macro breakdown card for visual fiber progress tracking
+- Reduced font size and enabled horizontal auto-wrap for macro badge pills in log states and lists
+- Integrated soft-delete flag (`isDeleted`) across local storage (SwiftData, Room) and remote database (Firestore)
+- WhatsApp webhook daily summaries updated to automatically exclude soft-deleted meals
+- Restructured Custom Floating Bottom Navigation bar padding using `navigationBarsPadding()` on Android
+- Description input disabled and shows inline loading indicator during AI generation transitions
+
+## 2026-06-10 (v1.9)
+
+- Bumped the iOS app marketing version to `1.9` (build `10`)
+- Smooth auto-scroll back to top after pull-to-refresh completes using `ScrollViewReader` on History View
+- Prevent full-screen blocking overlay if `activeMeals` is already loaded (sync loader shows only when empty)
+- Milestones updated to `[1, 3, 5]` logged meals for rating prompt triggers
+- Replicated rating prompts on Android in preparation for launch
+- Robust fallback decoding for both `snake_case` and `camelCase` response keys in `MealLogResponse`
+- Made confidence field optional in `MealItem` to handle backend response updates safely
+
 ## 2026-04-15
 
 - Added canonical documentation for the current iOS app and Firebase backend
