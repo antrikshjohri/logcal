@@ -21,6 +21,7 @@ struct WidgetTheme {
     static let carbsBlue = Color(red: 0.12, green: 0.53, blue: 0.90) // bright electric blue
     static let fatOrange = Color(red: 0.93, green: 0.48, blue: 0.12) // bright orange
     static let fiberPurple = Color(red: 0.58, green: 0.30, blue: 0.90) // bright purple
+    static let calorieExceededOrange = Color(red: 1.0, green: 0.68, blue: 0.32)
     
     // Track colors
     static let darkNeutralTrack = Color(red: 0.14, green: 0.18, blue: 0.16)
@@ -171,8 +172,20 @@ struct WidgetMacroCell: View {
 struct CaloriesWidgetView: View {
     let entry: SimpleEntry
     
+    var isOverGoal: Bool {
+        entry.dailyGoal > 0 && entry.calories > entry.dailyGoal
+    }
+    
     var remaining: Int {
         Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var overdue: Int {
+        Int(max(entry.calories - entry.dailyGoal, 0))
+    }
+    
+    var calorieRingColor: Color {
+        isOverGoal ? WidgetTheme.calorieExceededOrange : WidgetTheme.calorieGreen
     }
     
     var body: some View {
@@ -184,7 +197,7 @@ struct CaloriesWidgetView: View {
                 goal: entry.dailyGoal,
                 size: 90,
                 strokeWidth: 9,
-                color: WidgetTheme.calorieGreen
+                color: calorieRingColor
             )
             .overlay(
                 VStack(spacing: -1) {
@@ -201,13 +214,24 @@ struct CaloriesWidgetView: View {
             
             if entry.dailyGoal > 0 {
                 VStack(spacing: 2) {
-                    HStack(spacing: 3) {
-                        Text("\(remaining)")
-                            .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                            .foregroundColor(WidgetTheme.calorieGreen)
-                        Text("cal left")
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(WidgetTheme.primaryText)
+                    if isOverGoal {
+                        HStack(spacing: 3) {
+                            Text("\(overdue)")
+                                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                .foregroundColor(WidgetTheme.calorieExceededOrange)
+                            Text("cal overdue")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(WidgetTheme.calorieExceededOrange)
+                        }
+                    } else {
+                        HStack(spacing: 3) {
+                            Text("\(remaining)")
+                                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                .foregroundColor(WidgetTheme.calorieGreen)
+                            Text("cal left")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(WidgetTheme.primaryText)
+                        }
                     }
                     
                     Text("of \(Int(entry.dailyGoal)) cal")
@@ -255,8 +279,20 @@ struct MacrosWidgetView: View {
 struct DailySummaryWidgetView: View {
     let entry: SimpleEntry
     
+    var isOverGoal: Bool {
+        entry.dailyGoal > 0 && entry.calories > entry.dailyGoal
+    }
+    
     var remaining: Int {
         Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var overdue: Int {
+        Int(max(entry.calories - entry.dailyGoal, 0))
+    }
+    
+    var calorieRingColor: Color {
+        isOverGoal ? WidgetTheme.calorieExceededOrange : WidgetTheme.calorieGreen
     }
     
     var body: some View {
@@ -269,7 +305,7 @@ struct DailySummaryWidgetView: View {
                     goal: entry.dailyGoal,
                     size: 58,
                     strokeWidth: 6,
-                    color: WidgetTheme.calorieGreen
+                    color: calorieRingColor
                 )
                 .overlay(
                     VStack(spacing: -2) {
@@ -283,13 +319,24 @@ struct DailySummaryWidgetView: View {
                 )
                 
                 if entry.dailyGoal > 0 {
-                    HStack(spacing: 2) {
-                        Text("\(remaining)")
-                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                            .foregroundColor(WidgetTheme.calorieGreen)
-                        Text("left")
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundColor(WidgetTheme.mutedText)
+                    if isOverGoal {
+                        HStack(spacing: 2) {
+                            Text("\(overdue)")
+                                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                .foregroundColor(WidgetTheme.calorieExceededOrange)
+                            Text("overdue")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(WidgetTheme.calorieExceededOrange)
+                        }
+                    } else {
+                        HStack(spacing: 2) {
+                            Text("\(remaining)")
+                                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                .foregroundColor(WidgetTheme.calorieGreen)
+                            Text("left")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(WidgetTheme.mutedText)
+                        }
                     }
                 } else {
                     Text("No goal")
@@ -396,6 +443,14 @@ struct QuickLogWidgetView: View {
 struct CaloriesAndLogWidgetView: View {
     let entry: SimpleEntry
     
+    var isOverGoal: Bool {
+        entry.dailyGoal > 0 && entry.calories > entry.dailyGoal
+    }
+    
+    var calorieRingColor: Color {
+        isOverGoal ? WidgetTheme.calorieExceededOrange : WidgetTheme.calorieGreen
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 4)
@@ -406,7 +461,7 @@ struct CaloriesAndLogWidgetView: View {
                 goal: entry.dailyGoal,
                 size: 82,
                 strokeWidth: 8,
-                color: WidgetTheme.calorieGreen
+                color: calorieRingColor
             )
             .overlay(
                 VStack(spacing: -1) {
@@ -487,8 +542,20 @@ struct CaloriesAndLogWidgetView: View {
 struct DailyDashboardWidgetView: View {
     let entry: SimpleEntry
     
+    var isOverGoal: Bool {
+        entry.dailyGoal > 0 && entry.calories > entry.dailyGoal
+    }
+    
     var remaining: Int {
         Int(max(entry.dailyGoal - entry.calories, 0))
+    }
+    
+    var overdue: Int {
+        Int(max(entry.calories - entry.dailyGoal, 0))
+    }
+    
+    var calorieRingColor: Color {
+        isOverGoal ? WidgetTheme.calorieExceededOrange : WidgetTheme.calorieGreen
     }
     
     var body: some View {
@@ -503,7 +570,7 @@ struct DailyDashboardWidgetView: View {
                             goal: entry.dailyGoal,
                             size: 76,
                             strokeWidth: 8,
-                            color: WidgetTheme.calorieGreen
+                            color: calorieRingColor
                         )
                         .overlay(
                             VStack(spacing: -1) {
@@ -526,13 +593,24 @@ struct DailyDashboardWidgetView: View {
                         )
                         
                         if entry.dailyGoal > 0 {
-                            HStack(spacing: 3) {
-                                Text("\(remaining)")
-                                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                                    .foregroundColor(WidgetTheme.calorieGreen)
-                                Text("cal left")
-                                    .font(.system(size: 12, weight: .regular))
-                                    .foregroundColor(WidgetTheme.mutedText)
+                            if isOverGoal {
+                                HStack(spacing: 3) {
+                                    Text("\(overdue)")
+                                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                        .foregroundColor(WidgetTheme.calorieExceededOrange)
+                                    Text("cal overdue")
+                                        .font(.system(size: 12, weight: .regular))
+                                        .foregroundColor(WidgetTheme.calorieExceededOrange)
+                                }
+                            } else {
+                                HStack(spacing: 3) {
+                                    Text("\(remaining)")
+                                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                        .foregroundColor(WidgetTheme.calorieGreen)
+                                    Text("cal left")
+                                        .font(.system(size: 12, weight: .regular))
+                                        .foregroundColor(WidgetTheme.mutedText)
+                                }
                             }
                         } else {
                             Text("No goal set")
