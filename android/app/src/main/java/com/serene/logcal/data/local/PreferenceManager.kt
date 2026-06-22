@@ -74,7 +74,7 @@ class PreferenceManager(context: Context) {
         set(value) = prefs.edit().putFloat(KEY_CUSTOM_FAT_PERCENT, value.toFloat()).apply()
 
     var appTheme: String
-        get() = prefs.getString(KEY_APP_THEME, "system") ?: "system"
+        get() = prefs.getString(KEY_APP_THEME, "light") ?: "light"
         set(value) = prefs.edit().putString(KEY_APP_THEME, value).apply()
 
     var mealRemindersEnabled: Boolean

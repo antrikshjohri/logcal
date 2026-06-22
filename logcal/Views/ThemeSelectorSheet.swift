@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ThemeSelectorSheet: View {
     @Environment(\.colorScheme) var systemColorScheme
-    @AppStorage("appTheme") private var appThemeString: String = AppTheme.system.rawValue
+    @AppStorage("appTheme") private var appThemeString: String = AppTheme.light.rawValue
     
     private var selectedTheme: AppTheme {
         AppTheme(rawValue: appThemeString) ?? .system

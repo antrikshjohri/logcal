@@ -49,7 +49,7 @@ struct ProfileView: View {
     }
     
     // Current theme display
-    @AppStorage("appTheme") private var appThemeString: String = AppTheme.system.rawValue
+    @AppStorage("appTheme") private var appThemeString: String = AppTheme.light.rawValue
     private var currentTheme: AppTheme {
         AppTheme(rawValue: appThemeString) ?? .system
     }
