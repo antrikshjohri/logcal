@@ -350,6 +350,7 @@
 				DEVELOPMENT_TEAM = Z5M4U33NJF;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LogCalWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "LogCal Widget";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -377,6 +378,7 @@
 				DEVELOPMENT_TEAM = Z5M4U33NJF;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LogCalWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "LogCal Widget";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -5,12 +5,9 @@ This changelog tracks notable project changes from the point we adopted the new 
 ## 2026-06-22 (v2.1)
 
 - Prepared App Store release notes for v2.1 and bumped the iOS app marketing version to `2.1` (build `12`)
-- Implemented iOS Lock Screen complications (Accessory Circular, Rectangular, and Inline) to track daily calories and macro breakdown
-- Added circular lock screen shortcuts to launch directly to meal scanning or voice logging
-- Configured lock screen widgets to dynamically update remaining and overdue calories with warning styles
-- Resolved widget keyboard issue and mapped widget launch targets to deep link actions
-- Implemented a full-screen image preview overlay for history meal images, respecting safe areas for the close button
-- Optimized macro preview badging with auto-tightening and text scaling to prevent label truncation on smaller screens
+- Added Lock Screen and Home Screen widgets to view daily calorie progress and log meals via shortcuts
+- Enabled viewing local photos of logged meals directly inside the history log with full-screen zoom overlays
+- General performance improvements, visual polishing, and bug fixes (including widget layout optimization and keyboard issues)
 
 ## 2026-06-15 (v2.0)
 

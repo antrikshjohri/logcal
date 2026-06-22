@@ -21,8 +21,8 @@ struct logcalApp: App {
     @State private var showAuthView = false
     @State private var isInitialSyncAfterSignIn = false
     @State private var selectedTab: Int = 0
-    @AppStorage("appTheme") private var appThemeString: String = AppTheme.system.rawValue
-    @AppStorage("mealRemindersEnabled") private var mealRemindersEnabled: Bool = true
+    @AppStorage("appTheme", store: UserDefaults(suiteName: "group.com.serene.logcal")) private var appThemeString: String = AppTheme.system.rawValue
+    @AppStorage("mealRemindersEnabled", store: UserDefaults(suiteName: "group.com.serene.logcal")) private var mealRemindersEnabled: Bool = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     // Shared container to allow background access
