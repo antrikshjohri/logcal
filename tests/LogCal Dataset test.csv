@@ -1,0 +1,121 @@
+﻿input_text,language,expected_calories_kcal,expected_protein_g,expected_carbs_g,expected_fat_g,tolerance_pct,acceptable_min_kcal,acceptable_max_kcal
+120 g banana,en,107,1.3,27.6,0.4,10,96,118
+180 g apple,en,94,0.5,25.2,0.4,10,84,103
+160 g orange,en,75,1.4,19.2,0.2,10,67,83
+150 g strawberries,en,50,1.1,12,0.5,10,44,55
+100 g blueberries,en,57,0.7,14.4,0.3,10,51,63
+100 g avocado,en,160,2,9,15,10,144,176
+120 g scrambled eggs,en,178,12,1.9,13.2,10,159,196
+100 g poached eggs,en,142,12.5,0.8,9.2,10,128,157
+150 g chicken breast,en,248,46.6,0,5.4,10,223,273
+150 g salmon,en,267,36,0,12,10,240,294
+180 g steak,en,488,45,0,34.2,10,439,537
+150 g tofu,en,110,12,2.9,7.2,10,98,121
+200 g Greek yogurt,en,118,20,7.2,0.8,10,106,130
+250 g cooked oatmeal,en,170,6,30,3.5,10,153,188
+180 g cooked white rice,en,234,4.9,50.4,0.5,10,210,258
+180 g cooked brown rice,en,200,4.7,41.4,1.6,10,179,220
+200 g cooked pasta,en,263,10.2,49.6,2.2,10,236,290
+180 g cheese pizza,en,479,20.2,60.3,16.9,10,430,527
+180 g pepperoni pizza,en,508,21.6,57.6,21.6,10,456,559
+200 g tacos,en,452,17.6,40.2,26,10,406,498
+250 g lasagna,en,338,18,38.5,12.5,10,303,372
+100 g hummus,en,166,7.9,14,9.6,10,149,183
+80 g pita bread,en,220,7,44.6,0.9,10,198,243
+180 g cooked lentils,en,205,16.2,36,0.7,10,184,226
+180 g black beans,en,238,16,42.7,0.9,10,213,262
+180 g couscous,en,202,6.8,41.4,0.4,10,181,222
+200 g dumplings,en,460,12.4,78,10.8,10,413,506
+200 g fried rice,en,315,9.4,59.8,4.4,10,283,347
+100 g kimchi,en,30,1.6,5.7,0.1,10,27,33
+150 g waffles,en,435,11.8,49.1,21.4,10,391,479
+150 g chicken breast with 180 g white rice and 100 g broccoli,en,517,53.9,57.4,6.3,12,454,579
+150 g salmon with 160 g quinoa and 100 g asparagus,en,479,45.2,37.5,15.1,12,421,537
+180 g steak with 180 g mashed potatoes and 100 g green beans,en,682,49.9,34.2,39.5,12,600,764
+160 g tofu with 180 g brown rice and 100 g bok choy,en,330,19,46.6,9.5,12,290,370
+"120 g scrambled eggs, 70 g toast and 80 g avocado",en,525,22.7,48,28.1,12,461,588
+200 g Greek yogurt with 50 g granola and 100 g berries,en,410,25.7,53.6,11.3,12,360,459
+250 g oatmeal with 120 g banana and 25 g almonds,en,421,12.9,63.3,16.2,12,370,472
+"120 g turkey, 80 g multigrain bread, 30 g cheddar cheese and 30 g lettuce",en,580,45.9,40.6,25.7,12,510,651
+"100 g hummus with 80 g pita bread, 100 g cucumbers and 100 g tomatoes",en,430,16.6,67.4,11.2,12,378,482
+180 g tacos with 60 g salsa and 30 g sour cream,en,484,17.5,41.5,29.2,12,425,542
+220 g curry with 180 g white rice,en,463,31.3,57.4,10.7,12,407,519
+180 g lentils with 160 g brown rice and 100 g cooked spinach,en,406,23.4,76.8,2.2,12,357,455
+150 g grilled chicken with 180 g couscous and 120 g Greek salad,en,676,44.6,47.2,34,12,595,758
+150 g shrimp with 180 g rice noodles and 100 g bok choy,en,358,39.1,47.5,1,12,314,401
+150 g chicken with 200 g pasta and 25 g pesto,en,651,59.7,51.6,21.3,12,573,730
+160 g beef with 180 g white rice and 100 g broccoli,en,669,48.9,57.4,24.9,12,588,750
+160 g tempeh with 160 g quinoa and 100 g kale,en,550,40.4,57.5,21.2,12,483,616
+170 g fish with 200 g sweet potato and 100 g cooked spinach,en,328,36.3,40,22.1,12,288,368
+180 g roast chicken with 180 g roasted potatoes and 100 g carrots,en,697,47,42.4,35.8,12,613,782
+120 g eggs with 120 g hash browns and 80 g sausage,en,853,33.6,43.2,60.8,12,751,956
+200 g cottage cheese with 120 g pineapple and 20 g walnuts,en,387,25.6,25.2,21.6,12,340,434
+180 g tuna salad with 90 g bread,en,575,41.3,54.6,20.3,12,506,645
+250 g chili with 40 g tortilla chips,en,286,7.9,51.7,7.1,12,251,320
+180 g black beans with 120 g corn and 160 g white rice,en,561,24.4,112.7,3.2,12,493,629
+160 g lamb with 180 g couscous and 120 g squash,en,697,47.4,45.5,34.5,12,613,781
+200 g pasta salad with 140 g grilled chicken,en,720,43.4,34.7,44.7,12,633,807
+180 g cheese pizza with 150 g Caesar salad,en,545,25,66.8,20.1,12,479,610
+180 g chilaquiles with 120 g scrambled eggs,en,529,28,23.5,34.8,12,465,593
+180 g dumplings with 120 g edamame,en,560,24.4,82,15.8,12,493,628
+160 g salmon with 180 g wild rice and 100 g broccoli,en,534,49.8,52,13.9,12,469,599
+250 g spaghetti with 30 g parmesan cheese,en,524,26.5,78.8,10.8,15,445,603
+220 g lasagna with 100 g garden salad,en,362,21.9,37.1,14.4,15,307,416
+200 g pepperoni pizza with 120 g Greek salad,en,700,27.8,69.6,35.3,15,594,805
+220 g pasta salad with 80 g mozzarella cheese,en,665,35.4,40.6,39.9,15,565,766
+180 g flatbread with 100 g hummus and 60 g feta cheese,en,819,32.6,117.3,24.4,15,696,943
+200 g couscous with 120 g chickpeas and 60 g olives,en,490,18.9,82.2,9.9,15,416,564
+200 g tacos with 100 g black beans and 60 g salsa,en,601,27.4,67.9,26.6,15,511,692
+220 g chilaquiles with 80 g sour cream and 60 g salsa,en,605,22.4,34,41.7,15,514,696
+"160 g tortilla with 120 g chicken, 80 g black beans and 50 g salsa",en,667,54.7,94.3,9.5,15,566,767
+180 g nopales with 120 g pinto beans and 150 g white rice,en,395,17.4,79.1,1.5,15,336,455
+220 g fried rice with 120 g chicken and 100 g bok choy,en,558,49,68,9.4,15,474,642
+200 g rice noodles with 140 g shrimp and 80 g edamame,en,454,44.2,58.1,4.9,15,386,523
+180 g tofu with 120 g kimchi and 160 g brown rice,en,345,20.5,47.1,10.2,15,293,397
+200 g noodles with 130 g beef and 40 g teriyaki sauce,en,637,45.2,56.4,23.7,15,541,733
+220 g dumplings with 100 g bok choy and 80 g edamame,en,617,23.9,95.8,16.2,15,524,710
+240 g curry with 180 g white rice and 100 g lentils,en,598,42.7,78.1,12,15,507,688
+180 g lentils with 100 g chickpeas and 160 g country rice,en,612,31.4,113.6,14.2,15,520,705
+200 g pilaf with 150 g roast chicken and 100 g cauliflower,en,679,42,56.2,29.6,15,577,781
+180 g lamb with 60 g dry bulgur and 100 g tomatoes,en,769,52.4,52.4,39.5,15,653,884
+"180 g Greek salad with 80 g feta cheese, 50 g olives and 80 g pita bread",en,692,24.2,59.6,40,15,588,797
+200 g chili with 120 g cornmeal and 80 g cheddar cheese,en,846,31.8,114,29.4,15,718,973
+180 g barbecue-style chicken with 50 g barbecue sauce and 180 g roasted potatoes,en,637,60,52.9,19,15,541,733
+"160 g turkey with 80 g bread, 30 g mayonnaise and 30 g lettuce",en,723,57.9,35,37.1,15,614,832
+160 g ham with 90 g sourdough bread and 35 g cheddar cheese,en,633,53,53.4,22.8,15,537,728
+200 g waffles with 120 g strawberries and 30 g syrup,en,698,16.6,95.1,29,15,593,803
+120 g bagel with 50 g cream cheese and 100 g blueberries,en,532,15.9,75.9,19.1,15,452,613
+70 g cereal with 200 g milk and 120 g banana,en,472,16.7,88.7,8.8,15,401,543
+200 g yogurt with 100 g mango and 30 g chia seeds,en,324,25.9,34.8,10.5,15,275,373
+150 g salmon with 160 g barley and 100 g Brussels sprouts,en,507,43.1,53.8,12.9,15,430,583
+180 g beef with 160 g millet and 120 g zucchini,en,658,53.7,41.2,29.1,15,559,758
+5 oz chicken breast with 6 oz white rice and 3 oz broccoli,en,485,50.7,53.6,6,12,426,544
+5 oz salmon with 5 oz quinoa and 4 oz asparagus,en,446,42.8,34.2,14.1,12,392,500
+6 oz steak with 6 oz mashed potatoes and 3 oz green beans,en,642,46.9,31.6,37.3,12,564,719
+5 oz tofu with 6 oz brown rice and 3 oz bok choy,en,303,17,43.7,8.5,12,266,340
+4 oz scrambled eggs with 2 oz toast and 3 oz avocado,en,481,20.4,40.9,27.6,12,423,540
+7 oz Greek yogurt with 2 oz granola and 3 oz berries,en,432,26.1,55.7,12.6,12,379,484
+6 oz turkey with 3 oz multigrain bread and 1 oz cheddar cheese,en,678,59.8,42.2,29.1,12,596,760
+4 oz hummus with 3 oz pita bread and 4 oz cucumbers,en,433,17.6,65.6,11.8,12,381,486
+7 oz tacos with 2 oz salsa and 1 oz sour cream,en,521,19,44.9,31.3,12,458,584
+6 oz lamb with 6 oz couscous and 4 oz squash,en,714,49.5,43,36.6,12,628,800
+"had 150g chiken, 180g whit rice n 90g brocolli",en,513,53.5,56.7,6.3,15,436,590
+200g greek yogrt + 50g granola + 80g berrys,en,398,25.6,50.8,11.2,15,338,458
+"lunch: 160g salmn, 180g quino, 100g aspargus",en,521,48.5,41.7,16.3,15,443,600
+ate 200g pastaa with 130g beef and 25g pesto,en,729,47,51.6,35.4,15,619,839
+"120g scramled eggs, 70g tosat, 80g avacado",en,525,22.7,48,28.1,15,446,604
+180g dumplins + 120g edamame,en,560,24.4,82,15.8,15,476,645
+250g chillie and 40g tortila chips,en,286,7.9,51.7,7.1,15,242,329
+"200g humus, 80g pita, 100g cucumber",en,562,23.8,74.6,20.1,15,477,647
+150g tofuu with 180g brwn rice and 100g bok choi,en,322,18.2,46.4,9,15,273,371
+"dinner was 180g roast chiken, 180g roast potatos, 100g carrots",en,697,47,42.4,35.8,15,592,803
+"150 g de arroz blanco, 120 g de pollo y 100 g de brócoli",es,428,43.7,49,5.2,15,363,493
+"150 g de saumon, 160 g de quinoa et 100 g d’asperges",fr,479,45.2,37.5,15.1,15,407,552
+180 g Steak mit 180 g Kartoffelpüree und 100 g grünen Bohnen,de,682,49.9,34.2,39.5,15,579,785
+160 g de tofu com 180 g de arroz integral e 100 g de couve-chinesa,pt,330,19,46.6,9.5,15,280,380
+200 g di pasta con 150 g di pollo e 25 g di pesto,it,651,59.7,51.6,21.3,15,553,749
+白米180g、鮭150g、ブロッコリー100g,ja,536,43.3,57.4,12.9,15,455,617
+180克炒饭、120克鸡肉和100克上海青,zh,495,47.2,56,8.5,15,420,570
+"180 ग्राम दाल, 160 ग्राम ब्राउन राइस और 100 ग्राम पका हुआ पालक",hi,406,23.4,76.8,2.2,15,344,467
+100 غ حمص، 80 غ خبز بيتا، 100 غ خيار و100 غ طماطم,ar,430,16.6,67.4,11.2,15,365,495
+"두부 180g, 김치 120g, 현미밥 160g",ko,345,20.5,47.1,10.2,15,293,397

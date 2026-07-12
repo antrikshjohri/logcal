@@ -428,9 +428,23 @@ async function callOpenAI(
   // Build system prompt based on country
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical ${country} portion sizes and regional cuisine. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. 
+
+CRITICAL RULES FOR ACCURACY:
+1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
+2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
+3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).
+
+When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   } else {
-    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
+    systemPrompt = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. 
+
+CRITICAL RULES FOR ACCURACY:
+1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
+2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
+3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).
+
+When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   }
   
   console.log("DEBUG: System prompt:", systemPrompt);
@@ -604,10 +618,19 @@ async function callOpenAIRefineMeal(
 
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
-    systemPrompt = `You are a calorie logging assistant for ${country} food. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (grams).`;
+    systemPrompt = `You are a calorie logging assistant for ${country} food. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string.
+
+CRITICAL RULES FOR ACCURACY:
+1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
+2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
+3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).`;
   } else {
-    systemPrompt =
-      "You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string. Top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (grams).";
+    systemPrompt = `You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string.
+
+CRITICAL RULES FOR ACCURACY:
+1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
+2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
+3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).`;
   }
 
   const previousJson = JSON.stringify(previousEstimate);

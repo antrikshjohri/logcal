@@ -1,0 +1,16 @@
+input_text,language,expected_calories_kcal,expected_protein_g,expected_carbs_g,expected_fat_g,tolerance_pct,acceptable_min_kcal,acceptable_max_kcal
+100 g avocado,en,160,2,9,15,10,144,176
+150 g chicken breast,en,248,46.6,0,5.4,10,223,273
+150 g chicken breast with 180 g white rice and 100 g broccoli,en,517,53.9,57.4,6.3,12,454,579
+"120 g scrambled eggs, 70 g toast and 80 g avocado",en,525,22.7,48,28.1,12,461,588
+250 g oatmeal with 120 g banana and 25 g almonds,en,421,12.9,63.3,16.2,12,370,472
+"160 g tortilla with 120 g chicken, 80 g black beans and 50 g salsa",en,667,54.7,94.3,9.5,15,566,767
+5 oz chicken breast with 6 oz white rice and 3 oz broccoli,en,485,50.7,53.6,6,12,426,544
+4 oz scrambled eggs with 2 oz toast and 3 oz avocado,en,481,20.4,40.9,27.6,12,423,540
+"had 150g chiken, 180g whit rice n 90g brocolli",en,513,53.5,56.7,6.3,15,436,590
+200g greek yogrt + 50g granola + 80g berrys,en,398,25.6,50.8,11.2,15,338,458
+"150 g de arroz blanco, 120 g de pollo y 100 g de brócoli",es,428,43.7,49,5.2,15,363,493
+180 g Steak mit 180 g Kartoffelpüree und 100 g grünen Bohnen,de,682,49.9,34.2,39.5,15,579,785
+白米180g、鮭150g、ブロッコリー100g,ja,536,43.3,57.4,12.9,15,455,617
+"180 ग्राम दाल, 160 ग्राम ब्राउन राइस और 100 ग्राम पका हुआ पालक",hi,406,23.4,76.8,2.2,15,344,467
+"두부 180g, 김치 120g, 현미밥 160g",ko,345,20.5,47.1,10.2,15,293,397
