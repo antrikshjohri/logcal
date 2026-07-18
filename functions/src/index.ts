@@ -8,10 +8,36 @@ admin.initializeApp();
 
 // OpenAI API configuration
 // API key is loaded from Firebase Secrets at runtime
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_MODEL = "gpt-4o-2024-08-06";
+const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const OPENAI_LEGACY_MODEL = "gpt-4o-2024-08-06";
+const OPENAI_LUNA_MODEL = "gpt-5.6-luna";
 const OPENAI_TEMPERATURE = 0.3;
 const FUNCTIONS_REGION = "asia-southeast1";
+const FALLBACK_LUNA_ALLOWLIST_UIDS = new Set([
+  "NIDRscOVhuQRpSEzrgk5gMo2i8m1",
+]);
+const FALLBACK_WEB_SEARCH_ALLOWLIST_UIDS = new Set([
+  "NIDRscOVhuQRpSEzrgk5gMo2i8m1",
+]);
+const OPENAI_PRICING_SNAPSHOT = "2026-07-19";
+const OPENAI_WEB_SEARCH_COST_USD = 0.01;
+const OPENAI_MODEL_PRICING_USD_PER_1M: Record<string, {
+  input: number;
+  cachedInput: number;
+  output: number;
+}> = {
+  [OPENAI_LEGACY_MODEL]: {
+    input: 2.5,
+    cachedInput: 1.25,
+    output: 10,
+  },
+  [OPENAI_LUNA_MODEL]: {
+    input: 1,
+    cachedInput: 0.1,
+    output: 6,
+  },
+};
 
 // Rate limiting configuration
 const MAX_REQUESTS_PER_DAY = 100; // Per user (logMeal)
@@ -31,6 +57,11 @@ const WHISPER_TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
 /** Speech-to-text `prompt`: nudges vocabulary toward meal logging (works best when audio is English or mixed with English food terms). */
 const WHISPER_MEAL_CONTEXT_PROMPT =
   "The speaker is logging a meal: what they ate or drank, ingredients, and portions. Typical terms: breakfast, lunch, dinner, snack, calories, protein, carbs, fat, rice, roti, bread, dal, curry, chicken, fish, eggs, salad, vegetables, fruit, yogurt, coffee, tea, juice, water.";
+
+const CONCISE_ASSUMPTIONS_RULE =
+  "Keep each item's assumptions short and user-friendly: one sentence, maximum 25 words. Mention only portion/cooking assumption, not nutrition math.";
+const WEB_SEARCH_RULE =
+  "Use web search only for specific branded packaged foods, exact restaurant/menu items, barcode/label-like product names, or exact product variants. Do not search for vague or generic foods. If web search is used, include clickable source URLs in the top-level sources array; otherwise use an empty sources array.";
 
 interface LogMealRequest {
   foodText: string;
@@ -74,6 +105,10 @@ interface MealLogResponse {
   }>;
   needs_clarification: boolean;
   clarifying_question: string;
+  sources?: Array<{
+    title: string;
+    url: string;
+  }>;
 }
 
 interface PerfMark {
@@ -87,6 +122,19 @@ interface PerfSummary {
   label: string;
   totalMs: number;
   marks: PerfMark[];
+}
+
+interface OpenAIMealRoute {
+  api: "chat_completions" | "responses";
+  model: string;
+  url: string;
+  reason: "default" | "luna_entitlement" | "luna_fallback_allowlist";
+}
+
+interface MealEntitlements {
+  lunaEnabled: boolean;
+  webSearchEnabled: boolean;
+  source: "firestore" | "fallback_allowlist" | "default" | "firestore_error";
 }
 
 class BackendPerf {
@@ -163,10 +211,296 @@ const MEAL_LOG_JSON_SCHEMA = {
       },
       needs_clarification: { type: "boolean" },
       clarifying_question: { type: "string" },
+      sources: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string" },
+            url: { type: "string" },
+          },
+          required: ["title", "url"],
+        },
+      },
     },
-    required: ["meal_type", "total_calories", "protein", "carbs", "fat", "fiber", "items", "needs_clarification"],
+    required: ["meal_type", "total_calories", "protein", "carbs", "fat", "fiber", "items", "needs_clarification", "clarifying_question", "sources"],
   },
 };
+
+function booleanFromEntitlement(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+async function getMealEntitlements(uid: string): Promise<MealEntitlements> {
+  try {
+    const snapshot = await admin.firestore().collection("entitlements").doc(uid).get();
+    if (snapshot.exists) {
+      const data = snapshot.data() || {};
+      const features = typeof data.features === "object" && data.features !== null
+        ? data.features as Record<string, unknown>
+        : {};
+      return {
+        lunaEnabled: booleanFromEntitlement(data.lunaEnabled) ??
+          booleanFromEntitlement(features.luna) ??
+          booleanFromEntitlement(features.lunaEnabled) ??
+          false,
+        webSearchEnabled: booleanFromEntitlement(data.webSearchEnabled) ??
+          booleanFromEntitlement(features.webSearch) ??
+          booleanFromEntitlement(features.webSearchEnabled) ??
+          false,
+        source: "firestore",
+      };
+    }
+  } catch (error) {
+    console.error("ERROR: Failed to read meal entitlements:", {
+      uid,
+      error,
+    });
+    return {
+      lunaEnabled: FALLBACK_LUNA_ALLOWLIST_UIDS.has(uid),
+      webSearchEnabled: FALLBACK_WEB_SEARCH_ALLOWLIST_UIDS.has(uid),
+      source: "firestore_error",
+    };
+  }
+
+  if (FALLBACK_LUNA_ALLOWLIST_UIDS.has(uid) || FALLBACK_WEB_SEARCH_ALLOWLIST_UIDS.has(uid)) {
+    return {
+      lunaEnabled: FALLBACK_LUNA_ALLOWLIST_UIDS.has(uid),
+      webSearchEnabled: FALLBACK_WEB_SEARCH_ALLOWLIST_UIDS.has(uid),
+      source: "fallback_allowlist",
+    };
+  }
+
+  return {
+    lunaEnabled: false,
+    webSearchEnabled: false,
+    source: "default",
+  };
+}
+
+function getOpenAIMealRoute(entitlements: MealEntitlements): OpenAIMealRoute {
+  if (entitlements.lunaEnabled) {
+    return {
+      api: "responses",
+      model: OPENAI_LUNA_MODEL,
+      url: OPENAI_RESPONSES_URL,
+      reason: entitlements.source === "fallback_allowlist" || entitlements.source === "firestore_error"
+        ? "luna_fallback_allowlist"
+        : "luna_entitlement",
+    };
+  }
+
+  return {
+    api: "chat_completions",
+    model: OPENAI_LEGACY_MODEL,
+    url: OPENAI_CHAT_COMPLETIONS_URL,
+    reason: "default",
+  };
+}
+
+function logOpenAIMealRoute(
+  action: "logMeal" | "refineMealLog",
+  uid: string,
+  route: OpenAIMealRoute,
+  metadata?: Record<string, unknown>
+): void {
+  console.log("OPENAI_MEAL_ROUTE", {
+    action,
+    uid,
+    api: route.api,
+    model: route.model,
+    reason: route.reason,
+    ...(metadata ? { metadata } : {}),
+  });
+}
+
+function extractResponsesOutputText(data: any): string | undefined {
+  if (typeof data?.output_text === "string") {
+    return data.output_text;
+  }
+
+  const output = Array.isArray(data?.output) ? data.output : [];
+  for (const item of output) {
+    if (item?.type !== "message" || !Array.isArray(item?.content)) {
+      continue;
+    }
+    for (const content of item.content) {
+      if (typeof content?.text === "string") {
+        return content.text;
+      }
+      if (typeof content?.output_text === "string") {
+        return content.output_text;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function isWebSearchEnabled(route: OpenAIMealRoute, entitlements: MealEntitlements): boolean {
+  return route.api === "responses" && entitlements.webSearchEnabled;
+}
+
+function buildWebSearchTool(country?: string): Record<string, unknown> {
+  const tool: Record<string, unknown> = {
+    type: "web_search",
+    search_context_size: "low",
+  };
+
+  const normalizedCountry = country?.trim().toLowerCase();
+  if (normalizedCountry === "india") {
+    tool.user_location = {
+      type: "approximate",
+      country: "IN",
+    };
+  } else if (normalizedCountry === "united states" || normalizedCountry === "usa" || normalizedCountry === "us") {
+    tool.user_location = {
+      type: "approximate",
+      country: "US",
+    };
+  }
+
+  return tool;
+}
+
+function extractWebSearchMetadata(data: any): {
+  used: boolean;
+  callCount: number;
+  queries: string[];
+  sources: Array<{ title: string; url: string }>;
+} {
+  const output = Array.isArray(data?.output) ? data.output : [];
+  const querySet = new Set<string>();
+  const sourceMap = new Map<string, { title: string; url: string }>();
+  let used = false;
+  let callCount = 0;
+
+  const addSource = (source: any): void => {
+    const citation = source?.url_citation || source;
+    const url = citation?.url || citation?.source_url || citation?.source_website_url;
+    if (typeof url !== "string" || url.trim().length === 0) {
+      return;
+    }
+    const title = typeof citation?.title === "string" && citation.title.trim().length > 0
+      ? citation.title.trim()
+      : url;
+    sourceMap.set(url, { title, url });
+  };
+
+  for (const item of output) {
+    if (item?.type === "web_search_call") {
+      used = true;
+      callCount += 1;
+      const action = item.action || {};
+      if (typeof action.query === "string") {
+        querySet.add(action.query);
+      }
+      if (Array.isArray(action.queries)) {
+        for (const query of action.queries) {
+          if (typeof query === "string") {
+            querySet.add(query);
+          } else if (typeof query?.query === "string") {
+            querySet.add(query.query);
+          }
+        }
+      }
+      if (Array.isArray(action.sources)) {
+        for (const source of action.sources) {
+          addSource(source);
+        }
+      }
+    }
+
+    if (item?.type === "message" && Array.isArray(item.content)) {
+      for (const content of item.content) {
+        if (Array.isArray(content?.annotations)) {
+          for (const annotation of content.annotations) {
+            addSource(annotation);
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    used,
+    callCount,
+    queries: Array.from(querySet),
+    sources: Array.from(sourceMap.values()),
+  };
+}
+
+function roundUsd(value: number): number {
+  return Math.round(value * 1_000_000_000) / 1_000_000_000;
+}
+
+function extractOpenAITokenUsage(data: any): {
+  inputTokens: number;
+  cachedInputTokens: number;
+  uncachedInputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+} {
+  const usage = data?.usage || {};
+  const inputTokens = Number(usage.input_tokens ?? usage.prompt_tokens ?? 0) || 0;
+  const outputTokens = Number(usage.output_tokens ?? usage.completion_tokens ?? 0) || 0;
+  const totalTokens = Number(usage.total_tokens ?? inputTokens + outputTokens) || 0;
+  const cachedInputTokens = Number(
+    usage.input_tokens_details?.cached_tokens ??
+    usage.prompt_tokens_details?.cached_tokens ??
+    0
+  ) || 0;
+  const uncachedInputTokens = Math.max(inputTokens - cachedInputTokens, 0);
+
+  return {
+    inputTokens,
+    cachedInputTokens,
+    uncachedInputTokens,
+    outputTokens,
+    totalTokens,
+  };
+}
+
+function logOpenAIMealUsage(
+  action: "logMeal" | "refineMealLog",
+  uid: string,
+  route: OpenAIMealRoute,
+  data: any,
+  webSearchMetadata: { used: boolean; callCount: number }
+): void {
+  const tokenUsage = extractOpenAITokenUsage(data);
+  const pricing = OPENAI_MODEL_PRICING_USD_PER_1M[route.model];
+  const estimatedModelCostUsd = pricing
+    ? (
+      (tokenUsage.uncachedInputTokens * pricing.input) +
+      (tokenUsage.cachedInputTokens * pricing.cachedInput) +
+      (tokenUsage.outputTokens * pricing.output)
+    ) / 1_000_000
+    : undefined;
+  const estimatedWebSearchCostUsd = webSearchMetadata.callCount * OPENAI_WEB_SEARCH_COST_USD;
+  const estimatedCostUsd = typeof estimatedModelCostUsd === "number"
+    ? estimatedModelCostUsd + estimatedWebSearchCostUsd
+    : undefined;
+
+  console.log("OPENAI_MEAL_USAGE", {
+    action,
+    uid,
+    api: route.api,
+    model: route.model,
+    pricingSnapshot: OPENAI_PRICING_SNAPSHOT,
+    inputTokens: tokenUsage.inputTokens,
+    cachedInputTokens: tokenUsage.cachedInputTokens,
+    uncachedInputTokens: tokenUsage.uncachedInputTokens,
+    outputTokens: tokenUsage.outputTokens,
+    totalTokens: tokenUsage.totalTokens,
+    webSearchUsed: webSearchMetadata.used,
+    webSearchCallCount: webSearchMetadata.callCount,
+    estimatedModelCostUsd: typeof estimatedModelCostUsd === "number" ? roundUsd(estimatedModelCostUsd) : null,
+    estimatedWebSearchCostUsd: roundUsd(estimatedWebSearchCostUsd),
+    estimatedCostUsd: typeof estimatedCostUsd === "number" ? roundUsd(estimatedCostUsd) : null,
+  });
+}
 
 /**
  * Track user usage for rate limiting
@@ -403,7 +737,8 @@ async function callOpenAI(
   imageBase64?: string,
   imageBase64s?: string[],
   country?: string,
-  perf?: BackendPerf
+  perf?: BackendPerf,
+  uid = ""
 ): Promise<MealLogResponse> {
   console.log("DEBUG: callOpenAI function called");
   const images = imageBase64s && imageBase64s.length > 0 ? imageBase64s : imageBase64 ? [imageBase64] : [];
@@ -424,6 +759,16 @@ async function callOpenAI(
   }
   
   console.log("DEBUG: API key is configured (length: " + apiKey.length + ", starts with: " + apiKey.substring(0, 7) + "...)");
+  const entitlements = await getMealEntitlements(uid);
+  const route = getOpenAIMealRoute(entitlements);
+  const webSearchEnabled = isWebSearchEnabled(route, entitlements);
+  logOpenAIMealRoute("logMeal", uid, route, {
+    imageCount: images.length,
+    textChars: foodText.length,
+    webSearchEnabled,
+    entitlementSource: entitlements.source,
+    lunaEnabled: entitlements.lunaEnabled,
+  });
 
   // Build system prompt based on country
   let systemPrompt: string;
@@ -434,6 +779,8 @@ CRITICAL RULES FOR ACCURACY:
 1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
 2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
 3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).
+4. ${CONCISE_ASSUMPTIONS_RULE}
+5. ${WEB_SEARCH_RULE}
 
 When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   } else {
@@ -443,58 +790,92 @@ CRITICAL RULES FOR ACCURACY:
 1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
 2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
 3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).
+4. ${CONCISE_ASSUMPTIONS_RULE}
+5. ${WEB_SEARCH_RULE}
 
 When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
   }
   
   console.log("DEBUG: System prompt:", systemPrompt);
 
-  // Build user message content array for Vision API
-  const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-  
-  // Add text if provided (same user message will also include image below when present — one multimodal request)
+  const userTextParts: string[] = [];
   if (foodText && foodText.trim().length > 0) {
-    let text = `Food description: ${foodText}\nMeal type: ${mealType}`;
-    if (images.length > 0) {
-      text += `\n${images.length} photo(s) of this meal are attached in this message; combine them with the description above for estimates and assumptions.`;
-    }
-    userContent.push({
-      type: "text",
-      text,
-    });
+    userTextParts.push(`Food description: ${foodText}`);
   } else {
-    // If no text, still include meal type
-    userContent.push({
-      type: "text",
-      text: `Meal type: ${mealType}`
-    });
+    userTextParts.push("Food description: (none)");
   }
-  
-  // Add images if provided
+  userTextParts.push(`Meal type: ${mealType}`);
+  if (images.length > 0) {
+    userTextParts.push(`${images.length} photo(s) of this meal are attached in this message; combine them with the description above for estimates and assumptions.`);
+  }
+  const userText = userTextParts.join("\n");
+
+  const chatUserContent: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [
+    {
+      type: "text",
+      text: userText,
+    },
+  ];
+  const responsesUserContent: Array<{ type: "input_text"; text: string } | { type: "input_image"; image_url: string; detail: "low" }> = [
+    {
+      type: "input_text",
+      text: userText,
+    },
+  ];
+
   for (const image of images) {
-    // Ensure it has the data URI prefix
     const imageUrl = image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`;
-    userContent.push({
+    chatUserContent.push({
       type: "image_url",
       image_url: {
-        url: imageUrl
-      }
+        url: imageUrl,
+      },
+    });
+    responsesUserContent.push({
+      type: "input_image",
+      image_url: imageUrl,
+      detail: "low",
     });
     console.log("DEBUG: Image added to request, base64 length:", image.length);
   }
 
-  const requestBody = {
-    model: OPENAI_MODEL,
-    temperature: OPENAI_TEMPERATURE,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: MEAL_LOG_JSON_SCHEMA,
-    },
-  };
+  const requestBody = route.api === "responses"
+    ? {
+      model: route.model,
+      store: false,
+      instructions: systemPrompt,
+      input: [
+        {
+          role: "user",
+          content: responsesUserContent,
+        },
+      ],
+      ...(webSearchEnabled ? {
+        tools: [buildWebSearchTool(country)],
+        tool_choice: "auto",
+        include: ["web_search_call.action.sources"],
+      } : {}),
+      text: {
+        format: {
+          type: "json_schema",
+          name: MEAL_LOG_JSON_SCHEMA.name,
+          strict: true,
+          schema: MEAL_LOG_JSON_SCHEMA.schema,
+        },
+      },
+    }
+    : {
+      model: route.model,
+      temperature: OPENAI_TEMPERATURE,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: chatUserContent },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: MEAL_LOG_JSON_SCHEMA,
+      },
+    };
 
   // Use global fetch (available in Node.js 18+)
   console.log("DEBUG: Sending request to OpenAI API...");
@@ -503,10 +884,12 @@ When both a written description and a photo are provided, you must use both toge
     perf?.mark("openai_chat_request_start", {
       hasImage: !!imageBase64,
       imageCount: images.length,
-      model: OPENAI_MODEL,
+      model: route.model,
+      api: route.api,
+      routeReason: route.reason,
       textChars: foodText.length,
     });
-    response = await fetch(OPENAI_API_URL, {
+    response = await fetch(route.url, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -538,7 +921,11 @@ When both a written description and a photo are provided, you must use both toge
 
   const data = await response.json();
   perf?.mark("openai_chat_body_parsed");
-  const content = data.choices?.[0]?.message?.content;
+  const webSearchMetadata = route.api === "responses" ? extractWebSearchMetadata(data) : { used: false, callCount: 0, queries: [], sources: [] };
+  logOpenAIMealUsage("logMeal", uid, route, data, webSearchMetadata);
+  const content = route.api === "responses"
+    ? extractResponsesOutputText(data)
+    : data.choices?.[0]?.message?.content;
 
   if (!content) {
     throw new functions.https.HttpsError(
@@ -548,9 +935,28 @@ When both a written description and a photo are provided, you must use both toge
   }
 
   const parsed = JSON.parse(content) as MealLogResponse;
+  if (!Array.isArray(parsed.sources)) {
+    parsed.sources = [];
+  }
+  if (parsed.sources.length === 0 && webSearchMetadata.sources.length > 0) {
+    parsed.sources = webSearchMetadata.sources;
+  }
+  if (webSearchEnabled) {
+    console.log("OPENAI_WEB_SEARCH_USAGE", {
+      action: "logMeal",
+      uid,
+      used: webSearchMetadata.used,
+      callCount: webSearchMetadata.callCount,
+      queries: webSearchMetadata.queries,
+      sourceCount: parsed.sources.length,
+    });
+  }
   perf?.mark("openai_chat_content_decoded", {
     itemCount: parsed.items?.length || 0,
     totalCalories: parsed.total_calories,
+    webSearchUsed: webSearchMetadata.used,
+    webSearchCallCount: webSearchMetadata.callCount,
+    sourceCount: parsed.sources.length,
   });
   return alignMealMacrosToItemSum(parsed);
 }
@@ -606,7 +1012,8 @@ async function callOpenAIRefineMeal(
   mealType: string,
   previousEstimate: MealLogResponse,
   correctionPrompt: string,
-  country?: string
+  country?: string,
+  uid = ""
 ): Promise<MealLogResponse> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -615,6 +1022,16 @@ async function callOpenAIRefineMeal(
       "OpenAI API key not configured."
     );
   }
+  const entitlements = await getMealEntitlements(uid);
+  const route = getOpenAIMealRoute(entitlements);
+  const webSearchEnabled = isWebSearchEnabled(route, entitlements);
+  logOpenAIMealRoute("refineMealLog", uid, route, {
+    correctionChars: correctionPrompt.length,
+    previousItems: previousEstimate.items?.length || 0,
+    webSearchEnabled,
+    entitlementSource: entitlements.source,
+    lunaEnabled: entitlements.lunaEnabled,
+  });
 
   let systemPrompt: string;
   if (country && country.trim().length > 0) {
@@ -623,35 +1040,59 @@ async function callOpenAIRefineMeal(
 CRITICAL RULES FOR ACCURACY:
 1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
 2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
-3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).`;
+3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).
+4. ${CONCISE_ASSUMPTIONS_RULE}
+5. ${WEB_SEARCH_RULE}`;
   } else {
     systemPrompt = `You are a calorie logging assistant. The user already has a structured meal estimate and wants to correct it. Apply their instructions: fix wrong foods, portions, cooking method, or macros. Output a complete new meal_log JSON. Set needs_clarification to false and clarifying_question to an empty string.
 
 CRITICAL RULES FOR ACCURACY:
 1. For each item in the breakdown, calculate its calories and macronutrients strictly based on the exact quantity specified for that specific item. Do not let other numbers or totals in the user's description influence the calculations of a single item's portion.
 2. The numerical values for calories, protein, carbs, fat, and fiber in the JSON fields must align perfectly with the values and math you describe in the item's 'assumptions' text.
-3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).`;
+3. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams).
+4. ${CONCISE_ASSUMPTIONS_RULE}
+5. ${WEB_SEARCH_RULE}`;
   }
 
   const previousJson = JSON.stringify(previousEstimate);
   const userText = `Original user description (for context):\n${foodText.trim().length > 0 ? foodText.trim() : "(none or image-only log)"}\n\nMeal type: ${mealType}\n\nCurrent structured estimate (JSON):\n${previousJson}\n\nUser correction (apply these changes):\n${correctionPrompt.trim()}`;
 
-  const requestBody = {
-    model: OPENAI_MODEL,
-    temperature: 0.25,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userText },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: MEAL_LOG_JSON_SCHEMA,
-    },
-  };
+  const requestBody = route.api === "responses"
+    ? {
+      model: route.model,
+      store: false,
+      instructions: systemPrompt,
+      input: userText,
+      ...(webSearchEnabled ? {
+        tools: [buildWebSearchTool(country)],
+        tool_choice: "auto",
+        include: ["web_search_call.action.sources"],
+      } : {}),
+      text: {
+        format: {
+          type: "json_schema",
+          name: MEAL_LOG_JSON_SCHEMA.name,
+          strict: true,
+          schema: MEAL_LOG_JSON_SCHEMA.schema,
+        },
+      },
+    }
+    : {
+      model: route.model,
+      temperature: 0.25,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: MEAL_LOG_JSON_SCHEMA,
+      },
+    };
 
   console.log("DEBUG: callOpenAIRefineMeal request (chars):", userText.length);
 
-  const response = await fetch(OPENAI_API_URL, {
+  const response = await fetch(route.url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -670,7 +1111,11 @@ CRITICAL RULES FOR ACCURACY:
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const webSearchMetadata = route.api === "responses" ? extractWebSearchMetadata(data) : { used: false, callCount: 0, queries: [], sources: [] };
+  logOpenAIMealUsage("refineMealLog", uid, route, data, webSearchMetadata);
+  const content = route.api === "responses"
+    ? extractResponsesOutputText(data)
+    : data.choices?.[0]?.message?.content;
   if (!content) {
     throw new functions.https.HttpsError(
       "internal",
@@ -679,6 +1124,22 @@ CRITICAL RULES FOR ACCURACY:
   }
 
   const parsed = JSON.parse(content) as MealLogResponse;
+  if (!Array.isArray(parsed.sources)) {
+    parsed.sources = [];
+  }
+  if (parsed.sources.length === 0 && webSearchMetadata.sources.length > 0) {
+    parsed.sources = webSearchMetadata.sources;
+  }
+  if (webSearchEnabled) {
+    console.log("OPENAI_WEB_SEARCH_USAGE", {
+      action: "refineMealLog",
+      uid,
+      used: webSearchMetadata.used,
+      callCount: webSearchMetadata.callCount,
+      queries: webSearchMetadata.queries,
+      sourceCount: parsed.sources.length,
+    });
+  }
   console.log("DEBUG: callOpenAIRefineMeal done total_calories:", parsed.total_calories);
   return alignMealMacrosToItemSum(parsed);
 }
@@ -769,7 +1230,8 @@ export const logMeal = functions.region(FUNCTIONS_REGION).runWith({
         hasImage ? imageBase64 : undefined,
         hasImage ? requestImages : undefined,
         country,
-        perf
+        perf,
+        uid
       );
       console.log("DEBUG: OpenAI API call successful, total calories:", response.total_calories);
 
@@ -869,7 +1331,8 @@ export const refineMealLog = functions.region(FUNCTIONS_REGION).runWith({
       mealType,
       previousEstimate,
       correctionPrompt.trim(),
-      country
+      country,
+      uid
     );
     console.log("DEBUG: refineMealLog success total_calories:", response.total_calories);
     return response;

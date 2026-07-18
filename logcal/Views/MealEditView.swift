@@ -486,6 +486,8 @@ struct MealEditView: View {
                                         .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
                                 }
                             }
+
+                            MealSourcesRow(sources: response.sources)
                         }
                         .padding(16)
                         .background(Theme.cardBackground(colorScheme: colorScheme))
@@ -729,7 +731,8 @@ struct MealEditView: View {
             fiber: response.fiber,
             items: [updatedItem],
             needsClarification: response.needsClarification,
-            clarifyingQuestion: response.clarifyingQuestion
+            clarifyingQuestion: response.clarifyingQuestion,
+            sources: response.sources
         )
         
         modifiedResponse = updatedResponse

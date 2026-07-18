@@ -4,7 +4,12 @@ const https = require('https');
 const { execSync } = require('child_process');
 
 const PROJECT_ID = 'logcal-ai';
-const OPENAI_MODEL = 'gpt-4o-2024-08-06';
+const MODELS = {
+  'gpt-4o': 'gpt-4o-2024-08-06',
+  'gpt-5.6-luna': 'gpt-5.6-luna',
+  'gpt-5-mini': 'gpt-5-mini',
+  'o4-mini': 'o4-mini'
+};
 
 // Colors for terminal output
 const RESET = '\x1b[0m';
@@ -59,18 +64,18 @@ const MEAL_LOG_JSON_SCHEMA = {
 // 1. Load API Key
 let apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {
-  console.log(`${YELLOW}No OPENAI_API_KEY found in environment. Attempting to fetch from Firebase Secrets Manager...${RESET}`);
+  console.log(`${YELLOW}No OPENAI_API_KEY found in environment. Fetching from Secrets Manager...${RESET}`);
   try {
     apiKey = execSync('npx -y firebase-tools@latest functions:secrets:access OPENAI_API_KEY', { encoding: 'utf8' }).trim();
-    console.log(`${GREEN}Successfully retrieved API Key from Firebase!${RESET}\n`);
+    console.log(`${GREEN}Successfully retrieved API Key!${RESET}\n`);
   } catch (e) {
-    console.error(`${RED}ERROR: Could not retrieve OPENAI_API_KEY from environment or Firebase.${RESET}`);
+    console.error(`${RED}ERROR: Could not retrieve API Key.${RESET}`);
     process.exit(1);
   }
 }
 
-// 2. Extract New System Prompt from functions/src/index.ts dynamically
-function getNewSystemPrompt() {
+// 2. Extract System Prompt from functions/src/index.ts dynamically
+function getSystemPrompt() {
   const indexTsPath = path.join(__dirname, '../functions/src/index.ts');
   if (!fs.existsSync(indexTsPath)) {
     throw new Error(`Could not find functions/src/index.ts at ${indexTsPath}`);
@@ -82,13 +87,10 @@ function getNewSystemPrompt() {
     const raw = matches[0][0];
     return raw.substring(raw.indexOf('`') + 1, raw.lastIndexOf('`'));
   }
-  throw new Error("Could not extract new systemPrompt from functions/src/index.ts.");
+  throw new Error("Could not extract systemPrompt from functions/src/index.ts.");
 }
 
-// Old system prompt baseline
-const OLD_SYSTEM_PROMPT = `You are a calorie logging assistant. When given a food description or image, estimate calories and macronutrients (protein, carbs, fat, fiber in grams) based on typical portion sizes. Use the provided meal type. Never ask for clarifications - always set needs_clarification to false and clarifying_question to an empty string. Provide detailed breakdowns of items with quantities, calories, macronutrients, assumptions, and confidence scores. The top-level protein, carbs, fat, and fiber must equal the sum of the same fields across all items (in grams). When both a written description and a photo are provided, you must use both together: identify foods and portion sizes from the photo, use the text for context; if they disagree on something visible in the image, trust the image for that detail. Each item's assumptions field should mention what you inferred from the photo (e.g. visible portion, condiments, cooking style) when a photo is present, not only generic text-based guesses.`;
-
-// 3. Parse CSV file manually (robust line/quote parser)
+// 3. Parse CSV
 function parseCSV(csvText) {
   const rows = [];
   let currentRow = [];
@@ -122,11 +124,10 @@ function parseCSV(csvText) {
 }
 
 // 4. OpenAI Call API
-function callOpenAI(systemPrompt, foodText, mealType) {
+function callOpenAI(model, systemPrompt, foodText, mealType) {
   return new Promise((resolve, reject) => {
-    const postData = JSON.stringify({
-      model: OPENAI_MODEL,
-      temperature: 0.25,
+    const requestPayload = {
+      model: model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Food description: ${foodText}\nMeal type: ${mealType}` }
@@ -135,7 +136,14 @@ function callOpenAI(systemPrompt, foodText, mealType) {
         type: "json_schema",
         json_schema: MEAL_LOG_JSON_SCHEMA,
       },
-    });
+    };
+
+    // Omit temperature for models that only support the default 1.0 (GPT-5/Reasoning models)
+    if (model === 'gpt-4o-2024-08-06') {
+      requestPayload.temperature = 0.25;
+    }
+
+    const postData = JSON.stringify(requestPayload);
 
     const req = https.request({
       hostname: 'api.openai.com',
@@ -169,7 +177,6 @@ function callOpenAI(systemPrompt, foodText, mealType) {
   });
 }
 
-// Helper to pad strings for neat table output
 function pad(str, length) {
   str = String(str);
   if (str.length > length) {
@@ -180,7 +187,7 @@ function pad(str, length) {
 
 // 5. Main Execution
 async function run() {
-  const newSystemPrompt = getNewSystemPrompt();
+  const systemPrompt = getSystemPrompt();
 
   const csvPath = path.join(__dirname, 'LogCal Dataset test trimmed.csv');
   if (!fs.existsSync(csvPath)) {
@@ -192,13 +199,14 @@ async function run() {
   const csvData = parseCSV(csvContent);
   const items = csvData.slice(1);
 
-  console.log(`${BOLD}${CYAN}=== STARTING SIDE-BY-SIDE PROMPT COMPARISON ===${RESET}`);
-  console.log(`Evaluating ${items.length} cases on model: ${OPENAI_MODEL}\n`);
+  console.log(`${BOLD}${CYAN}=== STARTING 4-WAY MODEL & LATENCY COMPARISON ===${RESET}`);
+  console.log(`Evaluating ${items.length} cases using the updated system prompt...\n`);
 
-  let oldPasses = 0;
-  let newPasses = 0;
-  let oldTotalError = 0;
-  let newTotalError = 0;
+  // Performance metrics trackers
+  const stats = {};
+  Object.keys(MODELS).forEach(m => {
+    stats[m] = { passes: 0, totalError: 0, totalLatency: 0, count: 0 };
+  });
 
   const tableRows = [];
 
@@ -215,88 +223,74 @@ async function run() {
     if (foodText.toLowerCase().includes('lunch')) mealType = 'lunch';
     if (foodText.toLowerCase().includes('dinner')) mealType = 'dinner';
 
-    let oldEst = null;
-    let oldPass = false;
-    let newEst = null;
-    let newPass = false;
-
-    // Run Old Prompt
-    try {
-      const res = await callOpenAI(OLD_SYSTEM_PROMPT, foodText, mealType);
-      oldEst = res.total_calories;
-      oldPass = oldEst >= minKcal && oldEst <= maxKcal;
-      if (oldPass) oldPasses++;
-      oldTotalError += Math.abs(oldEst - expectedKcal);
-    } catch (e) {
-      oldEst = 'ERR';
-    }
-
-    // Run New Prompt
-    try {
-      const res = await callOpenAI(newSystemPrompt, foodText, mealType);
-      newEst = res.total_calories;
-      newPass = newEst >= minKcal && newEst <= maxKcal;
-      if (newPass) newPasses++;
-      newTotalError += Math.abs(newEst - expectedKcal);
-    } catch (e) {
-      newEst = 'ERR';
-    }
-
-    // Compare results
-    let comparison = 'Equal';
-    if (oldPass && !newPass) {
-      comparison = `${RED}Old Wins${RESET}`;
-    } else if (!oldPass && newPass) {
-      comparison = `${GREEN}New Wins${RESET}`;
-    } else if (!oldPass && !newPass && oldEst !== 'ERR' && newEst !== 'ERR') {
-      const oldDiff = Math.abs(oldEst - expectedKcal);
-      const newDiff = Math.abs(newEst - expectedKcal);
-      if (newDiff < oldDiff) {
-        comparison = `${GREEN}New Closer${RESET}`;
-      } else if (oldDiff < newDiff) {
-        comparison = `${RED}Old Closer${RESET}`;
-      }
-    }
-
-    const oldDisplay = oldEst === 'ERR' ? 'ERR' : `${oldEst} (${oldPass ? '✔' : '✘'})`;
-    const newDisplay = newEst === 'ERR' ? 'ERR' : `${newEst} (${newPass ? '✔' : '✘'})`;
-
-    tableRows.push({
+    const rowResult = {
       id: i + 1,
       text: foodText,
       target: `${expectedKcal} [${minKcal}-${maxKcal}]`,
-      oldDisplay,
-      newDisplay,
-      comparison
-    });
+      displays: {}
+    };
 
+    // Evaluate each model sequentially
+    for (const [modelKey, modelString] of Object.entries(MODELS)) {
+      const startTime = Date.now();
+      try {
+        const res = await callOpenAI(modelString, systemPrompt, foodText, mealType);
+        const latency = (Date.now() - startTime) / 1000; // in seconds
+        
+        const estKcal = res.total_calories;
+        const isPass = estKcal >= minKcal && estKcal <= maxKcal;
+        
+        stats[modelKey].count++;
+        stats[modelKey].totalLatency += latency;
+        stats[modelKey].totalError += Math.abs(estKcal - expectedKcal);
+        if (isPass) stats[modelKey].passes++;
+
+        rowResult.displays[modelKey] = `${estKcal}(${isPass ? '✔' : '✘'}) ${latency.toFixed(1)}s`;
+      } catch (e) {
+        rowResult.displays[modelKey] = 'ERR';
+      }
+    }
+
+    tableRows.push(rowResult);
     process.stdout.write(`Done.\n`);
   }
 
   // Print Table
-  console.log(`\n\n${BOLD}========================================================================================${RESET}`);
-  console.log(`${BOLD}#   Food Description          Target range   Old Prompt Est   New Prompt Est   Outcome${RESET}`);
-  console.log(`========================================================================================`);
+  console.log(`\n\n=======================================================================================================`);
+  console.log(`${BOLD}#   Food Description          Target range   gpt-4o         gpt-5.6-luna   gpt-5-mini     o4-mini${RESET}`);
+  console.log(`=======================================================================================================`);
   tableRows.forEach(r => {
     console.log(
       `${pad(r.id, 3)}` +
       `${pad(r.text, 25)} ` +
       `${pad(r.target, 14)} ` +
-      `${pad(r.oldDisplay, 16)} ` +
-      `${pad(r.newDisplay, 16)} ` +
-      `${r.comparison}`
+      `${pad(r.displays['gpt-4o'], 14)} ` +
+      `${pad(r.displays['gpt-5.6-luna'], 14)} ` +
+      `${pad(r.displays['gpt-5-mini'], 14)} ` +
+      `${pad(r.displays['o4-mini'], 14)}`
     );
   });
-  console.log(`========================================================================================\n`);
+  console.log(`=======================================================================================================\n`);
 
   // Overall Statistics
-  console.log(`${BOLD}=== COMPARISON METRICS SUMMARY ===${RESET}`);
-  console.log(`-----------------------------------------------`);
-  console.log(`Metric               Old Prompt      New Prompt`);
-  console.log(`-----------------------------------------------`);
-  console.log(`Pass Rate            ${((oldPasses / items.length) * 100).toFixed(1)}%           ${((newPasses / items.length) * 100).toFixed(1)}%`);
-  console.log(`Mean Abs Error (MAE) ${(oldTotalError / items.length).toFixed(1)} kcal       ${(newTotalError / items.length).toFixed(1)} kcal`);
-  console.log(`-----------------------------------------------\n`);
+  console.log(`${BOLD}=== MODEL PERFORMANCE & LATENCY METRICS ===${RESET}`);
+  console.log(`-------------------------------------------------------------------------`);
+  console.log("Model          Pass Rate     Mean Abs Error (MAE)    Average Latency");
+  console.log(`-------------------------------------------------------------------------`);
+  Object.keys(MODELS).forEach(m => {
+    const s = stats[m];
+    const passRate = s.count > 0 ? `${((s.passes / s.count) * 100).toFixed(1)}%` : '0%';
+    const mae = s.count > 0 ? `${(s.totalError / s.count).toFixed(1)} kcal` : 'N/A';
+    const avgLat = s.count > 0 ? `${(s.totalLatency / s.count).toFixed(2)}s` : 'N/A';
+    
+    console.log(
+      `${pad(m, 14)} ` +
+      `${pad(passRate, 13)} ` +
+      `${pad(mae, 23)} ` +
+      `${avgLat}`
+    );
+  });
+  console.log(`-------------------------------------------------------------------------\n`);
 }
 
 run();

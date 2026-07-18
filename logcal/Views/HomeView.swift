@@ -1032,6 +1032,8 @@ struct HomeView: View {
                     }
                 }
 
+                MealSourcesRow(sources: result.sources)
+
                 Divider()
                     .background(Theme.cardBorder(colorScheme: colorScheme))
                 
@@ -1729,4 +1731,3 @@ extension View {
         }
     }
 }
-

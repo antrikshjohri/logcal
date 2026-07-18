@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct MealLogResponse: Codable, Equatable {
     let mealType: String
@@ -17,6 +18,7 @@ struct MealLogResponse: Codable, Equatable {
     let items: [MealItem]
     let needsClarification: Bool
     let clarifyingQuestion: String?
+    let sources: [MealSource]
     
     enum CodingKeys: String, CodingKey {
         case mealType = "meal_type"
@@ -32,6 +34,7 @@ struct MealLogResponse: Codable, Equatable {
         case needsClarificationCamel = "needsClarification"
         case clarifyingQuestion = "clarifying_question"
         case clarifyingQuestionCamel = "clarifyingQuestion"
+        case sources
     }
 
     init(
@@ -43,7 +46,8 @@ struct MealLogResponse: Codable, Equatable {
         fiber: Double? = nil,
         items: [MealItem],
         needsClarification: Bool,
-        clarifyingQuestion: String?
+        clarifyingQuestion: String?,
+        sources: [MealSource] = []
     ) {
         self.mealType = mealType
         self.totalCalories = totalCalories
@@ -54,6 +58,7 @@ struct MealLogResponse: Codable, Equatable {
         self.items = items
         self.needsClarification = needsClarification
         self.clarifyingQuestion = clarifyingQuestion
+        self.sources = sources
     }
 
     init(from decoder: Decoder) throws {
@@ -93,6 +98,7 @@ struct MealLogResponse: Codable, Equatable {
         } else {
             self.clarifyingQuestion = nil
         }
+        self.sources = (try? container.decode([MealSource].self, forKey: .sources)) ?? []
     }
     
     func encode(to encoder: Encoder) throws {
@@ -106,6 +112,28 @@ struct MealLogResponse: Codable, Equatable {
         try container.encode(items, forKey: .items)
         try container.encode(needsClarification, forKey: .needsClarification)
         try container.encodeIfPresent(clarifyingQuestion, forKey: .clarifyingQuestion)
+        if !sources.isEmpty {
+            try container.encode(sources, forKey: .sources)
+        }
+    }
+}
+
+struct MealSource: Codable, Equatable, Identifiable {
+    let title: String
+    let url: String
+
+    var id: String { url }
+
+    var displayTitle: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed != url {
+            return trimmed
+        }
+        return URL(string: url)?.host?.replacingOccurrences(of: "www.", with: "") ?? "Source"
+    }
+
+    var linkURL: URL? {
+        URL(string: url)
     }
 }
 
@@ -144,7 +172,8 @@ extension MealLogResponse {
                 )
             },
             needsClarification: needsClarification,
-            clarifyingQuestion: clarifyingQuestion
+            clarifyingQuestion: clarifyingQuestion,
+            sources: sources
         )
     }
 
@@ -172,7 +201,8 @@ extension MealLogResponse {
             fiber: fib,
             items: items,
             needsClarification: needsClarification,
-            clarifyingQuestion: clarifyingQuestion
+            clarifyingQuestion: clarifyingQuestion,
+            sources: sources
         )
     }
 
@@ -200,5 +230,59 @@ extension MealLogResponse {
         }
         guard n > 0 else { return nil }
         return (protein: sp, carbs: sc, fat: sf, fiber: hasFiber ? sfib : aligned.fiber)
+    }
+}
+
+struct MealSourcesRow: View {
+    let sources: [MealSource]
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var validSources: [MealSource] {
+        sources.filter { $0.linkURL != nil }
+    }
+
+    private var visibleSources: [MealSource] {
+        Array(validSources.prefix(2))
+    }
+
+    var body: some View {
+        if !validSources.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Sources")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(visibleSources) { source in
+                            if let url = source.linkURL {
+                                Link(destination: url) {
+                                    Text(source.displayTitle)
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                        .foregroundColor(Theme.primaryGreen)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(Theme.primaryGreen.opacity(0.10))
+                                        .cornerRadius(8)
+                                }
+                            }
+                        }
+
+                        if validSources.count > 2 {
+                            Text("+\(validSources.count - 2) more")
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundColor(Theme.quietText(colorScheme: colorScheme))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.35))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+            }
+            .padding(.top, 4)
+        }
     }
 }

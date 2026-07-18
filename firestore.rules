@@ -28,6 +28,12 @@ service cloud.firestore {
       allow read: if true; // Anyone can read app config
       allow write: if false; // Only admins can write (set via Firebase Console)
     }
+
+    // Backend-only premium/model feature entitlements.
+    // Do not expose this to clients; Firebase Admin SDK in Cloud Functions bypasses rules.
+    match /entitlements/{userId} {
+      allow read, write: if false;
+    }
     
     // Feedback collection - write-only for authenticated users
     match /feedback/{feedbackId} {
@@ -44,4 +50,3 @@ service cloud.firestore {
     }
   }
 }
-
