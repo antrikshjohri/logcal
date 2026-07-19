@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.serene.logcal.data.local.HistoryMeal
+import com.serene.logcal.ui.components.MealSourcesRow
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.viewmodel.history.HistoryViewModel
 import java.time.Instant
@@ -179,6 +180,10 @@ fun MealDetailScreen(
                         )
                     }
                 }
+                MealSourcesRow(
+                    sources = m.response.sources,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
             Button(

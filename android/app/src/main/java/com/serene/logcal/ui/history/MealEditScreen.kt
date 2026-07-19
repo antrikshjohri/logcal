@@ -89,6 +89,7 @@ import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
+import com.serene.logcal.ui.components.MealSourcesRow
 import com.serene.logcal.ui.components.CalendarBottomSheet
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.NumberUtils
@@ -791,6 +792,10 @@ fun MealEditScreen(
                                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.cardBorder.copy(alpha = 0.5f)))
                             }
                         }
+                        MealSourcesRow(
+                            sources = activeMeal.response.sources,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }

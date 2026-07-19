@@ -136,6 +136,7 @@ import kotlinx.serialization.json.Json
 import com.serene.logcal.data.local.SavedMealEntity
 import com.serene.logcal.model.MealLogResponse
 import com.serene.logcal.model.MealType
+import com.serene.logcal.ui.components.MealSourcesRow
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.NumberUtils
@@ -1191,6 +1192,11 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                     }
                                 }
 
+                                MealSourcesRow(
+                                    sources = result.sources,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1616,6 +1622,13 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                     color = colors.mutedText
                                 )
                             }
+                        }
+
+                        response?.let {
+                            MealSourcesRow(
+                                sources = it.sources,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
                 }

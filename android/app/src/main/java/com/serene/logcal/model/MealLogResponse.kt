@@ -18,7 +18,26 @@ data class MealLogResponse(
     val needsClarification: Boolean = false,
     @SerialName("clarifying_question")
     val clarifyingQuestion: String? = null,
+    val sources: List<MealSource> = emptyList(),
 )
+
+@Serializable
+data class MealSource(
+    val title: String,
+    val url: String,
+) {
+    val displayTitle: String
+        get() {
+            val trimmed = title.trim()
+            if (trimmed.isNotEmpty() && trimmed != url) return trimmed
+            return url
+                .removePrefix("https://")
+                .removePrefix("http://")
+                .removePrefix("www.")
+                .substringBefore("/")
+                .ifBlank { "Source" }
+        }
+}
 
 @Serializable
 data class MealItem(
@@ -32,4 +51,3 @@ data class MealItem(
     val assumptions: String? = null,
     val confidence: Double? = null,
 )
-

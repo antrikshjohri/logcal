@@ -29,6 +29,11 @@ service cloud.firestore {
       allow write: if false; // Only admins can write (set via Firebase Console)
     }
 
+    // Backend-only global model rollout config.
+    match /app/modelConfig {
+      allow read, write: if false;
+    }
+
     // Backend-only premium/model feature entitlements.
     // Do not expose this to clients; Firebase Admin SDK in Cloud Functions bypasses rules.
     match /entitlements/{userId} {

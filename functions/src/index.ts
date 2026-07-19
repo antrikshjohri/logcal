@@ -128,13 +128,18 @@ interface OpenAIMealRoute {
   api: "chat_completions" | "responses";
   model: string;
   url: string;
-  reason: "default" | "luna_entitlement" | "luna_fallback_allowlist";
+  reason: "default" | "luna_entitlement" | "luna_global" | "luna_fallback_allowlist";
 }
 
 interface MealEntitlements {
   lunaEnabled: boolean;
   webSearchEnabled: boolean;
-  source: "firestore" | "fallback_allowlist" | "default" | "firestore_error";
+  source: "entitlement" | "global_config" | "fallback_allowlist" | "default" | "firestore_error";
+}
+
+interface GlobalMealModelConfig {
+  lunaEnabledForAll: boolean;
+  webSearchEnabledForAll: boolean;
 }
 
 class BackendPerf {
@@ -232,7 +237,26 @@ function booleanFromEntitlement(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
+async function getGlobalMealModelConfig(): Promise<GlobalMealModelConfig> {
+  try {
+    const snapshot = await admin.firestore().collection("app").doc("modelConfig").get();
+    const data = snapshot.exists ? snapshot.data() || {} : {};
+    return {
+      lunaEnabledForAll: booleanFromEntitlement(data.lunaEnabledForAll) ?? false,
+      webSearchEnabledForAll: booleanFromEntitlement(data.webSearchEnabledForAll) ?? false,
+    };
+  } catch (error) {
+    console.error("ERROR: Failed to read global meal model config:", { error });
+    return {
+      lunaEnabledForAll: false,
+      webSearchEnabledForAll: false,
+    };
+  }
+}
+
 async function getMealEntitlements(uid: string): Promise<MealEntitlements> {
+  const globalConfig = await getGlobalMealModelConfig();
+
   try {
     const snapshot = await admin.firestore().collection("entitlements").doc(uid).get();
     if (snapshot.exists) {
@@ -240,16 +264,17 @@ async function getMealEntitlements(uid: string): Promise<MealEntitlements> {
       const features = typeof data.features === "object" && data.features !== null
         ? data.features as Record<string, unknown>
         : {};
+      const lunaOverride = booleanFromEntitlement(data.lunaEnabled) ??
+        booleanFromEntitlement(features.luna) ??
+        booleanFromEntitlement(features.lunaEnabled);
+      const webSearchOverride = booleanFromEntitlement(data.webSearchEnabled) ??
+        booleanFromEntitlement(features.webSearch) ??
+        booleanFromEntitlement(features.webSearchEnabled);
+
       return {
-        lunaEnabled: booleanFromEntitlement(data.lunaEnabled) ??
-          booleanFromEntitlement(features.luna) ??
-          booleanFromEntitlement(features.lunaEnabled) ??
-          false,
-        webSearchEnabled: booleanFromEntitlement(data.webSearchEnabled) ??
-          booleanFromEntitlement(features.webSearch) ??
-          booleanFromEntitlement(features.webSearchEnabled) ??
-          false,
-        source: "firestore",
+        lunaEnabled: lunaOverride ?? globalConfig.lunaEnabledForAll,
+        webSearchEnabled: webSearchOverride ?? globalConfig.webSearchEnabledForAll,
+        source: "entitlement",
       };
     }
   } catch (error) {
@@ -261,6 +286,14 @@ async function getMealEntitlements(uid: string): Promise<MealEntitlements> {
       lunaEnabled: FALLBACK_LUNA_ALLOWLIST_UIDS.has(uid),
       webSearchEnabled: FALLBACK_WEB_SEARCH_ALLOWLIST_UIDS.has(uid),
       source: "firestore_error",
+    };
+  }
+
+  if (globalConfig.lunaEnabledForAll || globalConfig.webSearchEnabledForAll) {
+    return {
+      lunaEnabled: globalConfig.lunaEnabledForAll,
+      webSearchEnabled: globalConfig.webSearchEnabledForAll,
+      source: "global_config",
     };
   }
 
@@ -287,6 +320,8 @@ function getOpenAIMealRoute(entitlements: MealEntitlements): OpenAIMealRoute {
       url: OPENAI_RESPONSES_URL,
       reason: entitlements.source === "fallback_allowlist" || entitlements.source === "firestore_error"
         ? "luna_fallback_allowlist"
+        : entitlements.source === "global_config"
+          ? "luna_global"
         : "luna_entitlement",
     };
   }

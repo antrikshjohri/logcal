@@ -55,6 +55,26 @@ struct QuickEditMealSection: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var dictation = QuickEditDictationController()
 
+    private var inputBackground: Color {
+        colorScheme == .dark
+            ? Theme.insetBackground(colorScheme: colorScheme)
+            : Theme.insetBackground(colorScheme: colorScheme).opacity(0.75)
+    }
+
+    private var submitBackground: Color {
+        if isLoading {
+            return Theme.primaryGreen.opacity(colorScheme == .dark ? 0.75 : 0.85)
+        }
+        let canSubmit = !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return canSubmit ? Theme.primaryGreen : Theme.insetBackground(colorScheme: colorScheme)
+    }
+
+    private var submitForeground: Color {
+        if isLoading { return .white }
+        let canSubmit = !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return canSubmit ? .white : Theme.mutedText(colorScheme: colorScheme)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
             HStack(alignment: .center, spacing: Constants.Spacing.medium) {
@@ -133,7 +153,7 @@ struct QuickEditMealSection: View {
             .padding(Constants.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius, style: .continuous)
-                    .fill(Theme.cardBackground(colorScheme: colorScheme))
+                    .fill(inputBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Constants.Sizes.cornerRadius, style: .continuous)
@@ -154,20 +174,8 @@ struct QuickEditMealSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .background(
-                    isLoading
-                        ? Color.gray.opacity(0.3)
-                        : (canSubmit
-                            ? Theme.primaryGreen
-                            : Color.primary.opacity(0.06))
-                )
-                .foregroundColor(
-                    isLoading
-                        ? .white
-                        : (canSubmit
-                            ? .white
-                            : .secondary)
-                )
+                .background(submitBackground)
+                .foregroundColor(submitForeground)
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
