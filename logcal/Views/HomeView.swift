@@ -978,34 +978,54 @@ struct HomeView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(savedMeals.prefix(8)) { savedMeal in
-                        Button {
-                            selectedSavedMeal = savedMeal
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "bookmark.fill")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Theme.primaryGreen)
+                        HStack(spacing: 0) {
+                            Button {
+                                selectedSavedMeal = savedMeal
+                            } label: {
+                                HStack(spacing: 7) {
+                                    Image(systemName: "bookmark.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Theme.primaryGreen)
 
-                                Text(savedMeal.title.count > 40 ? String(savedMeal.title.prefix(40)) + "..." : savedMeal.title)
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                    .lineLimit(1)
+                                    Text(savedMeal.title.count > 40 ? String(savedMeal.title.prefix(40)) + "..." : savedMeal.title)
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                        .lineLimit(1)
 
-                                Text("\(Int(savedMeal.totalCalories)) cal")
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                    Text("\(Int(savedMeal.totalCalories)) cal")
+                                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                }
+                                .padding(.leading, 12)
+                                .padding(.trailing, 8)
+                                .frame(height: 38)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 14)
-                            .frame(height: 38)
-                            .background(Theme.cardBackground(colorScheme: colorScheme))
-                            .cornerRadius(19)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 19)
-                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-                            )
-                            .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.3), radius: 2, x: 0, y: 1)
+                            .buttonStyle(.plain)
+
+                            Rectangle()
+                                .fill(Theme.cardBorder(colorScheme: colorScheme).opacity(0.8))
+                                .frame(width: 1, height: 18)
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                viewModel.logSavedMealAsIs(savedMeal, servingMultiplier: 1.0)
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Theme.primaryGreen)
+                                    .frame(width: 32, height: 38)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(19)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 19)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+                        .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.3), radius: 2, x: 0, y: 1)
                     }
                 }
                 .padding(.horizontal)

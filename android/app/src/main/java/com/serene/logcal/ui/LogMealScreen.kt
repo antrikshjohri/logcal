@@ -54,6 +54,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.UTurnLeft
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -628,39 +629,65 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                             .clip(CircleShape)
                                             .background(colors.cardBackground)
                                             .border(0.8.dp, colors.cardBorder.copy(alpha = 0.6f), CircleShape)
-                                            .clickable { selectedSavedMealForDialog = fav }
                                             .shadow(
                                                 elevation = 0.5.dp,
                                                 shape = CircleShape,
                                                 ambientColor = colors.shadowColor,
                                                 spotColor = colors.shadowColor
-                                            )
-                                            .padding(horizontal = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            Icons.Default.Bookmark,
-                                            contentDescription = null,
-                                            tint = colors.primaryGreen,
-                                            modifier = Modifier.size(12.dp)
+                                        Row(
+                                            modifier = Modifier
+                                                .clickable { selectedSavedMealForDialog = fav }
+                                                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Bookmark,
+                                                contentDescription = null,
+                                                tint = colors.primaryGreen,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                text = fav.title,
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.primaryText,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Text(
+                                                text = "${NumberUtils.formatNumber(fav.totalCalories.toInt())} cal",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = colors.quietText,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .width(1.dp)
+                                                .height(18.dp)
+                                                .background(colors.cardBorder.copy(alpha = 0.8f))
                                         )
-                                        Text(
-                                            text = fav.title,
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.primaryText,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                        Text(
-                                            text = "${NumberUtils.formatNumber(fav.totalCalories.toInt())} cal",
-                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = colors.quietText,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+
+                                        Box(
+                                            modifier = Modifier
+                                                .clickable { viewModel.logSavedMealAsIs(fav, 1.0) }
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = "Quick log",
+                                                tint = colors.primaryGreen,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
