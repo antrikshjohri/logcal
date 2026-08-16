@@ -224,7 +224,7 @@ struct MealPreviewCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                        Text("Log this Meal to Diary")
+                        Text("Log this Meal")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                     }
                     .frame(maxWidth: .infinity)
