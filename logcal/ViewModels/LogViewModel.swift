@@ -282,12 +282,32 @@ class LogViewModel: ObservableObject {
     }
     
     func logMeal() async {
+        guard !isLoading else {
+            print("DEBUG: logMeal() already in progress, ignoring duplicate tap")
+            return
+        }
+
+        let trimmedInput = foodText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasInitialText = !trimmedInput.isEmpty
+        let hasInitialImage = !selectedImages.isEmpty
+        let isDictating = speechService.isListening
+
+        guard isDictating || hasInitialText || hasInitialImage else {
+            print("DEBUG: Both food text and image are empty, returning")
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+        latestResult = nil
+        lastLoggedMealId = nil
+
         var perf = PerfLogger("meal_log")
         print("DEBUG: logMeal() called")
         print("DEBUG: foodText: '\(foodText)'")
         print("DEBUG: selectedMealType: \(selectedMealType.rawValue)")
         print("DEBUG: Constants.API.useFirebase: \(Constants.API.useFirebase)")
-        
+
         // Stop recording and wait for Whisper if a dictation is in progress
         if speechService.isListening {
             AnalyticsService.trackSpeechRecognitionStopped()
@@ -304,17 +324,20 @@ class LogViewModel: ObservableObject {
         ])
 
         // Allow logging if either text or image is present after any in-flight dictation is merged in.
-        let hasText = !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let hasImage = !selectedImages.isEmpty
-        
-        guard hasText || hasImage else {
+        let capturedFoodText = foodText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let capturedImages = selectedImages
+        let capturedHasText = !capturedFoodText.isEmpty
+        let capturedHasImage = !capturedImages.isEmpty
+
+        guard capturedHasText || capturedHasImage else {
             print("DEBUG: Both food text and image are empty after dictation/transcription, returning")
             perf.end("empty_input")
+            isLoading = false
             return
         }
-        
-        print("DEBUG: hasText: \(hasText), hasImage: \(hasImage)")
-        
+
+        print("DEBUG: hasText: \(capturedHasText), hasImage: \(capturedHasImage)")
+
         // Check app version before proceeding
         await appConfigService.fetchConfig()
         perf.mark("app_config_checked", metadata: [
@@ -324,57 +347,47 @@ class LogViewModel: ObservableObject {
             print("DEBUG: App version is outdated. Current: \(AppConfigService.currentMarketingVersion), Required: \(appConfigService.appConfig.minimumAppVersion)")
             showUpdateRequiredAlert = true
             perf.end("blocked_update_required")
+            isLoading = false
             return
         }
-        
+
         // Check if OpenAI service is available
         guard let openAIService = openAIService else {
             print("DEBUG: OpenAI service is nil, error: \(openAIServiceError?.errorDescription ?? "unknown")")
             errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
             perf.end("openai_service_unavailable")
+            isLoading = false
             return
         }
-        
+
         print("DEBUG: OpenAI service is available, proceeding...")
-        isLoading = true
-        errorMessage = nil
-        latestResult = nil
-        lastLoggedMealId = nil
-        
+
         do {
             let mealTypeString = selectedMealType.rawValue
-            let originalFoodText = foodText
-            let originalHadImage = !selectedImages.isEmpty
             print("DEBUG: Calling openAIService.logMeal()...")
-            let response = try await openAIService.logMeal(foodText: foodText, mealType: mealTypeString, images: selectedImages)
+            let response = try await openAIService.logMeal(foodText: capturedFoodText, mealType: mealTypeString, images: capturedImages)
             perf.mark("ai_meal_response", metadata: [
                 "calories": response.totalCalories,
                 "itemCount": response.items.count,
             ])
             print("DEBUG: Received response from openAIService: \(response.totalCalories) calories")
-            
+
             // Save to SwiftData
             if let context = modelContext {
                 let jsonEncoder = JSONEncoder()
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
-                // #region agent log
-                if let debugLogData = try? JSONSerialization.data(withJSONObject: ["location": "LogViewModel.swift:171", "message": "Encoded MealLogResponse to JSON", "data": ["protein": response.protein as Any, "carbs": response.carbs as Any, "fat": response.fat as Any, "jsonStringLength": jsonString.count, "hasProtein": response.protein != nil], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"]), let logString = String(data: debugLogData, encoding: .utf8) {
-                    try? (logString + "\n").write(toFile: "/Users/ajohri/Documents/Antriksh Personal/LogCal/logcal/.cursor/debug.log", atomically: false, encoding: .utf8)
-                }
-                // #endregion
-                
+
                 // Determine if image was used and set appropriate foodText
-                let hadImage = !selectedImages.isEmpty
                 let displayText: String
-                if foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hadImage {
+                if capturedFoodText.isEmpty && capturedHasImage {
                     // Image only - use placeholder text
                     displayText = "Image uploaded"
                 } else {
                     // Text only or text + image
-                    displayText = foodText
+                    displayText = capturedFoodText
                 }
-                
+
                 // Create entry with selected date and current creation time
                 let entry = MealEntry(
                     id: UUID(),
@@ -384,17 +397,17 @@ class LogViewModel: ObservableObject {
                     mealType: response.mealType,
                     totalCalories: response.totalCalories,
                     rawResponseJson: jsonString,
-                    hasImage: hadImage
+                    hasImage: capturedHasImage
                 )
-                
+
                 context.insert(entry)
                 try context.save()
-                
+
                 // Save image locally if present
-                if hadImage, let firstImage = selectedImages.first {
+                if capturedHasImage, let firstImage = capturedImages.first {
                     ImageUtils.saveMealImageLocally(image: firstImage, forMealId: entry.id)
                 }
-                
+
                 WidgetCenter.shared.reloadAllTimelines()
                 lastLoggedMealId = entry.id
                 perf.mark("swiftdata_saved", metadata: [
@@ -402,57 +415,56 @@ class LogViewModel: ObservableObject {
                     "jsonChars": jsonString.count,
                 ])
                 print("DEBUG: [LogViewModel] lastLoggedMealId=\(entry.id)")
-                
+
                 // Sync to Firestore if user is signed in
                 Task { @MainActor in
                     await cloudSyncService.syncMealToCloud(entry)
                 }
-                
+
                 // Reschedule notifications after meal is logged (smart logic will skip if needed)
                 Task { @MainActor in
                     await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
                 }
             }
-            
+
             latestResult = response
             perf.mark("result_published")
-            
+
             // Track analytics - successful meal log (check image before clearing)
-            let hadImage = !selectedImages.isEmpty
             AnalyticsService.trackMealLogged(
                 mealType: response.mealType,
                 totalCalories: response.totalCalories,
                 itemCount: response.items.count,
-                hasImage: hadImage
+                hasImage: capturedHasImage
             )
-            
+
             // Increment meal log count for rating service
             RatingService.shared.incrementMealLogCount()
-            
+
             // Check and show rating dialog if appropriate (with delay to let success animation play)
             if RatingService.shared.shouldShowRatingDialog() {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     RatingService.shared.requestRating()
                 }
             }
-            
+
             foodText = "" // Clear input after successful log
             selectedImages = [] // Clear images after successful log
             isMealTypeManuallySet = false // Reset manual selection
             perf.end("success", metadata: [
-                "hadImage": hadImage,
+                "hadImage": capturedHasImage,
                 "mealType": response.mealType,
             ])
-            
+
         } catch {
             print("DEBUG: Error caught in logMeal(): \(error)")
             print("DEBUG: Error type: \(type(of: error))")
             print("DEBUG: Error localizedDescription: \(error.localizedDescription)")
-            
+
             // Track analytics - failed meal log
             let errorType = (error as? AppError)?.errorDescription ?? "unknown"
             AnalyticsService.trackMealLogFailed(errorType: errorType)
-            
+
             if let appError = error as? AppError {
                 print("DEBUG: It's an AppError: \(appError.errorDescription ?? "no description")")
                 errorMessage = appError.errorDescription
@@ -464,7 +476,7 @@ class LogViewModel: ObservableObject {
                 "error": errorMessage ?? error.localizedDescription,
             ])
         }
-        
+
         isLoading = false
         print("DEBUG: logMeal() completed, isLoading = false")
     }

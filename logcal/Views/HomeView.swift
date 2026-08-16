@@ -658,6 +658,8 @@ struct HomeView: View {
                                 .clipShape(Circle())
                                 .shadow(color: Color.orange.opacity(0.3), radius: 4, x: 0, y: 2)
                         }
+                        .disabled(!viewModel.canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech)
+                        .opacity((!viewModel.canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech) ? 0.5 : 1.0)
                     } else {
                         // --- Normal mode ---
                         HStack(spacing: 10) {

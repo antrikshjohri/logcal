@@ -501,6 +501,10 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logMeal() {
         val state = _uiState.value
+        if (state.isLoading) {
+            DebugLogger.d("DEBUG: [LogViewModel] logMeal() already in progress, ignoring duplicate tap")
+            return
+        }
         if (!state.isAuthReady) {
             _uiState.value = state.copy(errorMessage = "Not signed in yet.")
             return

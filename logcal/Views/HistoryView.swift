@@ -469,12 +469,23 @@ struct MealRowView: View {
         default: return "leaf.fill"
         }
     }
+
+    private var displayTitle: String {
+        let trimmed = meal.foodText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            return trimmed
+        }
+        if let firstItem = meal.items.first?.name, !firstItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return firstItem
+        }
+        return "\(meal.mealType.capitalized) Meal"
+    }
     
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center, spacing: 6) {
-                    Text(meal.foodText)
+                    Text(displayTitle)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                         .lineLimit(1)
@@ -489,7 +500,7 @@ struct MealRowView: View {
                     }
                 }
                 
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     // Meal Type Badge
                     HStack(spacing: 3) {
                         Image(systemName: mealTypeIcon(for: meal.mealType))
@@ -506,7 +517,7 @@ struct MealRowView: View {
                     
                     // Micro macros
                     if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Text("P: \(Int(protein))g")
                                 .foregroundColor(Theme.proteinColor)
                             Text("·")
@@ -525,16 +536,20 @@ struct MealRowView: View {
                             }
                         }
                         .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .fixedSize(horizontal: true, vertical: false)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     }
                 }
             }
             
-            Spacer()
+            Spacer(minLength: 8)
             
             Text("\(Int(meal.totalCalories)) cal")
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(Theme.primaryGreen)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
         }
         .padding(.vertical, 10)
     }

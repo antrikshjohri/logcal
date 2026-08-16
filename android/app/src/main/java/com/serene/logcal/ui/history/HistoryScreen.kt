@@ -757,8 +757,13 @@ private fun HistoryMealRow(
                         )
                     }
                 }
+                val displayTitle = meal.foodText.trim().ifBlank {
+                    meal.response.items.firstOrNull()?.name?.trim()?.ifBlank { null }
+                        ?: "${displayLabel} Meal"
+                }
+
                 Text(
-                    text = meal.foodText,
+                    text = displayTitle,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -804,6 +809,7 @@ private fun HistoryMealRow(
             text = "${NumberUtils.formatNumber(meal.totalCalories.toInt())} cal",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
             color = colors.primaryGreen
         )
     }
