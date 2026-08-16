@@ -19,6 +19,7 @@ struct PendingMealLog: Identifiable, Equatable {
     let mealType: MealType
     let selectedDate: Date
     let createdAt: Date
+    var isPreviewOnly: Bool = false
     var status: PendingLogStatus
     
     var displayText: String {

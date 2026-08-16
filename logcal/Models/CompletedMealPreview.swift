@@ -13,12 +13,14 @@ struct CompletedMealPreview: Identifiable, Equatable {
     var date: Date
     var isRefining: Bool = false
     var refineError: String? = nil
+    var isPreviewOnly: Bool = false
 
     static func == (lhs: CompletedMealPreview, rhs: CompletedMealPreview) -> Bool {
         lhs.id == rhs.id &&
         lhs.response.totalCalories == rhs.response.totalCalories &&
         lhs.isRefining == rhs.isRefining &&
         lhs.refineError == rhs.refineError &&
-        lhs.foodText == rhs.foodText
+        lhs.foodText == rhs.foodText &&
+        lhs.isPreviewOnly == rhs.isPreviewOnly
     }
 }

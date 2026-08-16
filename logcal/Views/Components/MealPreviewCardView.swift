@@ -8,6 +8,7 @@ import SwiftUI
 struct MealPreviewCardView: View {
     let preview: CompletedMealPreview
     let isFavorite: Bool
+    var onLogMeal: (() -> Void)? = nil
     let onDismiss: () -> Void
     let onBookmark: () -> Void
     let onQuickEdit: (String) -> Void
@@ -22,29 +23,49 @@ struct MealPreviewCardView: View {
             // Header: Status, Meal Type, Bookmark, Dismiss
             HStack(alignment: .center, spacing: 0) {
                 HStack(alignment: .center, spacing: 8) {
-                    Text("Logged Successfully")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                    
-                    Text(result.mealType.capitalized)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.softAccentBackground(colorScheme: colorScheme))
-                        .foregroundColor(Theme.primaryGreen)
-                        .cornerRadius(6)
+                    if preview.isPreviewOnly {
+                        HStack(spacing: 4) {
+                            Image(systemName: "eye.fill")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Preview")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(Theme.accentBlue)
+
+                        Text("Not Logged")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Theme.accentBlue.opacity(0.12))
+                            .foregroundColor(Theme.accentBlue)
+                            .cornerRadius(6)
+                    } else {
+                        Text("Logged Successfully")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        
+                        Text(result.mealType.capitalized)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                            .foregroundColor(Theme.primaryGreen)
+                            .cornerRadius(6)
+                    }
                 }
                 
                 Spacer(minLength: 12)
                 
-                Button(action: onBookmark) {
-                    Image(systemName: isFavorite ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 18))
-                        .foregroundStyle(Theme.primaryGreen)
-                        .accessibilityLabel(isFavorite ? "Remove from favourites" : "Save meal")
+                if !preview.isPreviewOnly {
+                    Button(action: onBookmark) {
+                        Image(systemName: isFavorite ? "bookmark.fill" : "bookmark")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.primaryGreen)
+                            .accessibilityLabel(isFavorite ? "Remove from favourites" : "Save meal")
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 16)
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
@@ -197,6 +218,25 @@ struct MealPreviewCardView: View {
             }
 
             MealSourcesRow(sources: result.sources)
+
+            if preview.isPreviewOnly, let onLogMeal = onLogMeal {
+                Button(action: onLogMeal) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Log this Meal to Diary")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Theme.primaryGreen)
+                    .foregroundColor(.white)
+                    .cornerRadius(24)
+                    .shadow(color: Theme.primaryGreen.opacity(0.35), radius: 6, x: 0, y: 3)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
 
             Divider()
                 .background(Theme.cardBorder(colorScheme: colorScheme))

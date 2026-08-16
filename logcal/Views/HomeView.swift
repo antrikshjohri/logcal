@@ -258,12 +258,56 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 16) {
                 Group {
-                    Text(authViewModel.isAnonymous ? "What's on your plate?" : "What's on your plate, \(userName)?")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 4)
+                    HStack(alignment: .center) {
+                        Text(authViewModel.isAnonymous ? "What's on your plate?" : "What's on your plate, \(userName)?")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                viewModel.isPreviewMode.toggle()
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: viewModel.isPreviewMode ? "eye.fill" : "eye")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text("Preview")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(viewModel.isPreviewMode ? .white : Theme.mutedText(colorScheme: colorScheme))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                viewModel.isPreviewMode
+                                    ? Theme.accentBlue
+                                    : Theme.cardBackground(colorScheme: colorScheme)
+                            )
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        viewModel.isPreviewMode ? Color.clear : Theme.cardBorder(colorScheme: colorScheme),
+                                        lineWidth: 1
+                                    )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    
+                    if viewModel.isPreviewMode {
+                        previewModeBanner
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            ))
+                    }
                     
                     dateAndMealTypeRow
                     
@@ -776,12 +820,55 @@ struct HomeView: View {
         }
     }
 
+    private var previewModeBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Theme.accentBlue)
+            
+            Text("Preview mode active — estimates calories without logging.")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            
+            Spacer()
+            
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    viewModel.isPreviewMode = false
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    .padding(5)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Theme.accentBlue.opacity(0.12))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Theme.accentBlue.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal, 20)
+    }
+
     private var logMealButton: some View {
         let canSubmitMeal = viewModel.canSubmitMeal
+        let isPreview = viewModel.isPreviewMode
+        let primaryColor = isPreview ? Theme.accentBlue : Theme.primaryGreen
+        let buttonTitle = isPreview ? "Preview Meal" : "Log Meal"
+
         return Button(action: {
             isTextFieldFocused = false
             Task {
-                print("DEBUG: Log Meal button tapped")
+                print("DEBUG: Log Meal button tapped isPreview=\(isPreview)")
                 await viewModel.logMeal()
                 print("DEBUG: Log Meal button action completed")
             }
@@ -791,8 +878,14 @@ struct HomeView: View {
                     LottieView(animationName: "LoadingAnimation", loopMode: LottieLoopMode.loop, contentMode: .scaleAspectFit)
                         .frame(height: 24)
                 } else {
-                    Text("Log Meal")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    HStack(spacing: 6) {
+                        if isPreview {
+                            Image(systemName: "eye.fill")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        Text(buttonTitle)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -801,19 +894,19 @@ struct HomeView: View {
                 viewModel.isLoading
                     ? Color.gray.opacity(0.3)
                     : (canSubmitMeal
-                        ? Theme.primaryGreen
-                        : Theme.primaryGreen.opacity(0.12))
+                        ? primaryColor
+                        : primaryColor.opacity(0.12))
             )
-            .foregroundColor(canSubmitMeal && !viewModel.isLoading ? .white : Theme.primaryGreen.opacity(0.4))
+            .foregroundColor(canSubmitMeal && !viewModel.isLoading ? .white : primaryColor.opacity(0.4))
             .cornerRadius(25)
             .overlay(
                 RoundedRectangle(cornerRadius: 25)
                     .stroke(
-                        canSubmitMeal || viewModel.isLoading ? Color.clear : Theme.primaryGreen.opacity(0.2),
+                        canSubmitMeal || viewModel.isLoading ? Color.clear : primaryColor.opacity(0.2),
                         lineWidth: 1
                     )
             )
-            .shadow(color: canSubmitMeal && !viewModel.isLoading ? Theme.primaryGreen.opacity(0.3) : Color.clear, radius: 6, x: 0, y: 3)
+            .shadow(color: canSubmitMeal && !viewModel.isLoading ? primaryColor.opacity(0.3) : Color.clear, radius: 6, x: 0, y: 3)
         }
         .disabled(!canSubmitMeal || viewModel.isLoading || viewModel.isTranscribingSpeech)
         .padding(.horizontal)
@@ -829,6 +922,9 @@ struct HomeView: View {
                     MealPreviewCardView(
                         preview: preview,
                         isFavorite: isFavorite,
+                        onLogMeal: {
+                            viewModel.logPreviewMeal(previewId: preview.id)
+                        },
                         onDismiss: {
                             viewModel.dismissCompletedPreview(id: preview.id)
                         },

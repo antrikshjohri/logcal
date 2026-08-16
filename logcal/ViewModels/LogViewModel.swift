@@ -36,6 +36,7 @@ class LogViewModel: ObservableObject {
     @Published var lastLoggedMealId: UUID?
     @Published var pendingLogs: [PendingMealLog] = []
     @Published var completedPreviews: [CompletedMealPreview] = []
+    @Published var isPreviewMode: Bool = false
     @Published var isListening: Bool = false
     @Published var isTranscribingSpeech: Bool = false
     @Published var speechErrorMessage: String?
@@ -341,6 +342,7 @@ class LogViewModel: ObservableObject {
             mealType: capturedMealType,
             selectedDate: capturedDate,
             createdAt: Date(),
+            isPreviewOnly: isPreviewMode,
             status: .processing
         )
 
@@ -372,7 +374,7 @@ class LogViewModel: ObservableObject {
 
     private func processPendingMeal(_ pending: PendingMealLog) async {
         var perf = PerfLogger("meal_log_queue")
-        print("DEBUG: [LogViewModel] Processing pending meal id=\(pending.id) text='\(pending.foodText)'")
+        print("DEBUG: [LogViewModel] Processing pending meal id=\(pending.id) text='\(pending.foodText)' isPreview=\(pending.isPreviewOnly)")
 
         await appConfigService.fetchConfig()
         if !appConfigService.isAppVersionValid() {
@@ -411,7 +413,7 @@ class LogViewModel: ObservableObject {
                 displayText = "\(response.mealType.capitalized) Meal"
             }
 
-            if let context = modelContext {
+            if !pending.isPreviewOnly, let context = modelContext {
                 let jsonEncoder = JSONEncoder()
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
@@ -436,8 +438,7 @@ class LogViewModel: ObservableObject {
                 }
 
                 WidgetCenter.shared.reloadAllTimelines()
-                lastLoggedMealId = entry.id
-
+                
                 Task { @MainActor in
                     await cloudSyncService.syncMealToCloud(entry)
                 }
@@ -448,14 +449,17 @@ class LogViewModel: ObservableObject {
             }
 
             latestResult = response
-            lastLoggedMealId = savedEntryId
+            if !pending.isPreviewOnly {
+                lastLoggedMealId = savedEntryId
+            }
 
             let preview = CompletedMealPreview(
                 id: savedEntryId,
                 response: response,
                 foodText: displayText,
                 mealType: pending.mealType,
-                date: pending.selectedDate
+                date: pending.selectedDate,
+                isPreviewOnly: pending.isPreviewOnly
             )
 
             withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
@@ -465,17 +469,19 @@ class LogViewModel: ObservableObject {
 
             updatePendingStatus(id: pending.id, status: .completed(response: response, entryId: savedEntryId))
 
-            AnalyticsService.trackMealLogged(
-                mealType: response.mealType,
-                totalCalories: response.totalCalories,
-                itemCount: response.items.count,
-                hasImage: !pending.images.isEmpty
-            )
+            if !pending.isPreviewOnly {
+                AnalyticsService.trackMealLogged(
+                    mealType: response.mealType,
+                    totalCalories: response.totalCalories,
+                    itemCount: response.items.count,
+                    hasImage: !pending.images.isEmpty
+                )
 
-            RatingService.shared.incrementMealLogCount()
-            if RatingService.shared.shouldShowRatingDialog() {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    RatingService.shared.requestRating()
+                RatingService.shared.incrementMealLogCount()
+                if RatingService.shared.shouldShowRatingDialog() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        RatingService.shared.requestRating()
+                    }
                 }
             }
 
@@ -502,6 +508,57 @@ class LogViewModel: ObservableObject {
                 desc = error.localizedDescription
             }
             updatePendingStatus(id: pending.id, status: .failed(error: desc))
+        }
+    }
+
+    func logPreviewMeal(previewId: UUID) {
+        guard let index = completedPreviews.firstIndex(where: { $0.id == previewId }) else { return }
+        let preview = completedPreviews[index]
+        guard let context = modelContext else {
+            errorMessage = "Could not access local database."
+            return
+        }
+
+        let response = preview.response
+        let rawJson = (try? JSONEncoder().encode(response)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let entry = MealEntry(
+            id: preview.id,
+            timestamp: preview.date,
+            createdAt: Date(),
+            foodText: preview.foodText,
+            mealType: preview.mealType.rawValue,
+            totalCalories: response.totalCalories,
+            rawResponseJson: rawJson,
+            hasImage: false
+        )
+
+        context.insert(entry)
+        do {
+            try context.save()
+            WidgetCenter.shared.reloadAllTimelines()
+            lastLoggedMealId = entry.id
+            latestResult = response
+
+            withAnimation(.easeInOut(duration: 0.3)) {
+                completedPreviews[index].isPreviewOnly = false
+            }
+
+            Task { @MainActor in
+                await cloudSyncService.syncMealToCloud(entry)
+            }
+            Task { @MainActor in
+                await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
+            }
+            AnalyticsService.trackMealLogged(
+                mealType: entry.mealType,
+                totalCalories: entry.totalCalories,
+                itemCount: response.items.count,
+                hasImage: false
+            )
+            RatingService.shared.incrementMealLogCount()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        } catch {
+            errorMessage = AppError.unknown(error).errorDescription
         }
     }
 
@@ -538,14 +595,40 @@ class LogViewModel: ObservableObject {
             return
         }
 
-        guard let context = modelContext,
-              let entry = try? context.fetch(FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == id })).first else {
-            errorMessage = "Meal not found."
+        let isPreviewOnly = completedPreviews[index].isPreviewOnly
+        completedPreviews[index].isRefining = true
+        completedPreviews[index].refineError = nil
+
+        if isPreviewOnly {
+            do {
+                let refined = try await openAIService.refineMeal(
+                    foodText: completedPreviews[index].foodText,
+                    mealType: completedPreviews[index].mealType.rawValue,
+                    previous: completedPreviews[index].response,
+                    correctionPrompt: trimmed
+                )
+                completedPreviews[index].response = refined
+                completedPreviews[index].isRefining = false
+                if lastLoggedMealId == id {
+                    latestResult = refined
+                }
+            } catch {
+                completedPreviews[index].isRefining = false
+                if let appError = error as? AppError {
+                    completedPreviews[index].refineError = appError.errorDescription
+                } else {
+                    completedPreviews[index].refineError = error.localizedDescription
+                }
+            }
             return
         }
 
-        completedPreviews[index].isRefining = true
-        completedPreviews[index].refineError = nil
+        guard let context = modelContext,
+              let entry = try? context.fetch(FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == id })).first else {
+            errorMessage = "Meal not found."
+            completedPreviews[index].isRefining = false
+            return
+        }
 
         do {
             let refined = try await MealQuickRefine.apply(
