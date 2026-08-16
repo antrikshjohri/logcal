@@ -132,7 +132,7 @@ struct LogShortcutIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         print("DEBUG: [LogShortcutIntent] perform called. action=\(action ?? "nil"), mealType=\(mealType ?? "nil")")
         
-        var urlString = "logcal://log"
+        let urlString = "logcal://log"
         var queryItems: [URLQueryItem] = []
         if let action {
             queryItems.append(URLQueryItem(name: "action", value: action))
@@ -151,10 +151,10 @@ struct LogShortcutIntent: AppIntent {
         
         // Open URL dynamically to avoid extension target compilation warnings/errors
         if let applicationClass = NSClassFromString("UIApplication") as? NSObject.Type {
-            let sharedSelector = Selector(("sharedApplication"))
+            let sharedSelector = NSSelectorFromString("sharedApplication")
             if applicationClass.responds(to: sharedSelector) {
                 let sharedApplication = applicationClass.perform(sharedSelector).takeUnretainedValue()
-                let openSelector = Selector(("openURL:options:completionHandler:"))
+                let openSelector = NSSelectorFromString("openURL:options:completionHandler:")
                 if sharedApplication.responds(to: openSelector) {
                     print("DEBUG: [LogShortcutIntent] calling UIApplication openURL:options:completionHandler: with: \(destinationURL.absoluteString)")
                     

@@ -43,24 +43,24 @@ final class SavedMeal: Identifiable {
         self.displayOrder = displayOrder
     }
 
-    nonisolated var response: MealLogResponse? {
+    var response: MealLogResponse? {
         guard let data = rawResponseJson.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(MealLogResponse.self, from: data)
     }
 
-    nonisolated var protein: Double? {
+    var protein: Double? {
         response?.resolvedMealMacrosForDisplay()?.protein
     }
 
-    nonisolated var carbs: Double? {
+    var carbs: Double? {
         response?.resolvedMealMacrosForDisplay()?.carbs
     }
 
-    nonisolated var fat: Double? {
+    var fat: Double? {
         response?.resolvedMealMacrosForDisplay()?.fat
     }
 
-    nonisolated var fiber: Double? {
+    var fiber: Double? {
         response?.resolvedMealMacrosForDisplay()?.fiber
     }
 }

@@ -55,28 +55,26 @@ final class MealEntry: Identifiable {
         hasImage ?? false
     }
     
-    nonisolated var response: MealLogResponse? {
+    var response: MealLogResponse? {
         guard let data = rawResponseJson.data(using: .utf8) else { return nil }
-        // Decode in nonisolated context
-        // Use a nonisolated decoder to avoid actor isolation issues
         let decoder = JSONDecoder()
         return try? decoder.decode(MealLogResponse.self, from: data)
     }
     
     // Macros: prefer sum of line items when every item has P/C/F so totals match the breakdown (same as post-log preview).
-    nonisolated var protein: Double? {
+    var protein: Double? {
         response?.resolvedMealMacrosForDisplay()?.protein
     }
     
-    nonisolated var carbs: Double? {
+    var carbs: Double? {
         response?.resolvedMealMacrosForDisplay()?.carbs
     }
     
-    nonisolated var fat: Double? {
+    var fat: Double? {
         response?.resolvedMealMacrosForDisplay()?.fat
     }
 
-    nonisolated var fiber: Double? {
+    var fiber: Double? {
         response?.resolvedMealMacrosForDisplay()?.fiber
     }
 }

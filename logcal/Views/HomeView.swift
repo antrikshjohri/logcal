@@ -293,6 +293,21 @@ struct HomeView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.backgroundColor(colorScheme: colorScheme))
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 25, coordinateSpace: .local)
+                .onEnded { value in
+                    guard !isTextFieldFocused else { return }
+                    let horizontal = value.translation.width
+                    let vertical = value.translation.height
+                    if abs(horizontal) > 40 && abs(horizontal) > abs(vertical) * 1.5 {
+                        if horizontal > 0 {
+                            changeDate(by: -1)
+                        } else {
+                            changeDate(by: 1)
+                        }
+                    }
+                }
+        )
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if isTextFieldFocused {
                 logMealButton
@@ -311,6 +326,13 @@ struct HomeView: View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
         .dismissDropdownOnScroll(show: $showMealTypeDropdown)
+    }
+
+    private func changeDate(by days: Int) {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: days, to: viewModel.selectedDate) ?? viewModel.selectedDate
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private var dateAndMealTypeRow: some View {
@@ -346,7 +368,7 @@ struct HomeView: View {
                 HStack(spacing: 0) {
                     // Left arrow - previous day
                     Button(action: {
-                        viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: viewModel.selectedDate) ?? viewModel.selectedDate
+                        changeDate(by: -1)
                     }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 12, weight: .semibold))
@@ -375,7 +397,7 @@ struct HomeView: View {
                     
                     // Right arrow - next day
                     Button(action: {
-                        viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: viewModel.selectedDate) ?? viewModel.selectedDate
+                        changeDate(by: 1)
                     }) {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
@@ -390,6 +412,17 @@ struct HomeView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                )
+                .highPriorityGesture(
+                    DragGesture(minimumDistance: 15, coordinateSpace: .local)
+                        .onEnded { value in
+                            let threshold: CGFloat = 30
+                            if value.translation.width > threshold {
+                                changeDate(by: -1)
+                            } else if value.translation.width < -threshold {
+                                changeDate(by: 1)
+                            }
+                        }
                 )
             }
             .frame(maxWidth: .infinity)
