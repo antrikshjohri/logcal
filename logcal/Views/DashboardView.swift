@@ -544,6 +544,23 @@ struct DashboardView: View {
                 }
                 .padding(.bottom, Constants.Spacing.extraLarge)
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 25, coordinateSpace: .local)
+                    .onEnded { value in
+                        let horizontal = value.translation.width
+                        let vertical = value.translation.height
+                        if abs(horizontal) > 40 && abs(horizontal) > abs(vertical) * 1.5 {
+                            if horizontal > 0 {
+                                changeDate(by: -1)
+                            } else {
+                                let isToday = Calendar.current.isDateInToday(selectedDate)
+                                if !isToday {
+                                    changeDate(by: 1)
+                                }
+                            }
+                        }
+                    }
+            )
             .navigationTitle("")
             .navigationBarHidden(true)
             .background(Theme.backgroundColor(colorScheme: colorScheme))

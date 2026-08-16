@@ -293,21 +293,6 @@ struct HomeView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.backgroundColor(colorScheme: colorScheme))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 25, coordinateSpace: .local)
-                .onEnded { value in
-                    guard !isTextFieldFocused else { return }
-                    let horizontal = value.translation.width
-                    let vertical = value.translation.height
-                    if abs(horizontal) > 40 && abs(horizontal) > abs(vertical) * 1.5 {
-                        if horizontal > 0 {
-                            changeDate(by: -1)
-                        } else {
-                            changeDate(by: 1)
-                        }
-                    }
-                }
-        )
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if isTextFieldFocused {
                 logMealButton
