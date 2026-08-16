@@ -475,7 +475,7 @@ struct MealRowView: View {
         if !trimmed.isEmpty {
             return trimmed
         }
-        if let firstItem = meal.items.first?.name, !firstItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if let firstItem = meal.response?.items.first?.name, !firstItem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return firstItem
         }
         return "\(meal.mealType.capitalized) Meal"

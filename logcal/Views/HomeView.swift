@@ -279,6 +279,8 @@ struct HomeView: View {
                             .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
                     
+                    PendingMealsTrayView(viewModel: viewModel)
+                    
                     resultCardSection
                     
                     feedbackLink
@@ -801,269 +803,44 @@ struct HomeView: View {
 
     @ViewBuilder
     private var resultCardSection: some View {
-        if let result = viewModel.latestResult {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 0) {
-                    HStack(alignment: .center, spacing: 8) {
-                        Text("Logged Successfully")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                        
-                        Text(result.mealType.capitalized)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Theme.softAccentBackground(colorScheme: colorScheme))
-                            .foregroundColor(Theme.primaryGreen)
-                            .cornerRadius(6)
-                    }
+        if !viewModel.completedPreviews.isEmpty {
+            VStack(spacing: 16) {
+                ForEach(viewModel.completedPreviews) { preview in
+                    let isFavorite = savedMeals.contains { $0.sourceMealId == preview.id }
                     
-                    Spacer(minLength: 12)
-                    
-                    Button(action: {
-                        if let existingFavorite = linkedFavoriteForLatestMeal {
-                            favoritePendingDeletion = existingFavorite
-                        } else {
-                            if let savedMeal = viewModel.saveLatestMealAsFavorite() {
-                                renameText = savedMeal.title
-                                mealBeingSavedAndRenamed = savedMeal
-                                
-                                toastManager.show(ToastMessage(
-                                    title: "Saved",
-                                    message: "Meal added to favourites.",
-                                    type: .success
-                                ))
+                    MealPreviewCardView(
+                        preview: preview,
+                        isFavorite: isFavorite,
+                        onDismiss: {
+                            viewModel.dismissCompletedPreview(id: preview.id)
+                        },
+                        onBookmark: {
+                            if let existing = savedMeals.first(where: { $0.sourceMealId == preview.id }) {
+                                favoritePendingDeletion = existing
+                            } else {
+                                if let savedMeal = viewModel.saveCompletedMealAsFavorite(previewId: preview.id) {
+                                    renameText = savedMeal.title
+                                    mealBeingSavedAndRenamed = savedMeal
+                                    
+                                    toastManager.show(ToastMessage(
+                                        title: "Saved",
+                                        message: "Meal added to favourites.",
+                                        type: .success
+                                    ))
+                                }
+                            }
+                        },
+                        onQuickEdit: { prompt in
+                            Task {
+                                await viewModel.quickRefineCompletedPreview(id: preview.id, correctionPrompt: prompt)
                             }
                         }
-                    }) {
-                        Image(systemName: linkedFavoriteForLatestMeal != nil ? "bookmark.fill" : "bookmark")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Theme.primaryGreen)
-                            .accessibilityLabel(linkedFavoriteForLatestMeal != nil ? "Remove from favourites" : "Save meal")
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 16)
-
-                    Button(action: {
-                        print("DEBUG: [HomeView] User dismissed meal preview (close)")
-                        mealPreviewAutoDismissWork?.cancel()
-                        mealPreviewAutoDismissWork = nil
-                        quickEditPrompt = ""
-                        viewModel.errorMessage = nil
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            viewModel.latestResult = nil
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(.secondary)
-                            .accessibilityLabel("Dismiss meal summary")
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                if authViewModel.isAnonymous {
-                    HStack(alignment: .center, spacing: 10) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(Theme.warningAmber)
-                            .font(.system(size: 16))
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Guest Session")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                            Text("Sign in to back up your meals to the cloud.")
-                                .font(.system(size: 10, design: .rounded))
-                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            showLinkSheet = true
-                        }) {
-                            Text("Sign In")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Theme.primaryGreen)
-                                .cornerRadius(6)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(10)
-                    .background(Theme.warningAmber.opacity(0.08))
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Theme.warningAmber.opacity(0.2), lineWidth: 1)
                     )
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                        removal: .opacity.combined(with: .move(edge: .leading))
+                    ))
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(Int(result.totalCalories)) cal")
-                        .font(.system(size: 32, weight: .black, design: .rounded))
-                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                }
-                
-                // Macros Row
-                if let macros = result.resolvedMealMacrosForDisplay() {
-                    let hasThreeDigits = macros.protein >= 100 || macros.carbs >= 100 || macros.fat >= 100 || (macros.fiber ?? 0) >= 100
-                    let fontSize: CGFloat = hasThreeDigits ? 9.5 : 10.5
-                    let horizontalPadding: CGFloat = hasThreeDigits ? 6.0 : 8.0
-                    let verticalPadding: CGFloat = hasThreeDigits ? 5.0 : 6.0
-                    let dotSize: CGFloat = hasThreeDigits ? 5.0 : 6.0
-                    
-                    HStack(spacing: 6) {
-                        HStack(spacing: 3) {
-                            Circle()
-                                .fill(Theme.proteinColor)
-                                .frame(width: dotSize, height: dotSize)
-                            Text("\(Int(macros.protein))g Protein")
-                                .font(.system(size: fontSize, weight: .bold, design: .rounded))
-                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                .lineLimit(1)
-                                .allowsTightening(true)
-                                .minimumScaleFactor(0.5)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.vertical, verticalPadding)
-                        .background(Theme.proteinColor.opacity(0.12))
-                        .cornerRadius(12)
-                        
-                        HStack(spacing: 3) {
-                            Circle()
-                                .fill(Theme.carbsColor)
-                                .frame(width: dotSize, height: dotSize)
-                            Text("\(Int(macros.carbs))g Carbs")
-                                .font(.system(size: fontSize, weight: .bold, design: .rounded))
-                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                .lineLimit(1)
-                                .allowsTightening(true)
-                                .minimumScaleFactor(0.5)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.vertical, verticalPadding)
-                        .background(Theme.carbsColor.opacity(0.12))
-                        .cornerRadius(12)
-                        
-                        HStack(spacing: 3) {
-                            Circle()
-                                .fill(Theme.fatColor)
-                                .frame(width: dotSize, height: dotSize)
-                            Text("\(Int(macros.fat))g Fat")
-                                .font(.system(size: fontSize, weight: .bold, design: .rounded))
-                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                .lineLimit(1)
-                                .allowsTightening(true)
-                                .minimumScaleFactor(0.5)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.vertical, verticalPadding)
-                        .background(Theme.fatColor.opacity(0.12))
-                        .cornerRadius(12)
-                        
-                        if let fiber = macros.fiber {
-                            HStack(spacing: 3) {
-                                Circle()
-                                    .fill(Theme.fiberColor)
-                                    .frame(width: dotSize, height: dotSize)
-                                Text("\(Int(fiber))g Fiber")
-                                    .font(.system(size: fontSize, weight: .bold, design: .rounded))
-                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                    .lineLimit(1)
-                                    .allowsTightening(true)
-                                    .minimumScaleFactor(0.5)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal, horizontalPadding)
-                            .padding(.vertical, verticalPadding)
-                            .background(Theme.fiberColor.opacity(0.12))
-                            .cornerRadius(12)
-                        }
-                    }
-                    .padding(.top, 4)
-                }
-                
-                Divider()
-                    .background(Theme.cardBorder(colorScheme: colorScheme))
-                
-                Text("Items Breakdown")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                
-                ForEach(Array(result.items.enumerated()), id: \.offset) { index, item in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(item.name)
-                                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                            Spacer()
-                            Text("\(Int(item.calories)) cal")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(Theme.primaryGreen)
-                        }
-                        
-                        Text("\(item.quantity)")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                        
-                        if let p = item.protein, let c = item.carbs, let f = item.fat {
-                            MacrosCaptionLine(protein: p, carbs: c, fat: f, fiber: item.fiber, font: .system(size: 11, design: .rounded))
-                                .padding(.top, 2)
-                        }
-                        
-                        if let assumptions = item.assumptions, !assumptions.isEmpty {
-                            Text("Assumptions: \(assumptions)")
-                                .font(.system(size: 11, design: .rounded))
-                                .foregroundColor(Theme.quietText(colorScheme: colorScheme))
-                                .padding(.top, 2)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                    
-                    if index < result.items.count - 1 {
-                        Divider()
-                            .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                            .padding(.horizontal, 10)
-                    }
-                }
-
-                MealSourcesRow(sources: result.sources)
-
-                Divider()
-                    .background(Theme.cardBorder(colorScheme: colorScheme))
-                
-                QuickEditMealSection(
-                    prompt: $quickEditPrompt,
-                    isLoading: viewModel.isRefiningMeal,
-                    errorMessage: viewModel.errorMessage
-                ) {
-                    Task {
-                        let text = quickEditPrompt
-                        await viewModel.quickRefineLoggedMeal(correctionPrompt: text)
-                        if viewModel.errorMessage == nil {
-                            quickEditPrompt = ""
-                        }
-                    }
-                }
-            }
-            .padding(16)
-            .background(Theme.cardBackground(colorScheme: colorScheme))
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
-            )
-            .padding(.horizontal)
-            .shadow(color: Theme.shadowColor(colorScheme: colorScheme).opacity(0.5), radius: 6, x: 0, y: 3)
-            .onAppear {
-                AnalyticsService.trackMealSummaryViewed()
             }
         }
     }

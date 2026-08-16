@@ -34,6 +34,8 @@ class LogViewModel: ObservableObject {
     @Published var latestResult: MealLogResponse?
     /// Set after a successful log so the preview quick-edit can update the same `MealEntry`.
     @Published var lastLoggedMealId: UUID?
+    @Published var pendingLogs: [PendingMealLog] = []
+    @Published var completedPreviews: [CompletedMealPreview] = []
     @Published var isListening: Bool = false
     @Published var isTranscribingSpeech: Bool = false
     @Published var speechErrorMessage: String?
@@ -188,7 +190,22 @@ class LogViewModel: ObservableObject {
             try context.save()
             WidgetCenter.shared.reloadAllTimelines()
             lastLoggedMealId = entry.id
-            latestResult = response ?? savedMeal.response
+            let effectiveResponse = response ?? savedMeal.response
+            latestResult = effectiveResponse
+
+            if let effectiveResponse {
+                let preview = CompletedMealPreview(
+                    id: entry.id,
+                    response: effectiveResponse,
+                    foodText: foodText,
+                    mealType: MealType(rawValue: savedMeal.mealType) ?? .breakfast,
+                    date: selectedDate
+                )
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    completedPreviews.removeAll { $0.id == entry.id }
+                    completedPreviews.insert(preview, at: 0)
+                }
+            }
 
             Task { @MainActor in
                 await cloudSyncService.syncMealToCloud(entry)
@@ -282,11 +299,6 @@ class LogViewModel: ObservableObject {
     }
     
     func logMeal() async {
-        guard !isLoading else {
-            print("DEBUG: logMeal() already in progress, ignoring duplicate tap")
-            return
-        }
-
         let trimmedInput = foodText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasInitialText = !trimmedInput.isEmpty
         let hasInitialImage = !selectedImages.isEmpty
@@ -297,188 +309,283 @@ class LogViewModel: ObservableObject {
             return
         }
 
-        isLoading = true
-        errorMessage = nil
-        latestResult = nil
-        lastLoggedMealId = nil
-
-        var perf = PerfLogger("meal_log")
-        print("DEBUG: logMeal() called")
-        print("DEBUG: foodText: '\(foodText)'")
-        print("DEBUG: selectedMealType: \(selectedMealType.rawValue)")
-        print("DEBUG: Constants.API.useFirebase: \(Constants.API.useFirebase)")
-
         // Stop recording and wait for Whisper if a dictation is in progress
         if speechService.isListening {
             AnalyticsService.trackSpeechRecognitionStopped()
             await speechService.stopListening()
-            perf.mark("stop_listening_and_transcribe", metadata: [
-                "foodTextChars": foodText.count,
-                "speechError": speechErrorMessage ?? "none",
-            ])
         }
         await speechService.waitUntilIdle()
-        perf.mark("speech_idle", metadata: [
-            "foodTextChars": foodText.count,
-            "hadSpeechError": speechErrorMessage != nil,
-        ])
 
-        // Allow logging if either text or image is present after any in-flight dictation is merged in.
         let capturedFoodText = foodText.trimmingCharacters(in: .whitespacesAndNewlines)
         let capturedImages = selectedImages
+        let capturedMealType = selectedMealType
+        let capturedDate = selectedDate
         let capturedHasText = !capturedFoodText.isEmpty
         let capturedHasImage = !capturedImages.isEmpty
 
         guard capturedHasText || capturedHasImage else {
             print("DEBUG: Both food text and image are empty after dictation/transcription, returning")
-            perf.end("empty_input")
-            isLoading = false
             return
         }
 
-        print("DEBUG: hasText: \(capturedHasText), hasImage: \(capturedHasImage)")
+        // Reset composer instantly so user can immediately log another meal
+        foodText = ""
+        selectedImages = []
+        isMealTypeManuallySet = false
+        updateInferredMealType()
 
-        // Check app version before proceeding
+        let pending = PendingMealLog(
+            id: UUID(),
+            foodText: capturedFoodText,
+            images: capturedImages,
+            mealType: capturedMealType,
+            selectedDate: capturedDate,
+            createdAt: Date(),
+            status: .processing
+        )
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            pendingLogs.insert(pending, at: 0)
+        }
+
+        // Process in background task
+        Task {
+            await processPendingMeal(pending)
+        }
+    }
+
+    func retryPendingMeal(id: UUID) {
+        guard let index = pendingLogs.firstIndex(where: { $0.id == id }) else { return }
+        var pending = pendingLogs[index]
+        pending.status = .processing
+        pendingLogs[index] = pending
+        Task {
+            await processPendingMeal(pending)
+        }
+    }
+
+    func removePendingMeal(id: UUID) {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            pendingLogs.removeAll { $0.id == id }
+        }
+    }
+
+    private func processPendingMeal(_ pending: PendingMealLog) async {
+        var perf = PerfLogger("meal_log_queue")
+        print("DEBUG: [LogViewModel] Processing pending meal id=\(pending.id) text='\(pending.foodText)'")
+
         await appConfigService.fetchConfig()
-        perf.mark("app_config_checked", metadata: [
-            "minimumVersion": appConfigService.appConfig.minimumAppVersion,
-        ])
         if !appConfigService.isAppVersionValid() {
-            print("DEBUG: App version is outdated. Current: \(AppConfigService.currentMarketingVersion), Required: \(appConfigService.appConfig.minimumAppVersion)")
             showUpdateRequiredAlert = true
-            perf.end("blocked_update_required")
-            isLoading = false
+            updatePendingStatus(id: pending.id, status: .failed(error: "App update required"))
             return
         }
 
-        // Check if OpenAI service is available
         guard let openAIService = openAIService else {
-            print("DEBUG: OpenAI service is nil, error: \(openAIServiceError?.errorDescription ?? "unknown")")
-            errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
-            perf.end("openai_service_unavailable")
-            isLoading = false
+            let errorMsg = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription ?? "OpenAI API key not configured."
+            updatePendingStatus(id: pending.id, status: .failed(error: errorMsg))
             return
         }
-
-        print("DEBUG: OpenAI service is available, proceeding...")
 
         do {
-            let mealTypeString = selectedMealType.rawValue
-            print("DEBUG: Calling openAIService.logMeal()...")
-            let response = try await openAIService.logMeal(foodText: capturedFoodText, mealType: mealTypeString, images: capturedImages)
+            let mealTypeString = pending.mealType.rawValue
+            let response = try await openAIService.logMeal(
+                foodText: pending.foodText,
+                mealType: mealTypeString,
+                images: pending.images
+            )
             perf.mark("ai_meal_response", metadata: [
                 "calories": response.totalCalories,
                 "itemCount": response.items.count,
             ])
-            print("DEBUG: Received response from openAIService: \(response.totalCalories) calories")
 
-            // Save to SwiftData
+            var savedEntryId = pending.id
+            let trimmedText = pending.foodText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayText: String
+            if !trimmedText.isEmpty && trimmedText != "Image uploaded" {
+                displayText = trimmedText
+            } else if !response.items.isEmpty {
+                let itemNames = response.items.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                displayText = itemNames.isEmpty ? "\(response.mealType.capitalized) Meal" : itemNames.joined(separator: ", ")
+            } else {
+                displayText = "\(response.mealType.capitalized) Meal"
+            }
+
             if let context = modelContext {
                 let jsonEncoder = JSONEncoder()
                 let jsonData = try jsonEncoder.encode(response)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
 
-                // Determine if image was used and set appropriate foodText
-                let displayText: String
-                if capturedFoodText.isEmpty && capturedHasImage {
-                    // Image only - use placeholder text
-                    displayText = "Image uploaded"
-                } else {
-                    // Text only or text + image
-                    displayText = capturedFoodText
-                }
-
-                // Create entry with selected date and current creation time
                 let entry = MealEntry(
-                    id: UUID(),
-                    timestamp: selectedDate,
-                    createdAt: Date(),  // Actual creation time
+                    id: pending.id,
+                    timestamp: pending.selectedDate,
+                    createdAt: pending.createdAt,
                     foodText: displayText,
                     mealType: response.mealType,
                     totalCalories: response.totalCalories,
                     rawResponseJson: jsonString,
-                    hasImage: capturedHasImage
+                    hasImage: !pending.images.isEmpty
                 )
+                savedEntryId = entry.id
 
                 context.insert(entry)
                 try context.save()
 
-                // Save image locally if present
-                if capturedHasImage, let firstImage = capturedImages.first {
+                if !pending.images.isEmpty, let firstImage = pending.images.first {
                     ImageUtils.saveMealImageLocally(image: firstImage, forMealId: entry.id)
                 }
 
                 WidgetCenter.shared.reloadAllTimelines()
                 lastLoggedMealId = entry.id
-                perf.mark("swiftdata_saved", metadata: [
-                    "entryId": entry.id.uuidString,
-                    "jsonChars": jsonString.count,
-                ])
-                print("DEBUG: [LogViewModel] lastLoggedMealId=\(entry.id)")
 
-                // Sync to Firestore if user is signed in
                 Task { @MainActor in
                     await cloudSyncService.syncMealToCloud(entry)
                 }
 
-                // Reschedule notifications after meal is logged (smart logic will skip if needed)
                 Task { @MainActor in
                     await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
                 }
             }
 
             latestResult = response
-            perf.mark("result_published")
+            lastLoggedMealId = savedEntryId
 
-            // Track analytics - successful meal log (check image before clearing)
+            let preview = CompletedMealPreview(
+                id: savedEntryId,
+                response: response,
+                foodText: displayText,
+                mealType: pending.mealType,
+                date: pending.selectedDate
+            )
+
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                completedPreviews.removeAll { $0.id == savedEntryId }
+                completedPreviews.insert(preview, at: 0)
+            }
+
+            updatePendingStatus(id: pending.id, status: .completed(response: response, entryId: savedEntryId))
+
             AnalyticsService.trackMealLogged(
                 mealType: response.mealType,
                 totalCalories: response.totalCalories,
                 itemCount: response.items.count,
-                hasImage: capturedHasImage
+                hasImage: !pending.images.isEmpty
             )
 
-            // Increment meal log count for rating service
             RatingService.shared.incrementMealLogCount()
-
-            // Check and show rating dialog if appropriate (with delay to let success animation play)
             if RatingService.shared.shouldShowRatingDialog() {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     RatingService.shared.requestRating()
                 }
             }
 
-            foodText = "" // Clear input after successful log
-            selectedImages = [] // Clear images after successful log
-            isMealTypeManuallySet = false // Reset manual selection
-            perf.end("success", metadata: [
-                "hadImage": capturedHasImage,
-                "mealType": response.mealType,
-            ])
+            // Auto-dismiss in-progress tray row once completed
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    if let idx = self.pendingLogs.firstIndex(where: { $0.id == pending.id }),
+                       case .completed = self.pendingLogs[idx].status {
+                        self.pendingLogs.remove(at: idx)
+                    }
+                }
+            }
 
         } catch {
-            print("DEBUG: Error caught in logMeal(): \(error)")
-            print("DEBUG: Error type: \(type(of: error))")
-            print("DEBUG: Error localizedDescription: \(error.localizedDescription)")
-
-            // Track analytics - failed meal log
+            print("DEBUG: [LogViewModel] processPendingMeal error: \(error)")
             let errorType = (error as? AppError)?.errorDescription ?? "unknown"
             AnalyticsService.trackMealLogFailed(errorType: errorType)
 
+            let desc: String
             if let appError = error as? AppError {
-                print("DEBUG: It's an AppError: \(appError.errorDescription ?? "no description")")
-                errorMessage = appError.errorDescription
+                desc = appError.errorDescription ?? "Failed to log meal."
             } else {
-                print("DEBUG: It's an unknown error, wrapping in AppError")
-                errorMessage = AppError.unknown(error).errorDescription
+                desc = error.localizedDescription
             }
-            perf.end("failure", metadata: [
-                "error": errorMessage ?? error.localizedDescription,
-            ])
+            updatePendingStatus(id: pending.id, status: .failed(error: desc))
+        }
+    }
+
+    func dismissCompletedPreview(id: UUID) {
+        withAnimation(.easeOut(duration: 0.3)) {
+            completedPreviews.removeAll { $0.id == id }
+            if completedPreviews.isEmpty {
+                latestResult = nil
+                lastLoggedMealId = nil
+            } else {
+                latestResult = completedPreviews.first?.response
+                lastLoggedMealId = completedPreviews.first?.id
+            }
+        }
+    }
+
+    func quickRefineCompletedPreview(id: UUID, correctionPrompt: String) async {
+        guard let index = completedPreviews.firstIndex(where: { $0.id == id }) else {
+            await quickRefineLoggedMeal(correctionPrompt: correctionPrompt)
+            return
         }
 
-        isLoading = false
-        print("DEBUG: logMeal() completed, isLoading = false")
+        let trimmed = correctionPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        await appConfigService.fetchConfig()
+        if !appConfigService.isAppVersionValid() {
+            showUpdateRequiredAlert = true
+            return
+        }
+
+        guard let openAIService = openAIService else {
+            errorMessage = openAIServiceError?.errorDescription ?? AppError.apiKeyNotFound.errorDescription
+            return
+        }
+
+        guard let context = modelContext,
+              let entry = try? context.fetch(FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == id })).first else {
+            errorMessage = "Meal not found."
+            return
+        }
+
+        completedPreviews[index].isRefining = true
+        completedPreviews[index].refineError = nil
+
+        do {
+            let refined = try await MealQuickRefine.apply(
+                entry: entry,
+                correctionPrompt: trimmed,
+                modelContext: context,
+                openAIService: openAIService,
+                cloudSyncService: cloudSyncService
+            )
+
+            completedPreviews[index].response = refined
+            completedPreviews[index].isRefining = false
+            if lastLoggedMealId == id {
+                latestResult = refined
+            }
+        } catch {
+            completedPreviews[index].isRefining = false
+            if let appError = error as? AppError {
+                completedPreviews[index].refineError = appError.errorDescription
+            } else {
+                completedPreviews[index].refineError = error.localizedDescription
+            }
+        }
+    }
+
+    func saveCompletedMealAsFavorite(previewId: UUID) -> SavedMeal? {
+        guard let context = modelContext,
+              let entry = try? context.fetch(FetchDescriptor<MealEntry>(predicate: #Predicate<MealEntry> { $0.id == previewId })).first,
+              let preview = completedPreviews.first(where: { $0.id == previewId }) else {
+            return saveLatestMealAsFavorite()
+        }
+
+        return saveMealEntryAsFavorite(entry, response: preview.response, context: context)
+    }
+
+    private func updatePendingStatus(id: UUID, status: PendingLogStatus) {
+        guard let index = pendingLogs.firstIndex(where: { $0.id == id }) else { return }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            pendingLogs[index].status = status
+        }
     }
     
     func toggleSpeechRecognition() {
