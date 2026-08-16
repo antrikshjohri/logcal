@@ -382,12 +382,17 @@ struct MealEditView: View {
                                     showQuickEdit.toggle()
                                 }
                             } label: {
-                                Image(systemName: showQuickEdit ? "xmark" : "pencil")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(Theme.primaryGreen)
-                                    .frame(width: 26, height: 26)
-                                    .background(Theme.softAccentBackground(colorScheme: colorScheme))
-                                    .clipShape(Circle())
+                                HStack(spacing: 5) {
+                                    Image(systemName: showQuickEdit ? "xmark" : "pencil")
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text(showQuickEdit ? "Close" : "Edit Description")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundColor(Theme.primaryGreen)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                .clipShape(Capsule())
                             }
                         }
                         

@@ -266,12 +266,15 @@ struct HomeView: View {
                         .padding(.top, 4)
                     
                     dateAndMealTypeRow
+                        .zIndex(100)
                     
                     if !savedMeals.isEmpty {
                         savedMealsSection
+                            .zIndex(10)
                     }
                     
                     foodTextInputCard
+                        .zIndex(1)
                     
                     // Show inline when keyboard is hidden; hidden when keyboard is up (shown in safeAreaInset instead)
                     if !isTextFieldFocused {
@@ -544,10 +547,10 @@ struct HomeView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .zIndex(showMealTypeDropdown ? 10 : 0)
+            .zIndex(10)
         }
         .padding(.horizontal)
-        .zIndex(showMealTypeDropdown ? 100 : 0)
+        .zIndex(100)
         .sheet(isPresented: $viewModel.showDatePicker) {
             LogDatePickerSheet(
                 selectedDate: $viewModel.selectedDate,

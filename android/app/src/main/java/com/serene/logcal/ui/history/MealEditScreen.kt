@@ -579,19 +579,26 @@ fun MealEditScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("What you ate", fontWeight = FontWeight.SemiBold, color = colors.mutedText, style = MaterialTheme.typography.bodyMedium)
-                            Box(
+                            Row(
                                 modifier = Modifier
-                                    .size(26.dp)
                                     .clip(CircleShape)
                                     .background(colors.softAccentBackground)
-                                    .clickable { showQuickEdit = !showQuickEdit },
-                                contentAlignment = Alignment.Center
+                                    .clickable { showQuickEdit = !showQuickEdit }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
                                     imageVector = if (showQuickEdit) Icons.Default.Close else Icons.Default.Edit,
-                                    contentDescription = "Quick edit",
+                                    contentDescription = "Edit description",
                                     tint = colors.primaryGreen,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = if (showQuickEdit) "Close" else "Edit Description",
+                                    color = colors.primaryGreen,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
