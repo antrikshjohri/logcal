@@ -258,56 +258,12 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 16) {
                 Group {
-                    HStack(alignment: .center) {
-                        Text(authViewModel.isAnonymous ? "What's on your plate?" : "What's on your plate, \(userName)?")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                viewModel.isPreviewMode.toggle()
-                            }
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: viewModel.isPreviewMode ? "eye.fill" : "eye")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text("Preview")
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            }
-                            .foregroundColor(viewModel.isPreviewMode ? .white : Theme.mutedText(colorScheme: colorScheme))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                viewModel.isPreviewMode
-                                    ? Theme.accentBlue
-                                    : Theme.cardBackground(colorScheme: colorScheme)
-                            )
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(
-                                        viewModel.isPreviewMode ? Color.clear : Theme.cardBorder(colorScheme: colorScheme),
-                                        lineWidth: 1
-                                    )
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                    
-                    if viewModel.isPreviewMode {
-                        previewModeBanner
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .move(edge: .top).combined(with: .opacity)
-                            ))
-                    }
+                    Text(authViewModel.isAnonymous ? "What's on your plate?" : "What's on your plate, \(userName)?")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
                     
                     dateAndMealTypeRow
                     
@@ -605,10 +561,33 @@ struct HomeView: View {
         let imageLimitReached = viewModel.selectedImages.count >= Constants.Images.maxMealImages
         
         return VStack(alignment: .leading, spacing: 10) {
-            Text("What did you eat?")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                .padding(.horizontal, 4)
+            HStack(alignment: .center) {
+                Text("What did you eat?")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                
+                Spacer()
+                
+                HStack(spacing: 6) {
+                    Text("Preview")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(viewModel.isPreviewMode ? Theme.accentBlue : Theme.mutedText(colorScheme: colorScheme))
+                    
+                    Toggle("", isOn: $viewModel.isPreviewMode.animation(.spring(response: 0.3, dampingFraction: 0.75)))
+                        .labelsHidden()
+                        .toggleStyle(SwitchToggleStyle(tint: Theme.accentBlue))
+                        .scaleEffect(0.75)
+                }
+            }
+            .padding(.horizontal, 4)
+            
+            if viewModel.isPreviewMode {
+                previewModeBanner
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+            }
             
             VStack(spacing: 12) {
                 ZStack(alignment: .topLeading) {
@@ -856,7 +835,6 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Theme.accentBlue.opacity(0.3), lineWidth: 1)
         )
-        .padding(.horizontal, 20)
     }
 
     private var logMealButton: some View {
