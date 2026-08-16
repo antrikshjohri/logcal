@@ -1283,6 +1283,7 @@ private struct SavedMealLogSheet: View {
     let onEdit: () -> Void
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var cloudSyncService: CloudSyncService
     @State private var servingMultiplier = 1.0
     @State private var isRenaming = false
@@ -1298,104 +1299,172 @@ private struct SavedMealLogSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: Constants.Spacing.large) {
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    HStack(alignment: .firstTextBaseline, spacing: Constants.Spacing.small) {
-                        Text(savedMeal.title)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        // Header info card
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(alignment: .center, spacing: 8) {
+                                Text(savedMeal.title)
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                    .fixedSize(horizontal: false, vertical: true)
 
-                        Button {
-                            renameText = savedMeal.title
-                            isRenaming = true
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundColor(Theme.primaryGreen)
-                                .frame(width: 32, height: 32)
-                        }
-                        .accessibilityLabel("Rename favourite meal")
-                    }
-
-                    Text("\(Int(displayedCalories)) cal · \(savedMeal.mealType.capitalized)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    let p = (savedMeal.protein ?? 0) * servingMultiplier
-                    let c = (savedMeal.carbs ?? 0) * servingMultiplier
-                    let f = (savedMeal.fat ?? 0) * servingMultiplier
-                    if p > 0 || c > 0 || f > 0 {
-                        Text("Protein: \(Int(p))g  ·  Carbs: \(Int(c))g  ·  Fat: \(Int(f))g")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                    Text("Serving")
-                        .font(.headline)
-
-                    Picker("Serving", selection: $servingMultiplier) {
-                        ForEach(SavedMealServing.commonMultipliers, id: \.self) { multiplier in
-                            Text(SavedMealServing.label(for: multiplier)).tag(multiplier)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                if let response = scaledResponse ?? savedMeal.response, !response.items.isEmpty {
-                    VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                        Text("Items")
-                            .font(.headline)
-
-                        ForEach(Array(response.items.enumerated()), id: \.offset) { _, item in
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name)
-                                        .fontWeight(.medium)
-                                    Text(item.quantity)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
                                 Spacer()
-                                Text("\(Int(item.calories)) cal")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+
+                                Button {
+                                    renameText = savedMeal.title
+                                    isRenaming = true
+                                } label: {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(Theme.primaryGreen)
+                                        .frame(width: 28, height: 28)
+                                        .background(Theme.softAccentBackground(colorScheme: colorScheme))
+                                        .clipShape(Circle())
+                                }
+                                .accessibilityLabel("Rename favourite meal")
+                            }
+
+                            HStack(spacing: 8) {
+                                Text("\(Int(displayedCalories)) cal")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(Theme.primaryGreen)
+
+                                Text("•")
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+
+                                Text(savedMeal.mealType.capitalized)
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                            
+                            let p = (savedMeal.protein ?? 0) * servingMultiplier
+                            let c = (savedMeal.carbs ?? 0) * servingMultiplier
+                            let f = (savedMeal.fat ?? 0) * servingMultiplier
+                            let fib = (savedMeal.fiber ?? 0) * servingMultiplier
+                            if p > 0 || c > 0 || f > 0 {
+                                MacrosCaptionLine(
+                                    protein: p,
+                                    carbs: c,
+                                    fat: f,
+                                    fiber: fib > 0 ? fib : nil,
+                                    font: .system(size: 12, weight: .semibold, design: .rounded)
+                                )
                             }
                         }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+
+                        // Serving Selector Card
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Serving Size")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+
+                            Picker("Serving", selection: $servingMultiplier) {
+                                ForEach(SavedMealServing.commonMultipliers, id: \.self) { multiplier in
+                                    Text(SavedMealServing.label(for: multiplier)).tag(multiplier)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        .padding(14)
+                        .background(Theme.cardBackground(colorScheme: colorScheme))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                        )
+
+                        // Items Breakdown Card
+                        if let response = scaledResponse ?? savedMeal.response, !response.items.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Items Breakdown")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+
+                                ForEach(Array(response.items.enumerated()), id: \.offset) { index, item in
+                                    HStack(alignment: .top) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.name)
+                                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                                .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                            Text(item.quantity)
+                                                .font(.system(size: 12, design: .rounded))
+                                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                        }
+                                        Spacer()
+                                        Text("\(Int(item.calories)) cal")
+                                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                                            .foregroundColor(Theme.primaryGreen)
+                                    }
+
+                                    if index < response.items.count - 1 {
+                                        Divider()
+                                            .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    }
+                                }
+                            }
+                            .padding(14)
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+                }
+
+                // Pinned Action buttons footer
+                VStack(spacing: 8) {
+                    Button {
+                        onLog(servingMultiplier)
+                        dismiss()
+                    } label: {
+                        Text("Log Meal")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(Theme.primaryGreen)
+                            .foregroundColor(.white)
+                            .cornerRadius(24)
+                            .shadow(color: Theme.primaryGreen.opacity(0.3), radius: 6, x: 0, y: 3)
+                    }
+
+                    Button {
+                        onEdit()
+                        dismiss()
+                    } label: {
+                        Text("Edit before logging")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Theme.cardBackground(colorScheme: colorScheme))
+                            .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                            .cornerRadius(22)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22)
+                                    .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: 1)
+                            )
                     }
                 }
-
-                Spacer()
-
-                Button {
-                    onLog(servingMultiplier)
-                    dismiss()
-                } label: {
-                    Text("Log")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Theme.primaryGreen)
-                        .foregroundColor(.white)
-                        .cornerRadius(Constants.Sizes.cornerRadius)
-                }
-
-                Button {
-                    onEdit()
-                    dismiss()
-                } label: {
-                    Text("Edit before logging")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Constants.Colors.primaryBackground)
-                        .foregroundColor(Theme.primaryGreen)
-                        .cornerRadius(Constants.Sizes.cornerRadius)
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
+                .background(Theme.backgroundColor(colorScheme: colorScheme))
             }
-            .padding()
+            .background(Theme.backgroundColor(colorScheme: colorScheme).ignoresSafeArea())
             .navigationTitle("Favourite Meal")
             .navigationBarTitleDisplayMode(.inline)
             .alert("Rename Favourite Meal", isPresented: $isRenaming) {
@@ -1410,8 +1479,12 @@ private struct SavedMealLogSheet: View {
                     Button("Close") {
                         dismiss()
                     }
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(Theme.primaryGreen)
                 }
             }
+            .presentationDetents([.fraction(0.72), .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
