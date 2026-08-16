@@ -16,6 +16,7 @@ data class PendingMealLog(
     val mealType: MealType,
     val date: LocalDate,
     val createdAtMillis: Long = System.currentTimeMillis(),
+    val isPreviewOnly: Boolean = false,
     val status: PendingLogStatus = PendingLogStatus.Processing,
 ) {
     val displayText: String

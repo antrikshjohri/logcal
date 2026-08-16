@@ -72,9 +72,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.draw.scale
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -665,13 +668,85 @@ fun LogMealScreen(viewModel: LogViewModel) {
                     }
 
                     // Composer view + Submit Button grouped to control spacing
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "What did you eat?",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
-                            color = colors.mutedText
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "What did you eat?",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+                                color = colors.mutedText
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    "Preview",
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                    color = if (uiState.isPreviewMode) colors.accentBlue else colors.mutedText
+                                )
+                                Switch(
+                                    checked = uiState.isPreviewMode,
+                                    onCheckedChange = { viewModel.setPreviewMode(it) },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = colors.accentBlue,
+                                        uncheckedThumbColor = Color.White,
+                                        uncheckedTrackColor = colors.cardBorder
+                                    ),
+                                    modifier = Modifier.scale(0.75f)
+                                )
+                            }
+                        }
+
+                        if (uiState.isPreviewMode) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(colors.accentBlue.copy(alpha = 0.12f))
+                                    .border(1.dp, colors.accentBlue.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = colors.accentBlue,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        "Preview mode active — estimates calories without logging.",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                        color = colors.primaryText,
+                                        maxLines = 1
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { viewModel.setPreviewMode(false) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Dismiss",
+                                        tint = colors.mutedText,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
 
                         val cardHeight = if (uiState.attachedImageUris.isNotEmpty()) 230.dp else 170.dp
                         Column(
@@ -983,6 +1058,10 @@ fun LogMealScreen(viewModel: LogViewModel) {
                         // Log Meal Submit Button
                         Spacer(modifier = Modifier.height(2.dp))
                         val canSubmit = (uiState.foodText.trim().isNotEmpty() || uiState.attachedImageUris.isNotEmpty()) && !uiState.isLoading
+                        val isPreview = uiState.isPreviewMode
+                        val primaryButtonColor = if (isPreview) colors.accentBlue else colors.primaryGreen
+                        val submitButtonTitle = if (isPreview) "Preview Meal" else "Log Meal"
+
                         Button(
                             onClick = {
                                 focusManager.clearFocus()
@@ -991,10 +1070,10 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             enabled = canSubmit,
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (canSubmit) colors.primaryGreen else colors.primaryGreen.copy(alpha = 0.12f),
-                                contentColor = if (canSubmit) Color.White else colors.primaryGreen.copy(alpha = 0.4f),
-                                disabledContainerColor = if (uiState.isLoading) Color.Gray.copy(alpha = 0.3f) else colors.primaryGreen.copy(alpha = 0.12f),
-                                disabledContentColor = if (uiState.isLoading) Color.White else colors.primaryGreen.copy(alpha = 0.4f)
+                                containerColor = if (canSubmit) primaryButtonColor else primaryButtonColor.copy(alpha = 0.12f),
+                                contentColor = if (canSubmit) Color.White else primaryButtonColor.copy(alpha = 0.4f),
+                                disabledContainerColor = if (uiState.isLoading) Color.Gray.copy(alpha = 0.3f) else primaryButtonColor.copy(alpha = 0.12f),
+                                disabledContentColor = if (uiState.isLoading) Color.White else primaryButtonColor.copy(alpha = 0.4f)
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1004,8 +1083,8 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         shadow(
                                             elevation = 3.dp,
                                             shape = CircleShape,
-                                            ambientColor = colors.primaryGreen.copy(alpha = 0.3f),
-                                            spotColor = colors.primaryGreen.copy(alpha = 0.4f)
+                                            ambientColor = primaryButtonColor.copy(alpha = 0.3f),
+                                            spotColor = primaryButtonColor.copy(alpha = 0.4f)
                                         )
                                     } else this
                                 }
@@ -1020,10 +1099,26 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                         color = Color.White,
                                         strokeWidth = 2.dp
                                     )
-                                    Text("Logging...", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp))
+                                    Text(
+                                        if (isPreview) "Estimating..." else "Logging...",
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp)
+                                    )
                                 }
                             } else {
-                                Text("Log Meal", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    if (isPreview) {
+                                        Icon(
+                                            Icons.Default.Visibility,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Text(submitButtonTitle, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp))
+                                }
                             }
                         }
                     }
@@ -1041,6 +1136,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                         MealPreviewCard(
                             preview = preview,
                             isSaved = isSaved,
+                            onLogMeal = { viewModel.logPreviewMeal(preview.id) },
                             onDismiss = { viewModel.dismissCompletedPreview(preview.id) },
                             onBookmark = {
                                 val existing = savedMeals.firstOrNull { it.sourceMealId == preview.id }

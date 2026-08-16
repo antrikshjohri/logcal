@@ -46,6 +46,7 @@ val AppTypography = Typography().run {
 data class LogCalColors(
     val primaryGreen: Color = PrimaryGreen,
     val mintGreen: Color = MintGreen,
+    val accentBlue: Color = AccentBlue,
     val warningAmber: Color = WarningAmber,
     val dangerRed: Color = DangerRed,
     val protein: Color = ProteinColor,

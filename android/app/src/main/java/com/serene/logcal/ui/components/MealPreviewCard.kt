@@ -50,11 +50,15 @@ import com.serene.logcal.model.CompletedMealPreview
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.NumberUtils
 
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Visibility
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MealPreviewCard(
     preview: CompletedMealPreview,
     isSaved: Boolean,
+    onLogMeal: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
     onBookmark: () -> Unit,
     onQuickEdit: (String) -> Unit,
@@ -91,36 +95,68 @@ fun MealPreviewCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        "Logged Successfully",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.primaryText
-                    )
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                colors.softAccentBackground,
-                                RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            result.mealType.replaceFirstChar { it.uppercase() },
-                            color = colors.primaryGreen,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
+                    if (preview.isPreviewOnly) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = null,
+                            tint = colors.accentBlue,
+                            modifier = Modifier.size(16.dp)
                         )
+                        Text(
+                            "Preview",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.accentBlue
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    colors.accentBlue.copy(alpha = 0.12f),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                "Not Logged",
+                                color = colors.accentBlue,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Text(
+                            "Logged Successfully",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.primaryText
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    colors.softAccentBackground,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                result.mealType.replaceFirstChar { it.uppercase() },
+                                color = colors.primaryGreen,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBookmark) {
-                        Icon(
-                            imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Bookmark favourite",
-                            tint = colors.primaryGreen
-                        )
+                    if (!preview.isPreviewOnly) {
+                        IconButton(onClick = onBookmark) {
+                            Icon(
+                                imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = "Bookmark favourite",
+                                tint = colors.primaryGreen
+                            )
+                        }
                     }
 
                     if (onDismiss != null) {
@@ -235,6 +271,25 @@ fun MealPreviewCard(
             }
 
             MealSourcesRow(sources = result.sources)
+
+            if (preview.isPreviewOnly && onLogMeal != null) {
+                Button(
+                    onClick = onLogMeal,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Log this Meal", fontWeight = FontWeight.Bold)
+                }
+            }
 
             HorizontalDivider(color = colors.cardBorder)
 

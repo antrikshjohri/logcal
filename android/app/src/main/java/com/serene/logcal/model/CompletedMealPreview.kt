@@ -5,5 +5,6 @@ data class CompletedMealPreview(
     val response: MealLogResponse,
     val foodText: String,
     val isRefining: Boolean = false,
-    val refineError: String? = null
+    val refineError: String? = null,
+    val isPreviewOnly: Boolean = false
 )

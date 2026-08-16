@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 val PrimaryGreen = Color(0xFF1C7247)
 val MintGreen = Color(0xFF72C693)
+val AccentBlue = Color(0xFF2E7DDB)
 val WarningAmber = Color(0xFFD37A1E)
 val DangerRed = Color(0xFFC6332D)
 val ProteinColor = Color(0xFF1C7247)

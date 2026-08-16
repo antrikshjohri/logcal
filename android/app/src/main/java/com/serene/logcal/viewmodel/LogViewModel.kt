@@ -64,7 +64,8 @@ data class LogUiState(
     val speechErrorMessage: String? = null,
     val speechTarget: SpeechTarget = SpeechTarget.MAIN,
     val waveformSamples: List<Float> = List(64) { 0.08f },
-    val showRatingPrompt: Boolean = false
+    val showRatingPrompt: Boolean = false,
+    val isPreviewMode: Boolean = false
 )
 
 class LogViewModel(application: Application) : AndroidViewModel(application) {
@@ -546,6 +547,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             imageUris = capturedImages.map { Uri.parse(it) },
             mealType = capturedMealType,
             date = capturedDate,
+            isPreviewOnly = state.isPreviewMode,
             status = PendingLogStatus.Processing
         )
 
@@ -560,6 +562,14 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         processPendingMeal(pending, capturedImages)
+    }
+
+    fun togglePreviewMode() {
+        _uiState.value = _uiState.value.copy(isPreviewMode = !_uiState.value.isPreviewMode)
+    }
+
+    fun setPreviewMode(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isPreviewMode = enabled)
     }
 
     fun retryPendingMeal(id: String) {
@@ -617,50 +627,55 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         .toEpochMilli()
                     val entryId = pending.id
 
-                    try {
-                        localRepo.saveMeal(
-                            timestampMillis = timestampMillis,
-                            foodText = storedLabel,
-                            mealType = response.mealType,
-                            response = response,
-                            hasImage = imageBase64s.isNotEmpty(),
-                            id = entryId
-                        )
-                        val mealEntry = localRepo.getMealEntryById(entryId)
-                        if (mealEntry != null) {
-                            syncService.syncMealToCloud(mealEntry)
+                    if (!pending.isPreviewOnly) {
+                        try {
+                            localRepo.saveMeal(
+                                timestampMillis = timestampMillis,
+                                foodText = storedLabel,
+                                mealType = response.mealType,
+                                response = response,
+                                hasImage = imageBase64s.isNotEmpty(),
+                                id = entryId
+                            )
+                            val mealEntry = localRepo.getMealEntryById(entryId)
+                            if (mealEntry != null) {
+                                syncService.syncMealToCloud(mealEntry)
+                            }
+                            reminderService.rescheduleNotificationsIfNeeded()
+                            DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
+                        } catch (t: Throwable) {
+                            DebugLogger.e("DEBUG: [LogViewModel] Failed to save meal to local DB", t)
                         }
-                        reminderService.rescheduleNotificationsIfNeeded()
-                        DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
-                    } catch (t: Throwable) {
-                        DebugLogger.e("DEBUG: [LogViewModel] Failed to save meal to local DB", t)
                     }
 
                     val preview = CompletedMealPreview(
                         id = entryId,
                         response = response,
-                        foodText = storedLabel
+                        foodText = storedLabel,
+                        isPreviewOnly = pending.isPreviewOnly
                     )
 
                     _uiState.value = _uiState.value.copy(
                         latestResult = response,
-                        lastLoggedMealId = entryId,
+                        lastLoggedMealId = if (pending.isPreviewOnly) null else entryId,
                         sourceSavedMealId = null,
                         completedPreviews = listOf(preview) + _uiState.value.completedPreviews.filter { it.id != entryId }
                     )
                     updatePendingStatus(pending.id, PendingLogStatus.Completed(response, entryId))
 
-                    AnalyticsService.trackMealLogged(
-                        mealType = response.mealType,
-                        totalCalories = response.totalCalories,
-                        itemCount = response.items.size,
-                        hasImage = imageBase64s.isNotEmpty()
-                    )
-                    RatingService.incrementMealLogCount(getApplication())
-                    if (RatingService.shouldShowRatingDialog(getApplication())) {
-                        launch {
-                            delay(2000)
-                            _uiState.value = _uiState.value.copy(showRatingPrompt = true)
+                    if (!pending.isPreviewOnly) {
+                        AnalyticsService.trackMealLogged(
+                            mealType = response.mealType,
+                            totalCalories = response.totalCalories,
+                            itemCount = response.items.size,
+                            hasImage = imageBase64s.isNotEmpty()
+                        )
+                        RatingService.incrementMealLogCount(getApplication())
+                        if (RatingService.shouldShowRatingDialog(getApplication())) {
+                            launch {
+                                delay(2000)
+                                _uiState.value = _uiState.value.copy(showRatingPrompt = true)
+                            }
                         }
                     }
 
@@ -679,6 +694,48 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     AnalyticsService.trackMealLogFailed(errorType = errorMsg)
                 }
             )
+        }
+    }
+
+    fun logPreviewMeal(id: String) {
+        val preview = _uiState.value.completedPreviews.firstOrNull { it.id == id } ?: return
+        viewModelScope.launch {
+            try {
+                val timestampMillis = System.currentTimeMillis()
+                localRepo.saveMeal(
+                    timestampMillis = timestampMillis,
+                    foodText = preview.foodText,
+                    mealType = preview.response.mealType,
+                    response = preview.response,
+                    hasImage = false,
+                    id = id
+                )
+                val mealEntry = localRepo.getMealEntryById(id)
+                if (mealEntry != null) {
+                    syncService.syncMealToCloud(mealEntry)
+                }
+                reminderService.rescheduleNotificationsIfNeeded()
+
+                val updatedPreviews = _uiState.value.completedPreviews.map {
+                    if (it.id == id) it.copy(isPreviewOnly = false) else it
+                }
+                _uiState.value = _uiState.value.copy(
+                    completedPreviews = updatedPreviews,
+                    lastLoggedMealId = id,
+                    latestResult = preview.response
+                )
+
+                AnalyticsService.trackMealLogged(
+                    mealType = preview.response.mealType,
+                    totalCalories = preview.response.totalCalories,
+                    itemCount = preview.response.items.size,
+                    hasImage = false
+                )
+                RatingService.incrementMealLogCount(getApplication())
+            } catch (t: Throwable) {
+                DebugLogger.e("DEBUG: [LogViewModel] logPreviewMeal failed", t)
+                _uiState.value = _uiState.value.copy(errorMessage = "Could not save meal.")
+            }
         }
     }
 
@@ -712,25 +769,27 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             )
             result.fold(
                 onSuccess = { refined ->
-                    try {
-                        val mealEntry = localRepo.getMealById(id)
-                        if (mealEntry != null) {
-                            localRepo.saveMeal(
-                                timestampMillis = mealEntry.timestampMillis,
-                                foodText = mealEntry.foodText,
-                                mealType = refined.mealType,
-                                response = refined,
-                                hasImage = mealEntry.hasImage,
-                                id = id,
-                                sourceSavedMealId = mealEntry.sourceSavedMealId
-                            )
-                            val updated = localRepo.getMealEntryById(id)
-                            if (updated != null) {
-                                syncService.syncMealToCloud(updated)
+                    if (!preview.isPreviewOnly) {
+                        try {
+                            val mealEntry = localRepo.getMealById(id)
+                            if (mealEntry != null) {
+                                localRepo.saveMeal(
+                                    timestampMillis = mealEntry.timestampMillis,
+                                    foodText = mealEntry.foodText,
+                                    mealType = refined.mealType,
+                                    response = refined,
+                                    hasImage = mealEntry.hasImage,
+                                    id = id,
+                                    sourceSavedMealId = mealEntry.sourceSavedMealId
+                                )
+                                val updated = localRepo.getMealEntryById(id)
+                                if (updated != null) {
+                                    syncService.syncMealToCloud(updated)
+                                }
                             }
+                        } catch (t: Throwable) {
+                            DebugLogger.e("DEBUG: [LogViewModel] Failed to update quick-refined meal in local DB", t)
                         }
-                    } catch (t: Throwable) {
-                        DebugLogger.e("DEBUG: [LogViewModel] Failed to update quick-refined meal in local DB", t)
                     }
 
                     val finalPreviews = _uiState.value.completedPreviews.map {
