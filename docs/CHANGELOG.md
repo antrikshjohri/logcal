@@ -2,6 +2,19 @@
 
 This changelog tracks notable project changes from the point we adopted the new documentation structure.
 
+## 2026-08-17 (v2.2)
+
+- Prepared App Store release notes for v2.2 and bumped iOS app marketing version to `2.2` (build `13`)
+- Added Meal Preview Mode to estimate calories, macros, and line items without logging to diary, with direct 1-tap "Log this Meal" action
+- Implemented non-blocking background meal logging queue with immediate composer reset and stacked multi-meal preview cards
+- Added direct 1-tap `+` quick-log shortcut to Favourite meal pills on the Log screen
+- Redesigned Favourite meal details bottom sheet (`SavedMealLogSheet`) with app theme styling, rounded cards, pinned action buttons, and adaptive sheet detents
+- Added full-screen horizontal swipe gesture across the Home Dashboard to easily navigate between dates
+- Replaced ambiguous meal edit icon with an explicit `[ ✏️ Edit Description ]` / `[ ✕ Close ]` pill button
+- Added nutrition source citation badges and verified calculation rules across backend AI estimation pipelines
+- Fixed meal type dropdown layering glitches with stable z-indexing
+- Swift 6 concurrency cleanup and compiler warning resolutions
+
 ## 2026-06-22 (v2.1)
 
 - Prepared App Store release notes for v2.1 and bumped the iOS app marketing version to `2.1` (build `12`)
