@@ -334,7 +334,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     val preview = CompletedMealPreview(
                         id = entryId,
                         response = response,
-                        foodText = foodText
+                        foodText = logFoodText
                     )
                     listOf(preview) + _uiState.value.completedPreviews.filter { it.id != entryId }
                 } else {
@@ -582,7 +582,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             val imageBase64s = if (rawImageUris.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
                     rawImageUris.mapNotNull { uriString ->
-                        MealImageEncoder.encodeUriToJpegBase64(getApplication(), Uri.parse(uriString))
+                        MealImageEncoder.encodeUriToJpegBase64(getApplication(), uriString)
                     }
                 }
             } else {
@@ -609,7 +609,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         trimmed
                     } else {
                         val itemNames = response.items.map { it.name.trim() }.filter { it.isNotEmpty() }
-                        if (itemNames.isNotEmpty()) itemNames.joinToString(", ") else "${response.mealType.rawValue.replaceFirstChar { it.uppercase() }} Meal"
+                        if (itemNames.isNotEmpty()) itemNames.joinToString(", ") else "${response.mealType.replaceFirstChar { it.uppercase() }} Meal"
                     }
                     val timestampMillis = pending.date
                         .atStartOfDay(ZoneId.systemDefault())
@@ -700,25 +700,34 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         }
         _uiState.value = _uiState.value.copy(completedPreviews = updatedPreviews)
 
+        val mealTypeEnum = MealType.entries.firstOrNull { it.rawValue.equals(preview.response.mealType, ignoreCase = true) } ?: MealType.BREAKFAST
+
         viewModelScope.launch {
-            val result = repo.quickEditMeal(
-                originalFoodText = preview.foodText,
-                mealType = preview.response.mealType,
-                currentResult = preview.response,
+            val result = repo.refineMealLog(
+                foodText = preview.foodText,
+                mealType = mealTypeEnum,
+                previousEstimate = preview.response,
                 correctionPrompt = prompt,
                 country = prefManager.userCountry.takeIf { it.isNotBlank() }
             )
             result.fold(
                 onSuccess = { refined ->
                     try {
-                        val mealEntry = localRepo.getMealEntryById(id)
+                        val mealEntry = localRepo.getMealById(id)
                         if (mealEntry != null) {
-                            localRepo.updateMealResponse(id, refined)
-                            syncService.syncMealToCloud(mealEntry.copy(
-                                rawResponseJson = Gson().toJson(refined),
-                                totalCalories = refined.totalCalories,
-                                mealType = refined.mealType
-                            ))
+                            localRepo.saveMeal(
+                                timestampMillis = mealEntry.timestampMillis,
+                                foodText = mealEntry.foodText,
+                                mealType = refined.mealType,
+                                response = refined,
+                                hasImage = mealEntry.hasImage,
+                                id = id,
+                                sourceSavedMealId = mealEntry.sourceSavedMealId
+                            )
+                            val updated = localRepo.getMealEntryById(id)
+                            if (updated != null) {
+                                syncService.syncMealToCloud(updated)
+                            }
                         }
                     } catch (t: Throwable) {
                         DebugLogger.e("DEBUG: [LogViewModel] Failed to update quick-refined meal in local DB", t)

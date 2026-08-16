@@ -55,7 +55,7 @@ import com.serene.logcal.util.NumberUtils
 fun MealPreviewCard(
     preview: CompletedMealPreview,
     isSaved: Boolean,
-    onDismiss: () -> Void? = null,
+    onDismiss: (() -> Unit)? = null,
     onBookmark: () -> Unit,
     onQuickEdit: (String) -> Unit,
     modifier: Modifier = Modifier
