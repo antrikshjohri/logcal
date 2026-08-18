@@ -11,7 +11,6 @@
 		028570D1E3476C50D9F980F9 /* MealLogResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F760A6A6F9019F5AC89FCC27 /* MealLogResponse.swift */; };
 		063D996A85D5B68EE42CF565 /* DietStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 650D3A7CB757FAE31573AD15 /* DietStyle.swift */; };
 		154C5B3DF37219AF6282BF8C /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F6735907299460362922DFA5 /* FirebaseCrashlytics */; };
-		242B52DDCEC0AE3AC5F626FC /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2C88D45160A287CD2A3C3D54 /* GoogleService-Info.plist */; };
 		29BF2F5C5868E157403160F6 /* LogCalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B596081B537E07E20CB224 /* LogCalWidget.swift */; };
 		2D198668FE731FD22B216B22 /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57412CA14B03E8A19CE1A65 /* MealEntry.swift */; };
 		65E52FC970D8BF31D949CAF6 /* SavedMeal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A160E2322C14BEB15F351D8 /* SavedMeal.swift */; };
@@ -24,6 +23,8 @@
 		9B2C80E42EFB4D0000707824 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B2C80E52EFB4D0000707824 /* FirebaseFirestore */; };
 		9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFCBA2F0D938B00C7FD92 /* Lottie */; };
 		9B9BFDCB2F0E5D2200C7FD92 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9BFDCA2F0E5D2200C7FD92 /* FirebaseAnalytics */; };
+		A0000000000000000000000A /* LogCalWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* LogCalWatch.app */; };
+		A00000000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000010 /* Assets.xcassets */; };
 		A10E8CDE945F2EBDC404CB9C /* LogCalWidget.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3F6782AACBB5B343792F6A3A /* LogCalWidget.appex */; };
 		F0AD0BB40C5A758BF8394A31 /* LogCalWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1D4AE3F098F361C1F1F2703 /* LogCalWidgetViews.swift */; };
 /* End PBXBuildFile section */
@@ -36,6 +37,13 @@
 			remoteGlobalIDString = 3D3F1889FE00907722BE0D4E;
 			remoteInfo = LogCalWidget;
 		};
+		A00000000000000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9B2C7FBC2EEF6FE400707824 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A00000000000000000000002;
+			remoteInfo = LogCalWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -47,6 +55,17 @@
 			files = (
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0000000000000000000000E /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				A0000000000000000000000A /* LogCalWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E13E80C9C4D14FC8646DD8A8 /* CopyFiles */ = {
@@ -69,6 +88,8 @@
 		650D3A7CB757FAE31573AD15 /* DietStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DietStyle.swift; path = logcal/Models/DietStyle.swift; sourceTree = "<group>"; };
 		8380B175D99767AA3CD59F40 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppTheme.swift; path = logcal/Utils/AppTheme.swift; sourceTree = "<group>"; };
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000007 /* LogCalWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogCalWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = LogCalWatch/Assets.xcassets; sourceTree = "<group>"; };
 		A1D4AE3F098F361C1F1F2703 /* LogCalWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWidgetViews.swift; sourceTree = "<group>"; };
 		A6B596081B537E07E20CB224 /* LogCalWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWidget.swift; sourceTree = "<group>"; };
 		AD365F0B5729A32292CE6E28 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -84,6 +105,13 @@
 			);
 			target = 9B2C7FC32EEF6FE400707824 /* logcal */;
 		};
+		A0000000000000000000000D /* Exceptions for "LogCalWatch" folder in "LogCalWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A00000000000000000000002 /* LogCalWatch */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -93,6 +121,14 @@
 				9B2C80E32EFB4C6100707824 /* Exceptions for "logcal" folder in "logcal" target */,
 			);
 			path = logcal;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000001 /* LogCalWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A0000000000000000000000D /* Exceptions for "LogCalWatch" folder in "LogCalWatch" target */,
+			);
+			path = LogCalWatch;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -119,6 +155,13 @@
 				9B9BFCBB2F0D938B00C7FD92 /* Lottie in Frameworks */,
 				9B9BFDCB2F0E5D2200C7FD92 /* FirebaseAnalytics in Frameworks */,
 				154C5B3DF37219AF6282BF8C /* FirebaseCrashlytics in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A00000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -149,6 +192,7 @@
 				F760A6A6F9019F5AC89FCC27 /* MealLogResponse.swift */,
 				650D3A7CB757FAE31573AD15 /* DietStyle.swift */,
 				8380B175D99767AA3CD59F40 /* AppTheme.swift */,
+				A00000000000000000000001 /* LogCalWatch */,
 			);
 			sourceTree = "<group>";
 		};
@@ -157,6 +201,7 @@
 			children = (
 				9B2C7FC42EEF6FE400707824 /* logcal.app */,
 				3F6782AACBB5B343792F6A3A /* LogCalWidget.appex */,
+				A00000000000000000000007 /* LogCalWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -199,12 +244,14 @@
 				9B2C7FC22EEF6FE400707824 /* Resources */,
 				9B9BFCB82F0D900C00C7FD92 /* Embed Frameworks */,
 				E13E80C9C4D14FC8646DD8A8 /* CopyFiles */,
+				A0000000000000000000000E /* Embed Watch Content */,
 				F038DA0DF246748A35F8AFD9 /* ShellScript */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				D59E5E05CC6ADCA87E102862 /* PBXTargetDependency */,
+				A00000000000000000000009 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9B2C7FC62EEF6FE400707824 /* logcal */,
@@ -226,6 +273,28 @@
 			productReference = 9B2C7FC42EEF6FE400707824 /* logcal.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A00000000000000000000002 /* LogCalWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000003 /* Build configuration list for PBXNativeTarget "LogCalWatch" */;
+			buildPhases = (
+				A00000000000000000000004 /* Sources */,
+				A00000000000000000000005 /* Frameworks */,
+				A00000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A00000000000000000000001 /* LogCalWatch */,
+			);
+			name = LogCalWatch;
+			packageProductDependencies = (
+			);
+			productName = LogCalWatch;
+			productReference = A00000000000000000000007 /* LogCalWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -237,6 +306,9 @@
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					9B2C7FC32EEF6FE400707824 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					A00000000000000000000002 = {
 						CreatedOnToolsVersion = 26.2;
 					};
 				};
@@ -262,6 +334,7 @@
 			targets = (
 				9B2C7FC32EEF6FE400707824 /* logcal */,
 				3D3F1889FE00907722BE0D4E /* LogCalWidget */,
+				A00000000000000000000002 /* LogCalWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -278,6 +351,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A00000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000011 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -328,9 +409,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A00000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A00000000000000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A00000000000000000000002 /* LogCalWatch */;
+			targetProxy = A00000000000000000000008 /* PBXContainerItemProxy */;
+		};
 		D59E5E05CC6ADCA87E102862 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 3D3F1889FE00907722BE0D4E /* LogCalWidget */;
@@ -602,6 +695,68 @@
 			};
 			name = Release;
 		};
+		A0000000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LogCalWatch/LogCalWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = Z5M4U33NJF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LogCalWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LogCal;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal.watchapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.0;
+			};
+			name = Debug;
+		};
+		A0000000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LogCalWatch/LogCalWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = Z5M4U33NJF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LogCalWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LogCal;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serene.logcal.watchapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -619,6 +774,15 @@
 			buildConfigurations = (
 				9B2C7FD02EEF6FE700707824 /* Debug */,
 				9B2C7FD12EEF6FE700707824 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00000000000000000000003 /* Build configuration list for PBXNativeTarget "LogCalWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0000000000000000000000B /* Debug */,
+				A0000000000000000000000C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

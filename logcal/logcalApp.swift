@@ -67,6 +67,9 @@ struct logcalApp: App {
         // Set up notification delegate
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
         print("DEBUG: Notification delegate configured")
+        
+        // Set up Watch sync
+        WatchSyncService.shared.setModelContext(Self.sharedModelContainer.mainContext)
     }
     
     private func migrateToSharedContainerIfNeeded() {

@@ -10,6 +10,7 @@ import SwiftData
 
 struct DashboardView: View {
     @Query(filter: #Predicate<MealEntry> { !$0.deleted }, sort: \MealEntry.timestamp, order: .reverse) private var meals: [MealEntry]
+    @Query(sort: \SavedMeal.displayOrder, order: .forward) private var savedMeals: [SavedMeal]
     
     private var activeMeals: [MealEntry] {
         meals.filter { $0.modelContext != nil && !$0.isDeleted && !$0.deleted }
@@ -587,19 +588,47 @@ struct DashboardView: View {
                     UserDefaults.standard.set(now, forKey: "lastActiveDateDashboard")
                 }
                 checkAndResetSelectedDateIfNeeded()
+                syncWatchState()
             }
             .onChange(of: meals.count) { oldValue, newValue in
                 // #region agent log
                 DebugLogger.log(location: "DashboardView.swift:onChange", message: "Meals count changed", data: ["oldCount": oldValue, "newCount": newValue], hypothesisId: "B")
                 // #endregion
+                syncWatchState()
+            }
+            .onChange(of: dailyGoal) { _, _ in
+                syncWatchState()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 checkAndResetSelectedDateIfNeeded()
+                syncWatchState()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSCalendarDayChanged)) { _ in
                 checkAndResetSelectedDateIfNeeded()
+                syncWatchState()
             }
         }
+    }
+    
+    private func syncWatchState() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let todaysMeals = activeMeals.filter { calendar.isDate($0.timestamp, inSameDayAs: today) }
+        let cals = todaysMeals.reduce(0) { $0 + $1.totalCalories }
+        let p = todaysMeals.compactMap(\.protein).reduce(0, +)
+        let c = todaysMeals.compactMap(\.carbs).reduce(0, +)
+        let f = todaysMeals.compactMap(\.fat).reduce(0, +)
+        let fib = todaysMeals.compactMap(\.fiber).reduce(0, +)
+        
+        WatchSyncService.shared.syncToWatch(
+            todayCalories: cals,
+            dailyGoal: dailyGoal,
+            protein: p,
+            carbs: c,
+            fat: f,
+            fiber: fib,
+            savedMeals: savedMeals
+        )
     }
 }
 
