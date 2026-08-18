@@ -29,6 +29,8 @@ final class WatchSyncService: NSObject, ObservableObject {
     
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
+        print("DEBUG: WatchSyncService modelContext configured")
+        syncInitialState()
     }
     
     private func setupSession() {
@@ -36,6 +38,96 @@ final class WatchSyncService: NSObject, ObservableObject {
         let session = WCSession.default
         session.delegate = self
         session.activate()
+    }
+    
+    /// Queries the latest state (daily goals, today's calories/macros, active favourites) and constructs a complete sync dictionary.
+    func buildFullSyncPayload() -> [String: Any] {
+        let defaults = UserDefaults(suiteName: "group.com.serene.logcal") ?? .standard
+        let goal = defaults.double(forKey: "dailyCalorieGoal")
+        let actualGoal = goal > 0 ? goal : 2000.0
+        
+        var simplifiedSavedMeals: [[String: Any]] = []
+        var todayCalories: Double = 0
+        var todayProtein: Double = 0
+        var todayCarbs: Double = 0
+        var todayFat: Double = 0
+        var todayFiber: Double = 0
+        
+        if let context = self.modelContext {
+            // 1. Fetch Favourites
+            let savedDescriptor = FetchDescriptor<SavedMeal>(
+                sortBy: [SortDescriptor(\SavedMeal.displayOrder, order: .forward)]
+            )
+            if let fetched = try? context.fetch(savedDescriptor) {
+                simplifiedSavedMeals = fetched.map { meal in
+                    let p: Double = meal.protein ?? 0.0
+                    let c: Double = meal.carbs ?? 0.0
+                    let f: Double = meal.fat ?? 0.0
+                    return [
+                        "id": meal.id.uuidString,
+                        "title": meal.title,
+                        "totalCalories": meal.totalCalories,
+                        "mealType": meal.mealType,
+                        "protein": p,
+                        "carbs": c,
+                        "fat": f
+                    ]
+                }
+            }
+            
+            // 2. Fetch Today's Meals
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: Date())
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+            let mealDescriptor = FetchDescriptor<MealEntry>(
+                predicate: #Predicate<MealEntry> { !$0.deleted && $0.timestamp >= startOfDay && $0.timestamp < endOfDay }
+            )
+            if let todayEntries = try? context.fetch(mealDescriptor) {
+                for entry in todayEntries {
+                    todayCalories += entry.totalCalories
+                    if let resp = entry.response {
+                        todayProtein += resp.protein ?? 0.0
+                        todayCarbs += resp.carbs ?? 0.0
+                        todayFat += resp.fat ?? 0.0
+                        todayFiber += resp.fiber ?? 0.0
+                    }
+                }
+            }
+        }
+        
+        var payload: [String: Any] = [
+            "status": "ok",
+            "todayCalories": todayCalories,
+            "dailyGoal": actualGoal,
+            "protein": todayProtein,
+            "carbs": todayCarbs,
+            "fat": todayFat,
+            "fiber": todayFiber,
+            "savedMeals": simplifiedSavedMeals,
+            "updatedAt": Date().timeIntervalSince1970
+        ]
+        
+        if let user = Auth.auth().currentUser {
+            payload["userId"] = user.uid
+        }
+        
+        return payload
+    }
+    
+    /// Proactively pushes the full initial state to Apple Watch.
+    func syncInitialState() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        
+        let payload = buildFullSyncPayload()
+        do {
+            try session.updateApplicationContext(payload)
+            print("WatchSyncService: Successfully synced initial state with \(payload["savedMeals"] as? [[String: Any]] ?? []) favourites")
+        } catch {
+            print("WatchSyncService: Error updating context on init: \(error.localizedDescription)")
+            session.transferUserInfo(payload)
+        }
     }
     
     /// Pushes the latest summary data (calories, macros, goals, favourites) to the Apple Watch.
@@ -52,15 +144,18 @@ final class WatchSyncService: NSObject, ObservableObject {
         let session = WCSession.default
         guard session.activationState == .activated else { return }
         
-        let simplifiedSavedMeals: [[String: Any]] = savedMeals.prefix(8).map { meal in
+        let simplifiedSavedMeals: [[String: Any]] = savedMeals.map { meal in
+            let p: Double = meal.protein ?? 0.0
+            let c: Double = meal.carbs ?? 0.0
+            let f: Double = meal.fat ?? 0.0
             return [
                 "id": meal.id.uuidString,
                 "title": meal.title,
                 "totalCalories": meal.totalCalories,
                 "mealType": meal.mealType,
-                "protein": meal.protein ?? 0,
-                "carbs": meal.carbs ?? 0,
-                "fat": meal.fat ?? 0
+                "protein": p,
+                "carbs": c,
+                "fat": f
             ]
         }
         
@@ -83,8 +178,73 @@ final class WatchSyncService: NSObject, ObservableObject {
             try session.updateApplicationContext(payload)
         } catch {
             print("WatchSyncService: Error updating application context: \(error.localizedDescription)")
-            // Fallback to transferUserInfo if context is unchanged
             session.transferUserInfo(payload)
+        }
+    }
+    
+    /// Inserts and commits a meal entry logged from Apple Watch.
+    func processLogMeal(payload: [String: Any]) {
+        guard let context = self.modelContext else {
+            print("WatchSyncService: modelContext is nil, cannot save meal entry from Apple Watch")
+            return
+        }
+        
+        let text = payload["foodText"] as? String ?? payload["title"] as? String ?? "Meal from Apple Watch"
+        let calories = payload["calories"] as? Double ?? 0
+        let protein = payload["protein"] as? Double ?? 0
+        let carbs = payload["carbs"] as? Double ?? 0
+        let fat = payload["fat"] as? Double ?? 0
+        let mealType = payload["mealType"] as? String ?? "snack"
+        let timestamp = payload["timestamp"] as? Double ?? Date().timeIntervalSince1970
+        let savedMealIdStr = payload["savedMealId"] as? String
+        let savedMealId = savedMealIdStr.flatMap { UUID(uuidString: $0) }
+        
+        let dummyItem = MealItem(
+            name: text,
+            quantity: "1 serving",
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            fiber: nil,
+            assumptions: nil,
+            confidence: 1.0
+        )
+        let logResponse = MealLogResponse(
+            mealType: mealType,
+            totalCalories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            items: [dummyItem],
+            needsClarification: false,
+            clarifyingQuestion: nil,
+            sources: []
+        )
+        let rawJson = (try? String(data: JSONEncoder().encode(logResponse), encoding: .utf8)) ?? "{}"
+        
+        let entry = MealEntry(
+            id: UUID(),
+            timestamp: Date(timeIntervalSince1970: timestamp),
+            createdAt: Date(),
+            foodText: text,
+            mealType: mealType,
+            totalCalories: calories,
+            rawResponseJson: rawJson,
+            hasImage: false,
+            sourceSavedMealId: savedMealId
+        )
+        
+        context.insert(entry)
+        do {
+            try context.save()
+            print("WatchSyncService: Successfully inserted and saved meal from Apple Watch: \(text) (\(Int(calories)) cal)")
+        } catch {
+            print("WatchSyncService: Error saving context after watch meal insert: \(error)")
+        }
+        
+        Task {
+            await CloudSyncService().syncMealToCloud(entry)
         }
     }
 }
@@ -99,6 +259,8 @@ extension WatchSyncService: WCSessionDelegate {
         Task { @MainActor in
             self.isPaired = session.isPaired
             self.isWatchAppInstalled = session.isWatchAppInstalled
+            print("DEBUG: WatchSyncService activated. Paired: \(session.isPaired), WatchAppInstalled: \(session.isWatchAppInstalled)")
+            self.syncInitialState()
         }
     }
     
@@ -111,9 +273,11 @@ extension WatchSyncService: WCSessionDelegate {
         Task { @MainActor in
             self.isPaired = session.isPaired
             self.isWatchAppInstalled = session.isWatchAppInstalled
+            self.syncInitialState()
         }
     }
     
+    // 1. Two-way Request-Reply Messages
     nonisolated func session(
         _ session: WCSession,
         didReceiveMessage message: [String: Any],
@@ -121,17 +285,12 @@ extension WatchSyncService: WCSessionDelegate {
     ) {
         Task { @MainActor in
             let action = message["action"] as? String ?? ""
+            print("DEBUG: WatchSyncService didReceiveMessage (with reply): \(action)")
             
             switch action {
             case "requestSync":
-                let defaults = UserDefaults(suiteName: "group.com.serene.logcal") ?? .standard
-                let goal = defaults.double(forKey: "dailyCalorieGoal")
-                let actualGoal = goal > 0 ? goal : 2000.0
-                
-                replyHandler([
-                    "status": "ok",
-                    "dailyGoal": actualGoal
-                ])
+                let fullPayload = self.buildFullSyncPayload()
+                replyHandler(fullPayload)
                 
             case "analyzeMeal":
                 guard let text = message["text"] as? String, !text.isEmpty else {
@@ -153,61 +312,34 @@ extension WatchSyncService: WCSessionDelegate {
                     replyHandler(["status": "error", "error": error.localizedDescription])
                 }
                 
-            case "logMealDirect":
-                if let context = self.modelContext {
-                    let text = message["foodText"] as? String ?? "Meal from Apple Watch"
-                    let calories = message["calories"] as? Double ?? 0
-                    let protein = message["protein"] as? Double ?? 0
-                    let carbs = message["carbs"] as? Double ?? 0
-                    let fat = message["fat"] as? Double ?? 0
-                    let mealType = message["mealType"] as? String ?? "snack"
-                    let timestamp = message["timestamp"] as? Double ?? Date().timeIntervalSince1970
-                    
-                    let dummyItem = MealItem(
-                        name: text,
-                        quantity: "1 serving",
-                        calories: calories,
-                        protein: protein,
-                        carbs: carbs,
-                        fat: fat,
-                        fiber: nil,
-                        assumptions: nil,
-                        confidence: 1.0
-                    )
-                    let logResponse = MealLogResponse(
-                        mealType: mealType,
-                        totalCalories: calories,
-                        protein: protein,
-                        carbs: carbs,
-                        fat: fat,
-                        items: [dummyItem],
-                        needsClarification: false,
-                        clarifyingQuestion: nil,
-                        sources: []
-                    )
-                    let rawJson = (try? String(data: JSONEncoder().encode(logResponse), encoding: .utf8)) ?? "{}"
-                    
-                    let entry = MealEntry(
-                        id: UUID(),
-                        timestamp: Date(timeIntervalSince1970: timestamp),
-                        createdAt: Date(),
-                        foodText: text,
-                        mealType: mealType,
-                        totalCalories: calories,
-                        rawResponseJson: rawJson,
-                        hasImage: false
-                    )
-                    
-                    context.insert(entry)
-                    try? context.save()
-                    Task {
-                        await CloudSyncService().syncMealToCloud(entry)
-                    }
-                }
+            case "logMealDirect", "logSavedMeal":
+                self.processLogMeal(payload: message)
                 replyHandler(["status": "logged"])
                 
             default:
                 replyHandler(["status": "received"])
+            }
+        }
+    }
+    
+    // 2. One-way Direct Messages
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        Task { @MainActor in
+            let action = message["action"] as? String ?? ""
+            print("DEBUG: WatchSyncService didReceiveMessage (fire-and-forget): \(action)")
+            if action == "logMealDirect" || action == "logSavedMeal" {
+                self.processLogMeal(payload: message)
+            }
+        }
+    }
+    
+    // 3. Background Queued UserInfo
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        Task { @MainActor in
+            let action = userInfo["action"] as? String ?? ""
+            print("DEBUG: WatchSyncService didReceiveUserInfo: \(action)")
+            if action == "logMealDirect" || action == "logSavedMeal" {
+                self.processLogMeal(payload: userInfo)
             }
         }
     }

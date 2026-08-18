@@ -11,11 +11,11 @@ struct WatchHomeView: View {
     @EnvironmentObject private var connectivity: WatchConnectivityManager
     @StateObject private var viewModel = WatchLogViewModel()
     @State private var showVoiceSheet: Bool = false
-    @State private var showFavouritesSheet: Bool = false
+    @State private var selectedSavedMeal: WatchSavedMeal? = nil
     
     private var progress: Double {
         guard connectivity.dailyGoal > 0 else { return 0 }
-        return min(connectivity.todayCalories / connectivity.dailyGoal, 1.0)
+        return min(max(connectivity.todayCalories / connectivity.dailyGoal, 0.0), 1.0)
     }
     
     private var remainingCalories: Int {
@@ -25,110 +25,113 @@ struct WatchHomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
+                VStack(spacing: 10) {
                     // Success toast if logged recently
                     if let success = viewModel.logSuccessMessage {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(WatchTheme.primaryGreenGlow)
                             Text(success)
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                                 .lineLimit(1)
                         }
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 4)
                         .background(WatchTheme.cardBackground)
                         .clipShape(Capsule())
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
-                    // Daily Calorie Ring Card
-                    VStack(spacing: 6) {
-                        ZStack {
-                            Circle()
-                                .stroke(WatchTheme.cardBorder, lineWidth: 8)
-                                .frame(width: 90, height: 90)
-                            
-                            Circle()
-                                .trim(from: 0, to: progress)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [WatchTheme.primaryGreenGlow, WatchTheme.primaryGreen],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                                )
-                                .frame(width: 90, height: 90)
-                                .rotationEffect(.degrees(-90))
-                                .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
-                            
-                            VStack(spacing: 1) {
-                                Text("\(Int(connectivity.todayCalories))")
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                Text("/ \(Int(connectivity.dailyGoal))")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    .foregroundColor(WatchTheme.mutedText)
-                            }
-                        }
-                        .padding(.top, 4)
-                        
-                        Text("\(remainingCalories) cal left")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(WatchTheme.primaryGreenGlow)
-                    }
-                    
-                    // Quick Macros Row
-                    HStack(spacing: 6) {
-                        MacroMiniPill(label: "P", value: Int(connectivity.protein), color: WatchTheme.proteinColor)
-                        MacroMiniPill(label: "C", value: Int(connectivity.carbs), color: WatchTheme.carbsColor)
-                        MacroMiniPill(label: "F", value: Int(connectivity.fat), color: WatchTheme.fatColor)
-                    }
-                    
-                    // Big Speak Mic Action Button
-                    Button {
-                        showVoiceSheet = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            ZStack {
-                                Circle()
-                                    .fill(WatchTheme.primaryGreen.opacity(0.3))
-                                    .frame(width: 32, height: 32)
-                                Image(systemName: "mic.fill")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(WatchTheme.primaryGreenGlow)
-                            }
-                            
-                            Text("Speak Meal")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                    // 1. Lock-Screen Style Compact Summary Card (Calorie + Progress + 4 Macros)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Calories")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(WatchTheme.mutedText)
+                            Spacer()
+                            Text("\(Int(connectivity.todayCalories)) / \(Int(connectivity.dailyGoal))")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                         }
+                        
+                        // Slim Horizontal Progress Bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(WatchTheme.cardBorder)
+                                if progress > 0 {
+                                    Capsule()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [WatchTheme.primaryGreenGlow, WatchTheme.primaryGreen],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .frame(width: max(geo.size.width * CGFloat(progress), 6))
+                                }
+                            }
+                        }
+                        .frame(height: 5)
+                        
+                        // 4 Macros Grid Row (P, C, F, Fib)
+                        HStack(spacing: 4) {
+                            MacroMiniPill(label: "P", value: Int(connectivity.protein), color: WatchTheme.proteinColor)
+                            MacroMiniPill(label: "C", value: Int(connectivity.carbs), color: WatchTheme.carbsColor)
+                            MacroMiniPill(label: "F", value: Int(connectivity.fat), color: WatchTheme.fatColor)
+                            MacroMiniPill(label: "Fib", value: Int(connectivity.fiber), color: WatchTheme.fiberColor)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
+                    .background(WatchTheme.cardBackground)
+                    .cornerRadius(14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(WatchTheme.cardBorder, lineWidth: 1)
+                    )
+                    
+                    // 2. 1-Tap Direct Voice Action Button (Fully visible without scroll)
+                    TextFieldLink(prompt: Text("Speak or type meal...")) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "mic.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.black)
+                            Text("Log Meal")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(.black)
+                        }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(WatchTheme.cardBackground)
-                        .cornerRadius(22)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22)
-                                .stroke(WatchTheme.primaryGreen.opacity(0.6), lineWidth: 1.5)
-                        )
+                        .padding(.vertical, 10)
+                        .background(WatchTheme.primaryGreenGlow)
+                        .cornerRadius(20)
+                    } onSubmit: { text in
+                        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        showVoiceSheet = true
+                        Task {
+                            await viewModel.analyzeAndAutoLogMeal(trimmed)
+                        }
                     }
                     .buttonStyle(.plain)
                     
-                    // Quick Favourites Section
+                    // 3. Favourites List (All saved meals)
                     if !connectivity.savedMeals.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text("Favourites")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .foregroundColor(WatchTheme.mutedText)
                                 Spacer()
+                                Text("\(connectivity.savedMeals.count)")
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                    .foregroundColor(WatchTheme.mutedText)
                             }
                             
-                            ForEach(connectivity.savedMeals.prefix(3)) { fav in
+                            ForEach(connectivity.savedMeals) { fav in
                                 Button {
-                                    viewModel.quickLogSavedMeal(fav)
+                                    selectedSavedMeal = fav
                                 } label: {
                                     HStack {
                                         Image(systemName: "bookmark.fill")
@@ -139,12 +142,12 @@ struct WatchHomeView: View {
                                             .foregroundColor(.white)
                                             .lineLimit(1)
                                         Spacer()
-                                        Text("+ \(Int(fav.totalCalories))")
+                                        Text("\(Int(fav.totalCalories)) cal")
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .foregroundColor(WatchTheme.primaryGreenGlow)
                                     }
                                     .padding(.horizontal, 10)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 7)
                                     .background(WatchTheme.cardBackground)
                                     .cornerRadius(12)
                                     .overlay(
@@ -155,6 +158,7 @@ struct WatchHomeView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                        .padding(.top, 2)
                     }
                 }
                 .padding(.horizontal, 6)
@@ -163,6 +167,92 @@ struct WatchHomeView: View {
             .sheet(isPresented: $showVoiceSheet) {
                 WatchVoiceLogView(viewModel: viewModel)
             }
+            .sheet(item: $selectedSavedMeal) { meal in
+                WatchSavedMealDetailView(meal: meal, viewModel: viewModel)
+            }
+            .onAppear {
+                connectivity.requestInitialSync()
+            }
+            .task {
+                connectivity.requestInitialSync()
+            }
+        }
+    }
+}
+
+// MARK: - Favourite Meal Detail Preview Sheet (2-Step Log)
+struct WatchSavedMealDetailView: View {
+    let meal: WatchSavedMeal
+    @ObservedObject var viewModel: WatchLogViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                // Title and Meal Type Header
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bookmark.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(WatchTheme.primaryGreenGlow)
+                        Text(meal.mealType.capitalized)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(WatchTheme.mutedText)
+                    }
+                    
+                    Text(meal.title)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+                .padding(.top, 2)
+                
+                // Calories Display
+                Text("\(Int(meal.totalCalories)) cal")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(WatchTheme.primaryGreenGlow)
+                
+                // Macros Row
+                HStack(spacing: 8) {
+                    Text("P: \(Int(meal.protein))g")
+                        .foregroundColor(WatchTheme.proteinColor)
+                    Text("C: \(Int(meal.carbs))g")
+                        .foregroundColor(WatchTheme.carbsColor)
+                    Text("F: \(Int(meal.fat))g")
+                        .foregroundColor(WatchTheme.fatColor)
+                }
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                
+                // Upfront CTA - Log Meal Button
+                Button {
+                    viewModel.quickLogSavedMeal(meal)
+                    dismiss()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "fork.knife")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("Log Meal")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(WatchTheme.primaryGreen)
+                    .foregroundColor(.white)
+                    .cornerRadius(18)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
+            .padding(10)
+            .background(WatchTheme.cardBackground)
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(WatchTheme.cardBorder, lineWidth: 1)
+            )
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
         }
     }
 }
@@ -174,17 +264,19 @@ private struct MacroMiniPill: View {
     let color: Color
     
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundColor(color)
             Text("\(value)g")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(WatchTheme.cardBackground)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .background(WatchTheme.insetBackground)
         .cornerRadius(6)
     }
 }

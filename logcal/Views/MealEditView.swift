@@ -91,7 +91,7 @@ struct MealEditView: View {
     }
     
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 24) {
                 // Clear spacer at top of ScrollView content to prevent it from starting hidden under the navigation bar
                 Color.clear
@@ -459,14 +459,17 @@ struct MealEditView: View {
                         VStack(spacing: 16) {
                             ForEach(Array(response.items.enumerated()), id: \.offset) { index, item in
                                 VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
+                                    HStack(alignment: .top, spacing: 8) {
                                         Text(item.name)
                                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                                             .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                                        Spacer()
+                                            .fixedSize(horizontal: false, vertical: true)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        
                                         Text("\(Int(item.calories)) cal")
                                             .font(.system(size: 15, weight: .bold, design: .rounded))
                                             .foregroundColor(Theme.primaryGreen)
+                                            .fixedSize(horizontal: true, vertical: false)
                                     }
                                     
                                     Text("Quantity: \(item.quantity)")
@@ -545,6 +548,7 @@ struct MealEditView: View {
                 .padding(.top, 16)
             }
             .padding(16)
+            .frame(maxWidth: .infinity)
         }
         .background(Theme.backgroundColor(colorScheme: colorScheme))
         .onTapGesture {

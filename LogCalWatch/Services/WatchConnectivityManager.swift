@@ -39,6 +39,30 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         session.activate()
     }
     
+    /// Requests the full initial sync payload (calories, goals, macros, and favourites) from the iPhone.
+    func requestInitialSync() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        
+        // 1. Check if applicationContext was already received
+        if !session.receivedApplicationContext.isEmpty {
+            self.updateFromPayload(session.receivedApplicationContext)
+        }
+        
+        // 2. Request live sync message if reachable
+        if session.isReachable {
+            session.sendMessage(["action": "requestSync"], replyHandler: { reply in
+                Task { @MainActor in
+                    print("DEBUG: Watch received requestSync reply: \(reply.keys)")
+                    self.updateFromPayload(reply)
+                }
+            }, errorHandler: { error in
+                print("DEBUG: Watch requestSync message error: \(error.localizedDescription)")
+            })
+        }
+    }
+    
     private func loadCachedData() {
         todayCalories = defaults.double(forKey: "todayCalories")
         let storedGoal = defaults.double(forKey: "dailyCalorieGoal")
@@ -125,15 +149,16 @@ extension WatchConnectivityManager: WCSessionDelegate {
     ) {
         Task { @MainActor in
             self.isReachable = session.isReachable
-            if let context = session.receivedApplicationContext as [String: Any]?, !context.isEmpty {
-                self.updateFromPayload(context)
-            }
+            self.requestInitialSync()
         }
     }
     
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor in
             self.isReachable = session.isReachable
+            if session.isReachable {
+                self.requestInitialSync()
+            }
         }
     }
     

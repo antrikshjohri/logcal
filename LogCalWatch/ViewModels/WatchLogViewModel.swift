@@ -26,8 +26,8 @@ final class WatchLogViewModel: ObservableObject {
     
     private let connectivityManager = WatchConnectivityManager.shared
     
-    /// Analyzes the dictated text by sending a request via WatchConnectivity or direct backend fallback.
-    func analyzeSpokenMeal(_ text: String) async {
+    /// Analyzes the dictated text and immediately auto-logs the meal, then displays the result with an update option.
+    func analyzeAndAutoLogMeal(_ text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         
@@ -57,23 +57,41 @@ final class WatchLogViewModel: ObservableObject {
                     self.estimatedFat = reply["fat"] as? Double ?? 0
                     self.estimatedItems = reply["items"] as? [String] ?? []
                     self.showConfirmation = true
-                    WKInterfaceDevice.current().play(.click)
+                    
+                    // Immediately auto-commit
+                    self.commitCurrentMeal()
                 } else if let err = reply["error"] as? String {
                     self.errorMessage = err
                     WKInterfaceDevice.current().play(.failure)
                 }
             } catch {
-                await fallbackDirectEstimate(for: trimmed)
+                await fallbackDirectEstimateAndCommit(for: trimmed)
             }
         } else {
-            await fallbackDirectEstimate(for: trimmed)
+            await fallbackDirectEstimateAndCommit(for: trimmed)
         }
         
         isLoading = false
     }
     
+    /// Re-analyzes and updates the previously logged meal.
+    func updateLoggedMeal(newText: String) async {
+        let trimmed = newText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        // Revert previous meal from local watch totals
+        if let prevCal = estimatedCalories {
+            let prevP = estimatedProtein ?? 0
+            let prevC = estimatedCarbs ?? 0
+            let prevF = estimatedFat ?? 0
+            connectivityManager.recordLocalLog(calories: -prevCal, p: -prevP, c: -prevC, f: -prevF)
+        }
+        
+        await analyzeAndAutoLogMeal(trimmed)
+    }
+    
     /// Commits the estimated meal to the user's daily totals.
-    func confirmAndLogMeal() {
+    private func commitCurrentMeal() {
         guard let cal = estimatedCalories else { return }
         
         let p = estimatedProtein ?? 0
@@ -99,15 +117,17 @@ final class WatchLogViewModel: ObservableObject {
         ]
         
         if WCSession.default.isReachable {
-            WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            WCSession.default.sendMessage(payload, replyHandler: { _ in
+                print("DEBUG: iPhone acknowledged logMealDirect")
+            }, errorHandler: { error in
+                print("DEBUG: WCSession sendMessage error: \(error.localizedDescription), using transferUserInfo fallback")
+                WCSession.default.transferUserInfo(payload)
+            })
         } else {
             WCSession.default.transferUserInfo(payload)
         }
         
-        // 4. Show success toast and reset state
         logSuccessMessage = "\(Int(cal)) cal Logged!"
-        showConfirmation = false
-        resetInput()
     }
     
     /// 1-Tap Quick-Log for a saved favourite meal directly from the wrist.
@@ -134,7 +154,12 @@ final class WatchLogViewModel: ObservableObject {
         ]
         
         if WCSession.default.isReachable {
-            WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            WCSession.default.sendMessage(payload, replyHandler: { _ in
+                print("DEBUG: iPhone acknowledged logSavedMeal")
+            }, errorHandler: { error in
+                print("DEBUG: WCSession logSavedMeal error: \(error.localizedDescription), using transferUserInfo fallback")
+                WCSession.default.transferUserInfo(payload)
+            })
         } else {
             WCSession.default.transferUserInfo(payload)
         }
@@ -152,7 +177,7 @@ final class WatchLogViewModel: ObservableObject {
         errorMessage = nil
     }
     
-    private func fallbackDirectEstimate(for text: String) async {
+    private func fallbackDirectEstimateAndCommit(for text: String) async {
         // Simple heuristic fallback when offline from iPhone
         // In full connectivity, iPhone WCSession or Firebase handles LLM estimation
         let words = text.lowercased()
@@ -173,7 +198,7 @@ final class WatchLogViewModel: ObservableObject {
         self.estimatedFat = f
         self.estimatedItems = [text]
         self.showConfirmation = true
-        WKInterfaceDevice.current().play(.click)
+        self.commitCurrentMeal()
     }
     
     private func inferMealType() -> String {
