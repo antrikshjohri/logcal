@@ -8,6 +8,7 @@
 import Foundation
 import WatchConnectivity
 import Combine
+import WidgetKit
 
 /// Manages data synchronization with the iPhone companion app.
 @MainActor
@@ -91,6 +92,8 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         if let encoded = try? JSONEncoder().encode(savedMeals) {
             defaults.set(encoded, forKey: "savedMealsCache")
         }
+        
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     func updateFromPayload(_ payload: [String: Any]) {

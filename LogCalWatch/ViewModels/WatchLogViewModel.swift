@@ -10,6 +10,14 @@ import WatchConnectivity
 import WatchKit
 import Combine
 
+/// Represents an individual parsed food item shown on Apple Watch.
+struct WatchParsedItem: Identifiable, Hashable {
+    let id = UUID()
+    let name: String
+    let quantity: String
+    let calories: Double
+}
+
 /// Manages voice input, AI estimation, and meal logging workflows on Apple Watch.
 @MainActor
 final class WatchLogViewModel: ObservableObject {
@@ -20,10 +28,11 @@ final class WatchLogViewModel: ObservableObject {
     @Published var estimatedProtein: Double?
     @Published var estimatedCarbs: Double?
     @Published var estimatedFat: Double?
-    @Published var estimatedItems: [String] = []
+    @Published var parsedItems: [WatchParsedItem] = []
     @Published var showConfirmation: Bool = false
     @Published var logSuccessMessage: String?
     
+    private var currentRawJson: String? = nil
     private let connectivityManager = WatchConnectivityManager.shared
     
     /// Analyzes the dictated text and immediately auto-logs the meal, then displays the result with an update option.
@@ -55,7 +64,20 @@ final class WatchLogViewModel: ObservableObject {
                     self.estimatedProtein = reply["protein"] as? Double ?? 0
                     self.estimatedCarbs = reply["carbs"] as? Double ?? 0
                     self.estimatedFat = reply["fat"] as? Double ?? 0
-                    self.estimatedItems = reply["items"] as? [String] ?? []
+                    self.currentRawJson = reply["rawResponseJson"] as? String
+                    
+                    // Parse individual items
+                    if let rawItems = reply["items"] as? [[String: Any]] {
+                        self.parsedItems = rawItems.compactMap { itemDict in
+                            guard let name = itemDict["name"] as? String else { return nil }
+                            let qty = itemDict["quantity"] as? String ?? "1 serving"
+                            let itemCal = itemDict["calories"] as? Double ?? 0
+                            return WatchParsedItem(name: name, quantity: qty, calories: itemCal)
+                        }
+                    } else if let stringItems = reply["items"] as? [String] {
+                        self.parsedItems = stringItems.map { WatchParsedItem(name: $0, quantity: "1 serving", calories: cal / Double(max(stringItems.count, 1))) }
+                    }
+                    
                     self.showConfirmation = true
                     
                     // Immediately auto-commit
@@ -105,7 +127,7 @@ final class WatchLogViewModel: ObservableObject {
         WKInterfaceDevice.current().play(.success)
         
         // 3. Send log event to iPhone
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "action": "logMealDirect",
             "foodText": spokenText,
             "calories": cal,
@@ -115,6 +137,10 @@ final class WatchLogViewModel: ObservableObject {
             "mealType": inferMealType(),
             "timestamp": Date().timeIntervalSince1970
         ]
+        
+        if let rawJson = currentRawJson, !rawJson.isEmpty {
+            payload["rawResponseJson"] = rawJson
+        }
         
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(payload, replyHandler: { _ in
@@ -173,13 +199,13 @@ final class WatchLogViewModel: ObservableObject {
         estimatedProtein = nil
         estimatedCarbs = nil
         estimatedFat = nil
-        estimatedItems = []
+        parsedItems = []
+        currentRawJson = nil
         errorMessage = nil
     }
     
     private func fallbackDirectEstimateAndCommit(for text: String) async {
         // Simple heuristic fallback when offline from iPhone
-        // In full connectivity, iPhone WCSession or Firebase handles LLM estimation
         let words = text.lowercased()
         var cal: Double = 250
         var p: Double = 10
@@ -196,7 +222,7 @@ final class WatchLogViewModel: ObservableObject {
         self.estimatedProtein = p
         self.estimatedCarbs = c
         self.estimatedFat = f
-        self.estimatedItems = [text]
+        self.parsedItems = [WatchParsedItem(name: text, quantity: "1 serving", calories: cal)]
         self.showConfirmation = true
         self.commitCurrentMeal()
     }

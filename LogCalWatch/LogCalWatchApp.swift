@@ -10,11 +10,17 @@ import SwiftUI
 @main
 struct LogCalWatchApp: App {
     @StateObject private var connectivity = WatchConnectivityManager.shared
+    @State private var openVoiceLog: Bool = false
     
     var body: some Scene {
         WindowGroup {
-            WatchHomeView()
+            WatchHomeView(openVoiceLogDirectly: $openVoiceLog)
                 .environmentObject(connectivity)
+                .onOpenURL { url in
+                    if url.host == "voice-log" || url.absoluteString.contains("voice-log") {
+                        openVoiceLog = true
+                    }
+                }
         }
     }
 }

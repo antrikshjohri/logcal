@@ -53,7 +53,7 @@ struct WatchVoiceLogView: View {
                     }
                     .padding(10)
                 } else if viewModel.showConfirmation, let cal = viewModel.estimatedCalories {
-                    // Auto-Logged Result Card with In-Place Update
+                    // Auto-Logged Result Card with In-Place Update & Items Breakdown
                     VStack(spacing: 8) {
                         // Success Badge
                         HStack(spacing: 4) {
@@ -66,8 +66,8 @@ struct WatchVoiceLogView: View {
                         }
                         
                         Text(viewModel.spokenText)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(WatchTheme.mutedText)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                         
@@ -85,6 +85,42 @@ struct WatchVoiceLogView: View {
                                     .foregroundColor(WatchTheme.fatColor)
                             }
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        }
+                        
+                        // Itemized Breakdown Cards
+                        if !viewModel.parsedItems.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(viewModel.parsedItems) { item in
+                                    HStack(alignment: .center, spacing: 4) {
+                                        Circle()
+                                            .fill(WatchTheme.primaryGreenGlow)
+                                            .frame(width: 4, height: 4)
+                                        
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(item.name)
+                                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                                .foregroundColor(.white)
+                                                .lineLimit(1)
+                                            if !item.quantity.isEmpty && item.quantity != "1 serving" {
+                                                Text(item.quantity)
+                                                    .font(.system(size: 9, weight: .regular, design: .rounded))
+                                                    .foregroundColor(WatchTheme.mutedText)
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Text("\(Int(item.calories)) cal")
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .foregroundColor(WatchTheme.primaryGreenGlow)
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 4)
+                                    .background(WatchTheme.insetBackground)
+                                    .cornerRadius(8)
+                                }
+                            }
+                            .padding(.top, 2)
                         }
                         
                         // In-Place Update Button (Re-opens dictation directly)
@@ -130,6 +166,47 @@ struct WatchVoiceLogView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(8)
+                    .background(WatchTheme.cardBackground)
+                    .cornerRadius(14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(WatchTheme.cardBorder, lineWidth: 1)
+                    )
+                } else {
+                    // Initial Voice Log Screen
+                    VStack(spacing: 12) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 28))
+                            .foregroundColor(WatchTheme.primaryGreenGlow)
+                            .padding(.top, 6)
+                        
+                        Text("Dictate your meal")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                        
+                        TextFieldLink(prompt: Text("Speak or type meal...")) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "mic.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(.black)
+                                Text("Speak Meal")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(.black)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(WatchTheme.primaryGreenGlow)
+                            .cornerRadius(20)
+                        } onSubmit: { text in
+                            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            Task {
+                                await viewModel.analyzeAndAutoLogMeal(trimmed)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(10)
                     .background(WatchTheme.cardBackground)
                     .cornerRadius(14)
                     .overlay(

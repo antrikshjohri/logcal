@@ -6,12 +6,18 @@
 //
 
 import SwiftUI
+import WatchKit
 
 struct WatchHomeView: View {
     @EnvironmentObject private var connectivity: WatchConnectivityManager
     @StateObject private var viewModel = WatchLogViewModel()
     @State private var showVoiceSheet: Bool = false
     @State private var selectedSavedMeal: WatchSavedMeal? = nil
+    @Binding var openVoiceLogDirectly: Bool
+    
+    init(openVoiceLogDirectly: Binding<Bool> = .constant(false)) {
+        self._openVoiceLogDirectly = openVoiceLogDirectly
+    }
     
     private var progress: Double {
         guard connectivity.dailyGoal > 0 else { return 0 }
@@ -172,9 +178,39 @@ struct WatchHomeView: View {
             }
             .onAppear {
                 connectivity.requestInitialSync()
+                if openVoiceLogDirectly {
+                    openVoiceLogDirectly = false
+                    startRootDictation()
+                }
             }
             .task {
                 connectivity.requestInitialSync()
+            }
+            .onChange(of: openVoiceLogDirectly) { newValue in
+                if newValue {
+                    openVoiceLogDirectly = false
+                    startRootDictation()
+                }
+            }
+        }
+    }
+    
+    private func startRootDictation() {
+        showVoiceSheet = false
+        selectedSavedMeal = nil
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            WKExtension.shared().visibleInterfaceController?.presentTextInputController(
+                withSuggestions: nil,
+                allowedInputMode: .plain
+            ) { results in
+                guard let text = (results as? [String])?.first,
+                      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                Task { @MainActor in
+                    self.showVoiceSheet = true
+                    await self.viewModel.analyzeAndAutoLogMeal(trimmed)
+                }
             }
         }
     }

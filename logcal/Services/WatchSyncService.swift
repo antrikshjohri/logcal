@@ -199,29 +199,46 @@ final class WatchSyncService: NSObject, ObservableObject {
         let savedMealIdStr = payload["savedMealId"] as? String
         let savedMealId = savedMealIdStr.flatMap { UUID(uuidString: $0) }
         
-        let dummyItem = MealItem(
-            name: text,
-            quantity: "1 serving",
-            calories: calories,
-            protein: protein,
-            carbs: carbs,
-            fat: fat,
-            fiber: nil,
-            assumptions: nil,
-            confidence: 1.0
-        )
-        let logResponse = MealLogResponse(
-            mealType: mealType,
-            totalCalories: calories,
-            protein: protein,
-            carbs: carbs,
-            fat: fat,
-            items: [dummyItem],
-            needsClarification: false,
-            clarifyingQuestion: nil,
-            sources: []
-        )
-        let rawJson = (try? String(data: JSONEncoder().encode(logResponse), encoding: .utf8)) ?? "{}"
+        var rawJson = payload["rawResponseJson"] as? String ?? ""
+        
+        // If rawJson wasn't provided directly, check if this came from a SavedMeal
+        if rawJson.isEmpty || rawJson == "{}" {
+            if let sId = savedMealId {
+                let descriptor = FetchDescriptor<SavedMeal>(
+                    predicate: #Predicate<SavedMeal> { $0.id == sId }
+                )
+                if let saved = try? context.fetch(descriptor).first {
+                    rawJson = saved.rawResponseJson
+                }
+            }
+        }
+        
+        // Fallback: If still empty, construct valid MealLogResponse
+        if rawJson.isEmpty || rawJson == "{}" {
+            let dummyItem = MealItem(
+                name: text,
+                quantity: "1 serving",
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                fiber: nil,
+                assumptions: nil,
+                confidence: 1.0
+            )
+            let logResponse = MealLogResponse(
+                mealType: mealType,
+                totalCalories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                items: [dummyItem],
+                needsClarification: false,
+                clarifyingQuestion: nil,
+                sources: []
+            )
+            rawJson = (try? String(data: JSONEncoder().encode(logResponse), encoding: .utf8)) ?? "{}"
+        }
         
         let entry = MealEntry(
             id: UUID(),
@@ -300,13 +317,27 @@ extension WatchSyncService: WCSessionDelegate {
                 
                 do {
                     let response = try await FirebaseService().logMeal(foodText: text, mealType: "meal", imageData: nil)
+                    let rawJson = (try? String(data: JSONEncoder().encode(response), encoding: .utf8)) ?? "{}"
+                    
+                    let itemsArray: [[String: Any]] = response.items.map { item in
+                        [
+                            "name": item.name,
+                            "quantity": item.quantity,
+                            "calories": item.calories,
+                            "protein": item.protein ?? 0.0,
+                            "carbs": item.carbs ?? 0.0,
+                            "fat": item.fat ?? 0.0
+                        ]
+                    }
+                    
                     replyHandler([
                         "status": "success",
                         "totalCalories": response.totalCalories,
-                        "protein": response.protein ?? 0,
-                        "carbs": response.carbs ?? 0,
-                        "fat": response.fat ?? 0,
-                        "items": response.items.map(\.name)
+                        "protein": response.protein ?? 0.0,
+                        "carbs": response.carbs ?? 0.0,
+                        "fat": response.fat ?? 0.0,
+                        "items": itemsArray,
+                        "rawResponseJson": rawJson
                     ])
                 } catch {
                     replyHandler(["status": "error", "error": error.localizedDescription])
