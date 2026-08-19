@@ -210,6 +210,7 @@ class LogViewModel: ObservableObject {
 
             Task { @MainActor in
                 await cloudSyncService.syncMealToCloud(entry)
+                await HealthKitService.shared.saveMealEntry(entry)
             }
             Task { @MainActor in
                 await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)
@@ -441,6 +442,7 @@ class LogViewModel: ObservableObject {
                 
                 Task { @MainActor in
                     await cloudSyncService.syncMealToCloud(entry)
+                    await HealthKitService.shared.saveMealEntry(entry)
                 }
 
                 Task { @MainActor in
@@ -545,6 +547,7 @@ class LogViewModel: ObservableObject {
 
             Task { @MainActor in
                 await cloudSyncService.syncMealToCloud(entry)
+                await HealthKitService.shared.saveMealEntry(entry)
             }
             Task { @MainActor in
                 await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: context)

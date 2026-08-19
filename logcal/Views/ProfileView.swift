@@ -50,6 +50,7 @@ struct ProfileView: View {
     
     // Current theme display
     @AppStorage("appTheme") private var appThemeString: String = AppTheme.light.rawValue
+    @AppStorage("hasSeenAppleHealthBadge") private var hasSeenAppleHealthBadge: Bool = false
     private var currentTheme: AppTheme {
         AppTheme(rawValue: appThemeString) ?? .system
     }
@@ -203,11 +204,29 @@ struct ProfileView: View {
                             .padding(.horizontal, Constants.Spacing.extraLarge)
                         }
                         
-                        // WhatsApp Section
+                        // Integrations & Shortcuts Section
                         VStack(alignment: .leading, spacing: 6) {
-                            settingsGroupHeader("SHORTCUTS")
+                            settingsGroupHeader("INTEGRATIONS & SHORTCUTS")
                             
                             VStack(spacing: 0) {
+                                NavigationLink(destination: AppleHealthSettingsView()) {
+                                    SettingsGroupRow(
+                                        icon: "heart.fill",
+                                        iconColor: .red,
+                                        title: "Apple Health",
+                                        trailingValue: HealthKitService.shared.isAuthorized ? "Connected" : (HealthKitService.shared.isHealthKitSyncEnabled ? "Enabled" : "Not Connected"),
+                                        badge: (!hasSeenAppleHealthBadge && !HealthKitService.shared.isAuthorized) ? "NEW" : nil
+                                    )
+                                }
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    hasSeenAppleHealthBadge = true
+                                })
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Divider()
+                                    .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                    .padding(.leading, 56)
+                                
                                 SettingsGroupButtonRow(
                                     icon: "WhatsAppIcon",
                                     isCustomIcon: true,
@@ -374,13 +393,15 @@ private struct SettingsGroupRow: View {
     let iconColor: Color
     let title: String
     let trailingValue: String?
+    let badge: String?
     
-    init(icon: String, isCustomIcon: Bool = false, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil) {
+    init(icon: String, isCustomIcon: Bool = false, iconColor: Color = Theme.secondaryText, title: String, trailingValue: String? = nil, badge: String? = nil) {
         self.icon = icon
         self.isCustomIcon = isCustomIcon
         self.iconColor = iconColor
         self.title = title
         self.trailingValue = trailingValue
+        self.badge = badge
     }
     
     var body: some View {
@@ -401,6 +422,16 @@ private struct SettingsGroupRow: View {
             Text(title)
                 .font(.system(size: 17, weight: .regular))
                 .foregroundColor(.primary)
+            
+            if let badge = badge {
+                Text(badge)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Theme.primaryGreen)
+                    .clipShape(Capsule())
+            }
             
             Spacer()
             

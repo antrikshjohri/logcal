@@ -262,6 +262,7 @@ final class WatchSyncService: NSObject, ObservableObject {
         
         Task {
             await CloudSyncService().syncMealToCloud(entry)
+            await HealthKitService.shared.saveMealEntry(entry)
         }
     }
 }

@@ -12,10 +12,19 @@ struct TodaysCaloriesCard: View {
     let calories: Double
     let goal: Double
     let progress: Double
+    var activeBurned: Double? = nil
+    var adjustGoalWithActiveBurn: Bool = false
 
-    private var isOverGoal: Bool { calories > goal }
-    private var remainingUnderGoal: Double { max(0, goal - calories) }
-    private var amountOverGoal: Double { max(0, calories - goal) }
+    private var effectiveGoal: Double {
+        if adjustGoalWithActiveBurn, let burn = activeBurned, burn > 0 {
+            return goal + burn
+        }
+        return goal
+    }
+
+    private var isOverGoal: Bool { calories > effectiveGoal }
+    private var remainingUnderGoal: Double { max(0, effectiveGoal - calories) }
+    private var amountOverGoal: Double { max(0, calories - effectiveGoal) }
 
     private var overBudgetAccent: Color {
         colorScheme == .dark ? Color(red: 1.0, green: 0.68, blue: 0.32) : Theme.warningAmber
@@ -35,9 +44,15 @@ struct TodaysCaloriesCard: View {
                         .font(.system(size: 56, weight: .bold, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                     
-                    Text("of \(formatNumber(goal)) cal eaten")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    if adjustGoalWithActiveBurn, let burn = activeBurned, burn > 0 {
+                        Text("of \(formatNumber(effectiveGoal)) cal (\(formatNumber(goal)) + \(formatNumber(burn)) 🔥)")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    } else {
+                        Text("of \(formatNumber(goal)) cal eaten")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    }
                 }
                 
                 Spacer()
@@ -63,17 +78,32 @@ struct TodaysCaloriesCard: View {
                 }
             }
             
-            // Bottom Row: Status Pill/Badge spanning the width
+            // Bottom Row: Status Pill/Badge spanning the width + Active Burn pill if present
             HStack(spacing: 8) {
                 Image(systemName: isOverGoal ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(accentColor)
                 
                 Text("\(Int(isOverGoal ? amountOverGoal : remainingUnderGoal)) cal \(isOverGoal ? "over target" : "remaining")")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(accentColor)
                 
                 Spacer()
+                
+                if let burn = activeBurned, burn > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                        Text("\(Int(burn)) burned")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                    .clipShape(Capsule())
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)

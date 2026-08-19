@@ -805,6 +805,7 @@ struct MealEditView: View {
             // Sync to cloud
             Task {
                 await cloudSyncService.syncMealToCloud(meal)
+                await HealthKitService.shared.updateMealEntry(meal)
             }
             
             // Track analytics
@@ -917,9 +918,11 @@ struct MealEditView: View {
         // Track analytics
         AnalyticsService.trackMealDeleted()
         
-        // Delete from cloud
+        // Delete from cloud and HealthKit
+        let mealId = meal.id
         Task {
             await cloudSyncService.deleteMealFromCloud(meal)
+            await HealthKitService.shared.deleteMealEntry(mealId: mealId)
         }
         
         meal.deleted = true

@@ -29,5 +29,9 @@
 	<string>LogCal needs access to your photo library to attach food images for calorie logging.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>LogCal needs access to your camera to capture food images for calorie logging.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>LogCal reads your active energy burned and step count from Apple Health to calculate your remaining calorie budget.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>LogCal writes your logged meals and macronutrients (calories, protein, carbs, fat, fiber) to Apple Health.</string>
 </dict>
 </plist>

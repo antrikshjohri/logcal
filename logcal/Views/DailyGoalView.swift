@@ -22,6 +22,7 @@ struct DailyGoalView: View {
     @AppStorage("customProteinPercent") private var customProteinPercent: Double = 30
     @AppStorage("customCarbsPercent") private var customCarbsPercent: Double = 40
     @AppStorage("customFatPercent") private var customFatPercent: Double = 30
+    @AppStorage("adjustGoalWithActiveBurn") private var adjustGoalWithActiveBurn: Bool = false
     
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
@@ -325,6 +326,81 @@ struct DailyGoalView: View {
                         kcal: nil,
                         showInfoButton: true
                     )
+                }
+                .padding(Constants.Spacing.extraLarge)
+                .background(Theme.cardBackground(colorScheme: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Constants.Sizes.largeCornerRadius)
+                        .stroke(Theme.cardBorder(colorScheme: colorScheme), lineWidth: Constants.Sizes.borderWidth)
+                )
+                .cornerRadius(Constants.Sizes.largeCornerRadius)
+                .padding(.horizontal, Constants.Spacing.extraLarge)
+                
+                // Active Calorie Budget Card (Apple Health)
+                VStack(spacing: Constants.Spacing.medium) {
+                    HStack(alignment: .top, spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.orange.opacity(colorScheme == .dark ? 0.25 : 0.12))
+                                .frame(width: 36, height: 36)
+                            
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.orange)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Active Calorie Budget")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            Text("Apple Health Integration")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    if HealthKitService.shared.isAuthorized {
+                        Toggle(isOn: $adjustGoalWithActiveBurn) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Adjust Goal with Burned Calories")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
+                                Text("Automatically add workout calories to today's budget")
+                                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            }
+                        }
+                        .tint(Theme.primaryGreen)
+                        .padding(.top, 4)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Connect Apple Health to automatically increase your daily calorie allowance on active workout days.")
+                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            
+                            NavigationLink(destination: AppleHealthSettingsView()) {
+                                HStack {
+                                    Image(systemName: "heart.fill")
+                                        .foregroundColor(.red)
+                                        .font(.system(size: 13))
+                                    Text("Connect Apple Health")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Theme.primaryGreen)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                }
+                                .padding(10)
+                                .background(Theme.insetBackground(colorScheme: colorScheme))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
                 }
                 .padding(Constants.Spacing.extraLarge)
                 .background(Theme.cardBackground(colorScheme: colorScheme))

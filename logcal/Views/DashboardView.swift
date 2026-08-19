@@ -31,6 +31,13 @@ struct DashboardView: View {
     @State private var selectedDate = Date()
     @State private var showDatePicker = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @ObservedObject private var healthKit = HealthKitService.shared
+    @AppStorage("dismissedHealthKitDashboardCard") private var dismissedHealthKitCard: Bool = false
+    @State private var showAppleHealthSheet = false
+    @State private var selectedDateActiveBurn: Double = 0.0
+    @State private var selectedDateBasalBurn: Double = 0.0
+    @State private var selectedDateSteps: Int = 0
+    @State private var selectedDateWorkouts: [HealthWorkoutItem] = []
     
     init(selectedTab: Binding<Int>) {
         self._selectedTab = selectedTab
@@ -56,10 +63,17 @@ struct DashboardView: View {
             .sorted(by: { $0.timestamp > $1.timestamp })
     }
     
+    private var effectiveGoal: Double {
+        if healthKit.adjustGoalWithActiveBurn && healthKit.isHealthKitActiveBurnEnabled {
+            return dailyGoal + selectedDateActiveBurn
+        }
+        return dailyGoal
+    }
+    
     /// Uncapped ratio for selected day's calories card (ring caps at full circle; center label can exceed 100%).
     private var calorieProgressRatio: Double {
-        guard dailyGoal > 0 else { return 0 }
-        return todayCalories / dailyGoal
+        guard effectiveGoal > 0 else { return 0 }
+        return todayCalories / effectiveGoal
     }
     
     // Selected day's macros
@@ -219,9 +233,9 @@ struct DashboardView: View {
         UserDefaults.standard.set(now, forKey: "lastActiveDateDashboard")
     }
 
-    private var isOverGoal: Bool { todayCalories > dailyGoal }
-    private var remainingUnderGoal: Double { max(0, dailyGoal - todayCalories) }
-    private var amountOverGoal: Double { max(0, todayCalories - dailyGoal) }
+    private var isOverGoal: Bool { todayCalories > effectiveGoal }
+    private var remainingUnderGoal: Double { max(0, effectiveGoal - todayCalories) }
+    private var amountOverGoal: Double { max(0, todayCalories - effectiveGoal) }
 
     private var dailyStatusColor: Color {
         isOverGoal ? Theme.warningAmber : Theme.primaryGreen
@@ -400,7 +414,9 @@ struct DashboardView: View {
                                 TodaysCaloriesCard(
                                     calories: todayCalories,
                                     goal: dailyGoal,
-                                    progress: calorieProgressRatio
+                                    progress: calorieProgressRatio,
+                                    activeBurned: healthKit.isHealthKitActiveBurnEnabled ? selectedDateActiveBurn : nil,
+                                    adjustGoalWithActiveBurn: healthKit.adjustGoalWithActiveBurn
                                 )
                                 
                                 TodaysMacrosCard(
@@ -447,7 +463,9 @@ struct DashboardView: View {
                         TodaysCaloriesCard(
                             calories: todayCalories,
                             goal: dailyGoal,
-                            progress: calorieProgressRatio
+                            progress: calorieProgressRatio,
+                            activeBurned: healthKit.isHealthKitActiveBurnEnabled ? selectedDateActiveBurn : nil,
+                            adjustGoalWithActiveBurn: healthKit.adjustGoalWithActiveBurn
                         )
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                         
@@ -488,6 +506,46 @@ struct DashboardView: View {
                             StreakCard(streak: streakDays)
                         }
                         .padding(.horizontal, Constants.Spacing.extraLarge)
+                    }
+                    
+                    // Apple Health Activity & Workouts / Discovery Section
+                    if healthKit.isHealthKitActiveBurnEnabled {
+                        VStack(spacing: Constants.Spacing.large) {
+                            Divider()
+                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                .padding(.horizontal, Constants.Spacing.extraLarge)
+                            
+                            TodaysActivityCard(
+                                activeBurn: selectedDateActiveBurn,
+                                basalBurn: selectedDateBasalBurn,
+                                consumedCalories: todayCalories,
+                                steps: selectedDateSteps,
+                                workouts: selectedDateWorkouts
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        }
+                        .frame(maxWidth: 950)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    } else if !healthKit.isAuthorized && !dismissedHealthKitCard {
+                        VStack(spacing: Constants.Spacing.large) {
+                            Divider()
+                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                                .padding(.horizontal, Constants.Spacing.extraLarge)
+                            
+                            ConnectHealthDiscoveryCard(
+                                onConnect: {
+                                    showAppleHealthSheet = true
+                                },
+                                onDismiss: {
+                                    withAnimation(.easeInOut) {
+                                        dismissedHealthKitCard = true
+                                    }
+                                }
+                            )
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        }
+                        .frame(maxWidth: 950)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     }
                     
                     // Today's Meals Section (iPad only)
@@ -574,6 +632,11 @@ struct DashboardView: View {
             .sheet(isPresented: $showDatePicker) {
                 LogDatePickerSheet(selectedDate: $selectedDate, isPresented: $showDatePicker)
             }
+            .sheet(isPresented: $showAppleHealthSheet) {
+                NavigationStack {
+                    AppleHealthSettingsView()
+                }
+            }
             .sheet(isPresented: $showLinkSheet) {
                 LinkAccountView()
                     .environmentObject(authViewModel)
@@ -589,6 +652,24 @@ struct DashboardView: View {
                 }
                 checkAndResetSelectedDateIfNeeded()
                 syncWatchState()
+                Task {
+                    await refreshActiveBurn()
+                }
+            }
+            .onChange(of: selectedDate) { _, _ in
+                Task {
+                    await refreshActiveBurn()
+                }
+            }
+            .onChange(of: healthKit.isHealthKitActiveBurnEnabled) { _, _ in
+                Task {
+                    await refreshActiveBurn()
+                }
+            }
+            .onChange(of: healthKit.activeCaloriesBurned) { _, _ in
+                Task {
+                    await refreshActiveBurn()
+                }
             }
             .onChange(of: meals.count) { oldValue, newValue in
                 // #region agent log
@@ -602,12 +683,38 @@ struct DashboardView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 checkAndResetSelectedDateIfNeeded()
                 syncWatchState()
+                Task {
+                    await refreshActiveBurn()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSCalendarDayChanged)) { _ in
                 checkAndResetSelectedDateIfNeeded()
                 syncWatchState()
+                Task {
+                    await refreshActiveBurn()
+                }
             }
         }
+    }
+    
+    private func refreshActiveBurn() async {
+        guard healthKit.isHealthKitActiveBurnEnabled else {
+            selectedDateActiveBurn = 0.0
+            selectedDateBasalBurn = 0.0
+            selectedDateSteps = 0
+            selectedDateWorkouts = []
+            return
+        }
+        async let burn = healthKit.fetchActiveCalories(for: selectedDate)
+        async let steps = healthKit.fetchStepCount(for: selectedDate)
+        async let workouts = healthKit.fetchWorkouts(for: selectedDate)
+        async let basal = healthKit.fetchBasalCalories(for: selectedDate)
+        
+        let (b, s, w, basalVal) = await (burn, steps, workouts, basal)
+        selectedDateActiveBurn = b
+        selectedDateSteps = s
+        selectedDateWorkouts = w
+        selectedDateBasalBurn = basalVal
     }
     
     private func syncWatchState() {

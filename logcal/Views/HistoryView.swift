@@ -403,8 +403,10 @@ struct HistoryView: View {
     private func deleteMeals(at offsets: IndexSet, in dayMeals: [MealEntry]) {
         for index in offsets {
             let meal = dayMeals[index]
+            let mealId = meal.id
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
+                await HealthKitService.shared.deleteMealEntry(mealId: mealId)
             }
             meal.deleted = true
             ImageUtils.deleteMealImageLocally(forMealId: meal.id)
@@ -418,8 +420,10 @@ struct HistoryView: View {
         let mealsToDelete = activeMeals.filter { selectedMeals.contains($0.id) }
         
         for meal in mealsToDelete {
+            let mealId = meal.id
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
+                await HealthKitService.shared.deleteMealEntry(mealId: mealId)
             }
             meal.deleted = true
             ImageUtils.deleteMealImageLocally(forMealId: meal.id)
@@ -439,8 +443,10 @@ struct HistoryView: View {
     
     private func clearAllMeals() {
         for meal in activeMeals {
+            let mealId = meal.id
             Task {
                 await cloudSyncService.deleteMealFromCloud(meal)
+                await HealthKitService.shared.deleteMealEntry(mealId: mealId)
             }
             meal.deleted = true
             ImageUtils.deleteMealImageLocally(forMealId: meal.id)

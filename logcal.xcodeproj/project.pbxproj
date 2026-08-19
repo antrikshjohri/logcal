@@ -110,11 +110,11 @@
 		8380B175D99767AA3CD59F40 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppTheme.swift; path = logcal/Utils/AppTheme.swift; sourceTree = "<group>"; };
 		9B2C7FC42EEF6FE400707824 /* logcal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logcal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000007 /* LogCalWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogCalWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = LogCalWatch/Assets.xcassets; sourceTree = "<group>"; };
 		A00000000000000000000027 /* LogCalWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = LogCalWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000028 /* LogCalWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWatchWidget.swift; sourceTree = "<group>"; };
 		A00000000000000000000029 /* LogCalWatchWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWatchWidgetViews.swift; sourceTree = "<group>"; };
 		A0000000000000000000002B /* LogCalWatchWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LogCalWatchWidget.entitlements; sourceTree = "<group>"; };
-		A00000000000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = LogCalWatch/Assets.xcassets; sourceTree = "<group>"; };
 		A1D4AE3F098F361C1F1F2703 /* LogCalWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWidgetViews.swift; sourceTree = "<group>"; };
 		A6B596081B537E07E20CB224 /* LogCalWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogCalWidget.swift; sourceTree = "<group>"; };
 		AD365F0B5729A32292CE6E28 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -226,17 +226,8 @@
 				8380B175D99767AA3CD59F40 /* AppTheme.swift */,
 				A00000000000000000000001 /* LogCalWatch */,
 				A00000000000000000000031 /* LogCalWatchWidget */,
+				9B61FBE73035A60D000186F0 /* Recovered References */,
 			);
-			sourceTree = "<group>";
-		};
-		A00000000000000000000031 /* LogCalWatchWidget */ = {
-			isa = PBXGroup;
-			children = (
-				A00000000000000000000028 /* LogCalWatchWidget.swift */,
-				A00000000000000000000029 /* LogCalWatchWidgetViews.swift */,
-				A0000000000000000000002B /* LogCalWatchWidget.entitlements */,
-			);
-			path = LogCalWatchWidget;
 			sourceTree = "<group>";
 		};
 		9B2C7FC52EEF6FE400707824 /* Products */ = {
@@ -250,11 +241,29 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		9B61FBE73035A60D000186F0 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000010 /* Assets.xcassets */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		9B9BFCB62F0D8F3B00C7FD92 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000031 /* LogCalWatchWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000028 /* LogCalWatchWidget.swift */,
+				A00000000000000000000029 /* LogCalWatchWidgetViews.swift */,
+				A0000000000000000000002B /* LogCalWatchWidget.entitlements */,
+			);
+			path = LogCalWatchWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -918,15 +927,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A00000000000000000000022 /* Build configuration list for PBXNativeTarget "LogCalWatchWidget" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A00000000000000000000032 /* Debug */,
-				A00000000000000000000033 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		9B2C7FBF2EEF6FE400707824 /* Build configuration list for PBXProject "logcal" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -950,6 +950,15 @@
 			buildConfigurations = (
 				A0000000000000000000000B /* Debug */,
 				A0000000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00000000000000000000022 /* Build configuration list for PBXNativeTarget "LogCalWatchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000032 /* Debug */,
+				A00000000000000000000033 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
