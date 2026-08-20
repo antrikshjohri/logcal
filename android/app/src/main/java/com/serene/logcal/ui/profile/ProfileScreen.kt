@@ -41,6 +41,13 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.TextFields
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.health.connect.client.PermissionController
+import com.serene.logcal.service.HealthConnectService
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.filled.Warning
@@ -125,6 +132,21 @@ fun ProfileScreen() {
     var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
     var isWhatsAppLinked by remember { mutableStateOf(false) }
     var dailyGoalCalories by remember { mutableStateOf(2000.0) }
+
+    val healthConnectService = remember { HealthConnectService.getInstance(context) }
+    var isHealthConnectEnabled by remember { mutableStateOf(prefManager.isHealthConnectEnabled) }
+
+    val healthPermissionLauncher = rememberLauncherForActivityResult(
+        contract = PermissionController.createRequestPermissionResultContract()
+    ) { grantedPermissions ->
+        if (grantedPermissions.containsAll(HealthConnectService.PERMISSIONS)) {
+            prefManager.isHealthConnectEnabled = true
+            isHealthConnectEnabled = true
+            Toast.makeText(context, "Google Health Connect connected", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Health Connect permissions required", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     fun refreshUserDetails() {
         val currentUser = auth.currentUser
@@ -261,12 +283,26 @@ fun ProfileScreen() {
                 userEmail = userEmail,
                 profilePhotoUrl = profilePhotoUrl,
                 isWhatsAppLinked = isWhatsAppLinked,
+                isHealthConnectEnabled = isHealthConnectEnabled,
                 dailyGoalCalories = dailyGoalCalories,
                 currentThemeName = prefManager.appTheme.replaceFirstChar { it.uppercase() },
                 onNavigate = { activeScreen = it },
                 onShowAuth = { showAuthDialog = true },
                 onShowFeedback = { showFeedbackDialog = true },
-                onShowTheme = { showThemeSelector = true }
+                onShowTheme = { showThemeSelector = true },
+                onToggleHealthConnect = {
+                    if (healthConnectService.isAvailable()) {
+                        if (prefManager.isHealthConnectEnabled) {
+                            prefManager.isHealthConnectEnabled = false
+                            isHealthConnectEnabled = false
+                            Toast.makeText(context, "Health Connect sync disabled", Toast.LENGTH_SHORT).show()
+                        } else {
+                            healthPermissionLauncher.launch(HealthConnectService.PERMISSIONS)
+                        }
+                    } else {
+                        Toast.makeText(context, "Google Health Connect is not available on this device", Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
             ProfileSubScreen.EDIT_PROFILE -> EditProfileScreen(
                 onBack = { activeScreen = ProfileSubScreen.MAIN },
@@ -314,12 +350,14 @@ private fun MainProfileView(
     userEmail: String,
     profilePhotoUrl: String?,
     isWhatsAppLinked: Boolean,
+    isHealthConnectEnabled: Boolean,
     dailyGoalCalories: Double,
     currentThemeName: String,
     onNavigate: (ProfileSubScreen) -> Unit,
     onShowAuth: () -> Unit,
     onShowFeedback: () -> Unit,
-    onShowTheme: () -> Unit
+    onShowTheme: () -> Unit,
+    onToggleHealthConnect: () -> Unit
 ) {
     val colors = LogCalTheme.colors
 
@@ -526,9 +564,9 @@ private fun MainProfileView(
                 }
             }
 
-            // 2. Shortcuts Card Group
+            // 2. Integrations & Shortcuts Card Group
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("SHORTCUTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = colors.mutedText, modifier = Modifier.padding(horizontal = 6.dp))
+                Text("INTEGRATIONS & SHORTCUTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = colors.mutedText, modifier = Modifier.padding(horizontal = 6.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -541,6 +579,14 @@ private fun MainProfileView(
                         .background(colors.cardBackground, RoundedCornerShape(12.dp))
                         .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                 ) {
+                    SettingsActionRow(
+                        title = "Google Health Connect",
+                        icon = Icons.Default.Favorite,
+                        trailingValue = if (isHealthConnectEnabled) "Connected" else "Not Connected",
+                        onClick = onToggleHealthConnect
+                    )
+                    HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+
                     SettingsActionRow(
                         title = "Log using Whatsapp",
                         iconPainter = painterResource(id = com.serene.logcal.R.drawable.ic_whatsapp),
@@ -584,6 +630,17 @@ private fun MainProfileView(
                         onClick = {
                             AnalyticsService.trackProfileSendFeedbackTapped()
                             onShowFeedback()
+                        }
+                    )
+                    HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                    val ctx = LocalContext.current
+                    SettingsActionRow(
+                        title = "Privacy Policy",
+                        icon = Icons.Default.Security,
+                        onClick = {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://logcalai.com/privacy/"))
+                            ctx.startActivity(browserIntent)
                         }
                     )
                 }

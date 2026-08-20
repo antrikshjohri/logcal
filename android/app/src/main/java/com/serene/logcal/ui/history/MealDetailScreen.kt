@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
+import com.serene.logcal.ui.components.ModernConfirmationDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -200,23 +200,17 @@ fun MealDetailScreen(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete meal?") },
-            text = { Text("This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        DebugLogger.d("DEBUG: [MealDetailScreen] delete confirmed mealId=$mealId")
-                        viewModel.deleteMeal(mealId)
-                        onBack()
-                    },
-                ) { Text("Delete") }
+        ModernConfirmationDialog(
+            title = "Delete Meal?",
+            message = "Are you sure you want to delete this meal? This action cannot be undone.",
+            confirmText = "Delete Meal",
+            onConfirm = {
+                showDeleteDialog = false
+                DebugLogger.d("DEBUG: [MealDetailScreen] delete confirmed mealId=$mealId")
+                viewModel.deleteMeal(mealId)
+                onBack()
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
-            },
+            onDismiss = { showDeleteDialog = false }
         )
     }
 }

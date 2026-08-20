@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import com.serene.logcal.ui.components.RenameFavoriteDialog
+import com.serene.logcal.ui.components.ModernConfirmationDialog
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -107,207 +109,51 @@ fun SavedMealsScreen(
     val json = remember { Json { ignoreUnknownKeys = true } }
 
     if (mealBeingRenamed != null) {
-        Dialog(onDismissRequest = { mealBeingRenamed = null }) {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = colors.cardBackground,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                border = BorderStroke(1.dp, colors.cardBorder)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Header Icon
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(colors.softAccentBackground),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.BookmarkBorder,
-                            contentDescription = null,
-                            tint = colors.primaryGreen,
-                            modifier = Modifier.size(28.dp)
+        val savedMeal = mealBeingRenamed!!
+        RenameFavoriteDialog(
+            title = "Rename Favourite Meal",
+            initialText = renameText.ifBlank { savedMeal.title },
+            placeholder = "Name",
+            onDismiss = { mealBeingRenamed = null },
+            onSave = { newName ->
+                coroutineScope.launch {
+                    try {
+                        val updated = savedMeal.copy(
+                            title = newName.take(140),
+                            updatedAtMillis = System.currentTimeMillis()
                         )
-                    }
-
-                    // Titles
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = "Rename Favourite Meal",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.primaryText,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "Give this meal a new name so you can quickly log it later.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.mutedText,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    // Input Field
-                    OutlinedTextField(
-                        value = renameText,
-                        onValueChange = { renameText = it },
-                        singleLine = true,
-                        placeholder = { Text("Name", color = colors.quietText) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.primaryGreen,
-                            unfocusedBorderColor = colors.cardBorder,
-                            focusedContainerColor = colors.insetBackground,
-                            unfocusedContainerColor = colors.insetBackground,
-                            focusedTextColor = colors.primaryText,
-                            unfocusedTextColor = colors.primaryText
-                        ),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Buttons Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = { mealBeingRenamed = null },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = colors.mutedText
-                            )
-                        ) {
-                            Text(
-                                "Cancel",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                val savedMeal = mealBeingRenamed ?: return@Button
-                                val trimmed = renameText.trim()
-                                if (trimmed.isNotEmpty()) {
-                                    coroutineScope.launch {
-                                        try {
-                                            val updated = savedMeal.copy(
-                                                title = trimmed.take(140),
-                                                updatedAtMillis = System.currentTimeMillis()
-                                            )
-                                            favRepo.save(updated)
-                                            syncService.syncSavedMealsToCloud()
-                                        } catch (e: Exception) {
-                                            DebugLogger.e("DEBUG: Failed to rename", e)
-                                        } finally {
-                                            mealBeingRenamed = null
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1.5f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colors.primaryGreen,
-                                contentColor = Color.White
-                            ),
-                            enabled = renameText.isNotBlank()
-                        ) {
-                            Text(
-                                "Save",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                        favRepo.save(updated)
+                        syncService.syncSavedMealsToCloud()
+                    } catch (e: Exception) {
+                        DebugLogger.e("DEBUG: Failed to rename", e)
+                    } finally {
+                        mealBeingRenamed = null
                     }
                 }
             }
-        }
+        )
     }
 
     if (mealPendingDeletion != null) {
-        Dialog(onDismissRequest = { mealPendingDeletion = null }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.background,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        "Delete Favourite Meal",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.primaryText
-                    )
-
-                    Text(
-                        "Are you sure you want to delete this favourite meal? This action cannot be undone.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.mutedText,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = { mealPendingDeletion = null },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.cardBackground, contentColor = colors.primaryText),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.cardBorder)
-                        ) {
-                            Text("Cancel", fontWeight = FontWeight.Bold)
-                        }
-
-                        Button(
-                            onClick = {
-                                val savedMeal = mealPendingDeletion ?: return@Button
-                                coroutineScope.launch {
-                                    try {
-                                        favRepo.delete(savedMeal.id)
-                                        syncService.syncSavedMealsToCloud()
-                                    } catch (e: Exception) {
-                                        DebugLogger.e("DEBUG: Failed to delete", e)
-                                    } finally {
-                                        mealPendingDeletion = null
-                                    }
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.dangerRed, contentColor = Color.White)
-                        ) {
-                            Text("Delete", fontWeight = FontWeight.Bold)
-                        }
+        val savedMeal = mealPendingDeletion!!
+        ModernConfirmationDialog(
+            title = "Delete Favourite Meal?",
+            message = "Are you sure you want to delete this favourite meal? This action cannot be undone.",
+            confirmText = "Delete Favorite",
+            onConfirm = {
+                coroutineScope.launch {
+                    try {
+                        favRepo.delete(savedMeal.id)
+                        syncService.syncSavedMealsToCloud()
+                    } catch (e: Exception) {
+                        DebugLogger.e("DEBUG: Failed to delete", e)
+                    } finally {
+                        mealPendingDeletion = null
                     }
                 }
-            }
-        }
+            },
+            onDismiss = { mealPendingDeletion = null }
+        )
     }
 
     Column(

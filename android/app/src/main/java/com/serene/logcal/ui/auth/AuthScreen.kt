@@ -404,7 +404,7 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                 color = colors.mutedText,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier.clickable {
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/privacypolicylogcalai/home"))
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://logcalai.com/privacy/"))
                     context.startActivity(browserIntent)
                 }
             )
