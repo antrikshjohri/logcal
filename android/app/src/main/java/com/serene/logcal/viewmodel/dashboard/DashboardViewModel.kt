@@ -26,10 +26,38 @@ private const val PREF_NAME = "logcal_dashboard_prefs"
 private const val KEY_DAILY_GOAL = "daily_goal"
 private const val DEFAULT_DAILY_GOAL = 2200
 
-data class WeeklyDayStat(
+enum class WeeklyTrendNutrient(val title: String, val unit: String) {
+    CALORIES("Calories", "cal"),
+    PROTEIN("Protein", "g"),
+    CARBS("Carbs", "g"),
+    FATS("Fats", "g"),
+    FIBER("Fiber", "g");
+
+    companion object {
+        fun fromTitle(title: String): WeeklyTrendNutrient {
+            return entries.firstOrNull { it.title.equals(title, ignoreCase = true) } ?: CALORIES
+        }
+    }
+}
+
+data class WeeklyDayNutrientStat(
     val date: LocalDate,
     val calories: Int,
-)
+    val protein: Int,
+    val carbs: Int,
+    val fat: Int,
+    val fiber: Double,
+) {
+    fun valueFor(nutrient: WeeklyTrendNutrient): Double {
+        return when (nutrient) {
+            WeeklyTrendNutrient.CALORIES -> calories.toDouble()
+            WeeklyTrendNutrient.PROTEIN -> protein.toDouble()
+            WeeklyTrendNutrient.CARBS -> carbs.toDouble()
+            WeeklyTrendNutrient.FATS -> fat.toDouble()
+            WeeklyTrendNutrient.FIBER -> fiber
+        }
+    }
+}
 
 data class DashboardUiState(
     val isLoading: Boolean = true,
@@ -45,11 +73,28 @@ data class DashboardUiState(
     val macroCarbsPercent: Int = 0,
     val macroFatPercent: Int = 0,
     val macroFiberPercent: Int = 0,
-    val weeklyStats: List<WeeklyDayStat> = emptyList(),
-    val weeklyAverageCalories: Int = 0,
+    val weeklyStats: List<WeeklyDayNutrientStat> = emptyList(),
     val streakDays: Int = 0,
     val errorMessage: String? = null,
-)
+) {
+    val weeklyAverageCalories: Int
+        get() = averageFor(WeeklyTrendNutrient.CALORIES).roundToInt()
+
+    fun averageFor(nutrient: WeeklyTrendNutrient): Double {
+        if (weeklyStats.isEmpty()) return 0.0
+        return weeklyStats.sumOf { it.valueFor(nutrient) } / weeklyStats.size.toDouble()
+    }
+
+    fun goalFor(nutrient: WeeklyTrendNutrient, proteinTarget: Int, carbsTarget: Int, fatTarget: Int): Double {
+        return when (nutrient) {
+            WeeklyTrendNutrient.CALORIES -> dailyGoal.toDouble()
+            WeeklyTrendNutrient.PROTEIN -> proteinTarget.toDouble()
+            WeeklyTrendNutrient.CARBS -> carbsTarget.toDouble()
+            WeeklyTrendNutrient.FATS -> fatTarget.toDouble()
+            WeeklyTrendNutrient.FIBER -> fiberGoal
+        }
+    }
+}
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val localRepo = AppGraph.localMealRepository(application)
@@ -170,10 +215,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         // Weekly stats: last 7 days ending today (inclusive)
         val weekly = (6 downTo 0).map { offset ->
             val d = today.minusDays(offset.toLong())
-            val dayCalories = mealsByDate[d].orEmpty().sumOf { it.totalCalories }.roundToInt()
-            WeeklyDayStat(date = d, calories = dayCalories)
+            val dMeals = mealsByDate[d].orEmpty()
+            WeeklyDayNutrientStat(
+                date = d,
+                calories = dMeals.sumOf { it.totalCalories }.roundToInt(),
+                protein = dMeals.sumOf { it.response.protein ?: 0.0 }.roundToInt(),
+                carbs = dMeals.sumOf { it.response.carbs ?: 0.0 }.roundToInt(),
+                fat = dMeals.sumOf { it.response.fat ?: 0.0 }.roundToInt(),
+                fiber = dMeals.sumOf { it.response.fiber ?: 0.0 }
+            )
         }
-        val weeklyAverage = if (weekly.isNotEmpty()) weekly.map { it.calories }.average().roundToInt() else 0
         
         val streakDays = calculateStreakDays(today, mealsByDate)
 
@@ -201,7 +252,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 0
             },
             weeklyStats = weekly,
-            weeklyAverageCalories = weeklyAverage,
             streakDays = streakDays,
         )
     }

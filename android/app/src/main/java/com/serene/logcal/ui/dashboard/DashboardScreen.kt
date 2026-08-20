@@ -1,6 +1,7 @@
 package com.serene.logcal.ui.dashboard
 
-import com.serene.logcal.ui.components.CalendarBottomSheet
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,51 +20,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-
-
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import com.serene.logcal.ui.profile.DailyGoalScreen
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -82,20 +77,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.firebase.auth.FirebaseAuth
-import com.serene.logcal.model.DietStyle
+import com.serene.logcal.data.repository.AppGraph
+import com.serene.logcal.service.HealthConnectService
+import com.serene.logcal.service.HealthWorkout
+import com.serene.logcal.ui.components.CalendarBottomSheet
+import com.serene.logcal.ui.components.ConnectHealthDiscoveryCard
+import com.serene.logcal.ui.components.TodaysActivityCard
+import com.serene.logcal.ui.profile.DailyGoalScreen
 import com.serene.logcal.ui.theme.LogCalTheme
-import com.serene.logcal.viewmodel.dashboard.DashboardViewModel
 import com.serene.logcal.util.NumberUtils
+import com.serene.logcal.viewmodel.dashboard.DashboardViewModel
+import com.serene.logcal.viewmodel.dashboard.WeeklyTrendNutrient
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
-import kotlin.math.absoluteValue
-import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,14 +107,56 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val prefManager = remember { AppGraph.preferenceManager(context) }
+    val healthConnectService = remember { HealthConnectService.getInstance(context) }
 
     var showDailyGoalSheet by remember { mutableStateOf(false) }
+    var showCustomizeDashboardSheet by remember { mutableStateOf(false) }
+    var selectedTrendNutrient by remember { mutableStateOf(WeeklyTrendNutrient.CALORIES) }
+    var refreshCustomizationTrigger by remember { mutableIntStateOf(0) }
 
-    // Trigger rollover check when app returns to foreground
-    DisposableEffect(lifecycleOwner) {
+    // Health Connect data
+    var isHealthAuthorized by remember { mutableStateOf(false) }
+    var activeBurn by remember { mutableStateOf(0.0) }
+    var basalBurn by remember { mutableStateOf(1600.0) }
+    var steps by remember { mutableStateOf(0L) }
+    var workouts by remember { mutableStateOf<List<HealthWorkout>>(emptyList()) }
+    var dismissedHealthCard by remember { mutableStateOf(prefManager.dismissedHealthConnectCard) }
+
+    // Health Connect Permission Launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { grantedPermissions ->
+        if (grantedPermissions.containsAll(HealthConnectService.PERMISSIONS)) {
+            prefManager.isHealthConnectEnabled = true
+            isHealthAuthorized = true
+            Toast.makeText(context, "Health Connect connected!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    suspend fun refreshHealthStats() {
+        if (healthConnectService.isAvailable()) {
+            val authorized = healthConnectService.checkPermissions()
+            isHealthAuthorized = authorized
+            if (authorized && prefManager.isHealthConnectEnabled) {
+                activeBurn = healthConnectService.fetchActiveCalories(selectedDate)
+                basalBurn = healthConnectService.fetchBasalCalories(selectedDate)
+                steps = healthConnectService.fetchSteps(selectedDate)
+                workouts = healthConnectService.fetchWorkouts(selectedDate)
+            }
+        }
+    }
+
+    // Trigger rollover check and Health Connect refresh when returning to foreground
+    DisposableEffect(lifecycleOwner, selectedDate) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.checkAndResetSelectedDateIfNeeded()
+                coroutineScope.launch {
+                    refreshHealthStats()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -121,8 +165,9 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(selectedDate) {
         viewModel.checkAndResetSelectedDateIfNeeded()
+        refreshHealthStats()
     }
 
     if (uiState.isLoading) {
@@ -165,7 +210,10 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
-        onRefresh = { viewModel.refreshData() }
+        onRefresh = {
+            viewModel.refreshData()
+            coroutineScope.launch { refreshHealthStats() }
+        }
     ) {
         Column(
             modifier = Modifier
@@ -195,324 +243,487 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-        // 1. Date Header Navigation
-        var showDatePicker by remember { mutableStateOf(false) }
+            // 1. Date Header Navigation
+            var showDatePicker by remember { mutableStateOf(false) }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.ChevronLeft,
-                contentDescription = "Previous Day",
-                tint = LogCalTheme.colors.primaryGreen,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(LogCalTheme.colors.softAccentBackground)
-                    .clickable { viewModel.changeDate(-1) }
-                    .padding(8.dp)
-            )
-
-            Spacer(modifier = Modifier.width(24.dp))
-
-            Column(
-                modifier = Modifier
-                    .clickable { showDatePicker = true },
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = displayDateTitle,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = LogCalTheme.colors.primaryText
-                )
-                Text(
-                    text = formattedDateText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = LogCalTheme.colors.mutedText
-                )
-            }
-
-            Spacer(modifier = Modifier.width(24.dp))
-
-            val isToday = selectedDate == LocalDate.now()
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "Next Day",
-                tint = if (isToday) LogCalTheme.colors.mutedText.copy(alpha = 0.3f) else LogCalTheme.colors.primaryGreen,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(if (isToday) Color.Transparent else LogCalTheme.colors.softAccentBackground)
-                    .clickable(enabled = !isToday) { viewModel.changeDate(1) }
-                    .padding(8.dp)
-            )
-        }
-
-        if (showDatePicker) {
-            CalendarBottomSheet(
-                initialDate = selectedDate,
-                onDateSelected = { viewModel.setSelectedDate(it) },
-                onDismiss = { showDatePicker = false }
-            )
-        }
-
-        // 2. Guest Warning Banner
-        if (isAnonymous) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(LogCalTheme.colors.cardBackground)
-                    .border(1.dp, LogCalTheme.colors.cardBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Cloud,
-                    contentDescription = "Warning",
-                    tint = LogCalTheme.colors.warningAmber,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Cloud backup is disabled in Guest Mode.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = LogCalTheme.colors.primaryText,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "Sign In",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = LogCalTheme.colors.primaryGreen,
-                    modifier = Modifier.clickable {
-                        FirebaseAuth.getInstance().signOut()
-                    }
-                )
-            }
-        }
-
-        // 3. Status & Calories Card
-        AppCard {
-            // Status Banner
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(dailyStatusColor.copy(alpha = 0.15f))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
+                    imageVector = Icons.Default.ChevronLeft,
+                    contentDescription = "Previous Day",
+                    tint = LogCalTheme.colors.primaryGreen,
                     modifier = Modifier
-                        .size(24.dp)
-                        .background(dailyStatusColor, CircleShape),
-                    contentAlignment = Alignment.Center
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(LogCalTheme.colors.softAccentBackground)
+                        .clickable { viewModel.changeDate(-1) }
+                        .padding(8.dp)
+                )
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                Column(
+                    modifier = Modifier.clickable { showDatePicker = true },
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = statusCardTitle,
-                        style = MaterialTheme.typography.titleMedium,
+                        text = displayDateTitle,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = LogCalTheme.colors.primaryText
                     )
                     Text(
-                        text = statusCardSubtitle,
+                        text = formattedDateText,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
                         color = LogCalTheme.colors.mutedText
                     )
                 }
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                val isToday = selectedDate == LocalDate.now()
                 Icon(
-                    imageVector = Icons.Default.Eco,
-                    contentDescription = null,
-                    tint = dailyStatusColor.copy(alpha = 0.3f),
-                    modifier = Modifier.size(24.dp)
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Next Day",
+                    tint = if (isToday) LogCalTheme.colors.mutedText.copy(alpha = 0.3f) else LogCalTheme.colors.primaryGreen,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (isToday) Color.Transparent else LogCalTheme.colors.softAccentBackground)
+                        .clickable(enabled = !isToday) { viewModel.changeDate(1) }
+                        .padding(8.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            // Calories Main Content
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = NumberUtils.formatNumber(uiState.todayCalories.toInt()),
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = LogCalTheme.colors.primaryText
+
+            if (showDatePicker) {
+                CalendarBottomSheet(
+                    initialDate = selectedDate,
+                    onDateSelected = { viewModel.setSelectedDate(it) },
+                    onDismiss = { showDatePicker = false }
+                )
+            }
+
+            // 2. Guest Warning Banner
+            if (isAnonymous) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(LogCalTheme.colors.cardBackground)
+                        .border(1.dp, LogCalTheme.colors.cardBorder, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cloud,
+                        contentDescription = "Warning",
+                        tint = LogCalTheme.colors.warningAmber,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Text("of ${NumberUtils.formatNumber(uiState.dailyGoal.toInt())} cal eaten", style = MaterialTheme.typography.titleMedium, color = LogCalTheme.colors.mutedText)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Cloud backup is disabled in Guest Mode.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = LogCalTheme.colors.primaryText,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "Sign In",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = LogCalTheme.colors.primaryGreen,
+                        modifier = Modifier.clickable {
+                            FirebaseAuth.getInstance().signOut()
+                        }
+                    )
                 }
-                RingProgress(
-                    progress = progress,
-                    percentageText = "${(progress * 100f).roundToInt()}%",
-                    size = 96.dp,
-                    stroke = 10.dp,
-                    progressColor = dailyStatusColor,
-                    showLeaf = true
-                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            val diff = (uiState.todayCalories - uiState.dailyGoal).toInt()
-            val highlightText = if (isOverGoal) {
-                "${NumberUtils.formatNumber(diff.absoluteValue)} cal over target"
-            } else {
-                "${NumberUtils.formatNumber(uiState.remainingCalories.toInt().coerceAtLeast(0))} cal remaining"
+
+            // Read dynamic section order from preferences
+            val sectionKeys = prefManager.dashboardSectionOrder.split(",").mapNotNull { DashboardSectionType.fromId(it.trim()) }
+            val completeSections = sectionKeys.toMutableList()
+            DashboardSectionType.entries.forEach { if (!completeSections.contains(it)) completeSections.add(it) }
+
+            // Render sections in custom user order
+            completeSections.forEach { sectionType ->
+                when (sectionType) {
+                    DashboardSectionType.CALORIES -> {
+                        if (prefManager.showDashboardCalories) {
+                            // 3. Status & Calories Card
+                            AppCard {
+                                // Status Banner
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(dailyStatusColor.copy(alpha = 0.15f))
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(dailyStatusColor, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = statusCardTitle,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = LogCalTheme.colors.primaryText
+                                        )
+                                        Text(
+                                            text = statusCardSubtitle,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = LogCalTheme.colors.mutedText
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.Eco,
+                                        contentDescription = null,
+                                        tint = dailyStatusColor.copy(alpha = 0.3f),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                                // Calories Main Content
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = NumberUtils.formatNumber(uiState.todayCalories),
+                                            style = MaterialTheme.typography.displayMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = LogCalTheme.colors.primaryText
+                                        )
+                                        Text(
+                                            text = "calories eaten",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = LogCalTheme.colors.mutedText
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                            Column {
+                                                Text(
+                                                    text = NumberUtils.formatNumber(uiState.dailyGoal),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = LogCalTheme.colors.primaryText
+                                                )
+                                                Text(
+                                                    text = "Daily budget",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = LogCalTheme.colors.mutedText
+                                                )
+                                            }
+                                            Column {
+                                                val remaining = (uiState.dailyGoal - uiState.todayCalories).coerceAtLeast(0)
+                                                Text(
+                                                    text = NumberUtils.formatNumber(remaining),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = LogCalTheme.colors.primaryGreen
+                                                )
+                                                Text(
+                                                    text = "Remaining",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = LogCalTheme.colors.mutedText
+                                                )
+                                            }
+                                        }
+                                    }
+                                    RingProgress(
+                                        progress = progress,
+                                        percentageText = "${(progress * 100).roundToInt()}%",
+                                        size = 110.dp,
+                                        stroke = 12.dp,
+                                        progressColor = dailyStatusColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    DashboardSectionType.MACROS -> {
+                        if (prefManager.showDashboardMacros) {
+                            // 5. Today's Macros Card
+                            AppCard {
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Macros",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = LogCalTheme.colors.primaryText
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Row(
+                                        modifier = Modifier.clickable { onNavigateToHistory() },
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Details",
+                                            color = LogCalTheme.colors.primaryGreen,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                            contentDescription = "Details",
+                                            tint = LogCalTheme.colors.primaryGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                val proteinTarget = if (uiState.macroProteinPercent > 0) (uiState.proteinGrams * 100 / uiState.macroProteinPercent) else 0
+                                val carbsTarget = if (uiState.macroCarbsPercent > 0) (uiState.carbsGrams * 100 / uiState.macroCarbsPercent) else 0
+                                val fatTarget = if (uiState.macroFatPercent > 0) (uiState.fatGrams * 100 / uiState.macroFatPercent) else 0
+                                val fiberTarget = uiState.fiberGoal.roundToInt()
+
+                                MacroLinearRow("Protein", uiState.proteinGrams, proteinTarget, uiState.macroProteinPercent, LogCalTheme.colors.protein)
+                                MacroLinearRow("Carbs", uiState.carbsGrams, carbsTarget, uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
+                                MacroLinearRow("Fat", uiState.fatGrams, fatTarget, uiState.macroFatPercent, LogCalTheme.colors.fat)
+                                MacroLinearRow("Fiber", uiState.fiberGrams.roundToInt(), fiberTarget, uiState.macroFiberPercent, LogCalTheme.colors.fiber)
+                            }
+                        }
+                    }
+
+                    DashboardSectionType.WEEKLY_TREND -> {
+                        if (prefManager.showDashboardWeeklyTrend) {
+                            // 6. Multi-Macro Weekly Chart Card
+                            var dropdownExpanded by remember { mutableStateOf(false) }
+                            val proteinTarget = if (uiState.macroProteinPercent > 0) (uiState.proteinGrams * 100 / uiState.macroProteinPercent) else 0
+                            val carbsTarget = if (uiState.macroCarbsPercent > 0) (uiState.carbsGrams * 100 / uiState.macroCarbsPercent) else 0
+                            val fatTarget = if (uiState.macroFatPercent > 0) (uiState.fatGrams * 100 / uiState.macroFatPercent) else 0
+                            val avgVal = uiState.averageFor(selectedTrendNutrient)
+                            val goalVal = uiState.goalFor(selectedTrendNutrient, proteinTarget, carbsTarget, fatTarget)
+                            val nutrientColor = when (selectedTrendNutrient) {
+                                WeeklyTrendNutrient.CALORIES -> LogCalTheme.colors.primaryGreen
+                                WeeklyTrendNutrient.PROTEIN -> Color(0xFFF26161)
+                                WeeklyTrendNutrient.CARBS -> Color(0xFFF3B240)
+                                WeeklyTrendNutrient.FATS -> Color(0xFF4DC6F5)
+                                WeeklyTrendNutrient.FIBER -> Color(0xFF34C759)
+                            }
+
+                            AppCard {
+                                // Row 1: Title & Dropdown Pill
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Weekly trend",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = LogCalTheme.colors.primaryText
+                                    )
+
+                                    // Dropdown Menu Selector
+                                    Box {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(nutrientColor.copy(alpha = 0.15f))
+                                                .clickable { dropdownExpanded = true }
+                                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = selectedTrendNutrient.title,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = nutrientColor
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowDropDown,
+                                                contentDescription = "Select Nutrient",
+                                                tint = nutrientColor,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+
+                                        DropdownMenu(
+                                            expanded = dropdownExpanded,
+                                            onDismissRequest = { dropdownExpanded = false },
+                                            modifier = Modifier.background(LogCalTheme.colors.cardBackground)
+                                        ) {
+                                            WeeklyTrendNutrient.entries.forEach { nutrient ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = nutrient.title,
+                                                            fontWeight = if (nutrient == selectedTrendNutrient) FontWeight.Bold else FontWeight.Normal,
+                                                            color = if (nutrient == selectedTrendNutrient) nutrientColor else LogCalTheme.colors.primaryText
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        selectedTrendNutrient = nutrient
+                                                        dropdownExpanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Row 2: 7-Day Average
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "7-Day Avg: ",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = LogCalTheme.colors.mutedText
+                                    )
+                                    val formattedAvg = if (selectedTrendNutrient == WeeklyTrendNutrient.CALORIES) {
+                                        "${NumberUtils.formatNumber(avgVal.roundToInt())} kcal / day"
+                                    } else {
+                                        "${avgVal.roundToInt()}g / day"
+                                    }
+                                    Text(
+                                        text = formattedAvg,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = nutrientColor
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                WeeklyBarChart(
+                                    values = uiState.weeklyStats.map { it.valueFor(selectedTrendNutrient) },
+                                    labels = uiState.weeklyStats.map { it.date.dayOfWeek.name.lowercase().replaceFirstChar { c -> c.uppercase() }.take(3) },
+                                    selectedIdx = uiState.weeklyStats.indexOfFirst { it.date == selectedDate },
+                                    onBarSelected = { idx ->
+                                        uiState.weeklyStats.getOrNull(idx)?.let { stat ->
+                                            viewModel.setSelectedDate(stat.date)
+                                        }
+                                    },
+                                    goal = goalVal,
+                                    nutrient = selectedTrendNutrient,
+                                    nutrientColor = nutrientColor
+                                )
+                            }
+                        }
+                    }
+
+                    DashboardSectionType.GOAL_STREAK -> {
+                        if (prefManager.showDashboardGoalStreak) {
+                            // 7. Daily Goal & Streak Tiles
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SmallStatTile(
+                                    modifier = Modifier.weight(1f),
+                                    icon = { Icon(Icons.Default.TrackChanges, contentDescription = null, tint = LogCalTheme.colors.primaryGreen) },
+                                    title = "Daily Goal",
+                                    value = NumberUtils.formatNumber(uiState.dailyGoal),
+                                    suffix = "calories",
+                                    onClick = { showDailyGoalSheet = true }
+                                )
+                                
+                                val hasStreak = uiState.streakDays > 0
+                                val streakBrush = if (hasStreak) {
+                                    Brush.linearGradient(
+                                        colors = listOf(Color(0xFFFF5E3A), Color(0xFFFF2A68))
+                                    )
+                                } else null
+                                
+                                SmallStatTile(
+                                    modifier = Modifier.weight(1f),
+                                    icon = { 
+                                        Icon(
+                                            imageVector = Icons.Default.Bolt,
+                                            contentDescription = null,
+                                            tint = if (hasStreak) Color.White else LogCalTheme.colors.warningAmber,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    title = "Streak",
+                                    value = uiState.streakDays.toString(),
+                                    suffix = if (uiState.streakDays == 1) "day" else "days",
+                                    backgroundBrush = streakBrush,
+                                    contentColor = if (hasStreak) Color.White else null
+                                )
+                            }
+                        }
+                    }
+
+                    DashboardSectionType.ACTIVITY -> {
+                        if (prefManager.showDashboardActivity) {
+                            if (prefManager.isHealthConnectEnabled && isHealthAuthorized) {
+                                TodaysActivityCard(
+                                    activeBurn = activeBurn,
+                                    basalBurn = basalBurn,
+                                    consumedCalories = uiState.todayCalories,
+                                    steps = steps,
+                                    workouts = workouts
+                                )
+                            } else if (!dismissedHealthCard) {
+                                ConnectHealthDiscoveryCard(
+                                    onConnect = {
+                                        permissionLauncher.launch(HealthConnectService.PERMISSIONS)
+                                    },
+                                    onDismiss = {
+                                        prefManager.dismissedHealthConnectCard = true
+                                        dismissedHealthCard = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
+            // Customize Dashboard Button
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(dailyStatusColor.copy(alpha = 0.1f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .background(dailyStatusColor, CircleShape),
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(LogCalTheme.colors.cardBackground)
+                        .border(1.dp, LogCalTheme.colors.cardBorder, RoundedCornerShape(20.dp))
+                        .clickable { showCustomizeDashboardSheet = true }
+                        .padding(horizontal = 16.dp, vertical = 9.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = highlightText,
-                    color = dailyStatusColor,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // 5. Today's Macros Card
-        AppCard {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Macros",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = LogCalTheme.colors.primaryText
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Row(
-                    modifier = Modifier.clickable { onNavigateToHistory() },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Details",
-                        color = LogCalTheme.colors.primaryGreen,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Details",
-                        tint = LogCalTheme.colors.primaryGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                val proteinGoal = if (uiState.macroProteinPercent > 0) (uiState.proteinGrams * 100 / uiState.macroProteinPercent) else 0
-                val carbsGoal = if (uiState.macroCarbsPercent > 0) (uiState.carbsGrams * 100 / uiState.macroCarbsPercent) else 0
-                val fatGoal = if (uiState.macroFatPercent > 0) (uiState.fatGrams * 100 / uiState.macroFatPercent) else 0
-                val fiberGoal = uiState.fiberGoal.roundToInt()
-                
-                MacroLinearRow("Protein", uiState.proteinGrams, proteinGoal, uiState.macroProteinPercent, LogCalTheme.colors.protein)
-                MacroLinearRow("Carbs", uiState.carbsGrams, carbsGoal, uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
-                MacroLinearRow("Fat", uiState.fatGrams, fatGoal, uiState.macroFatPercent, LogCalTheme.colors.fat)
-                MacroLinearRow("Fiber", uiState.fiberGrams.roundToInt(), fiberGoal, uiState.macroFiberPercent, LogCalTheme.colors.fiber)
-            }
-        }
-
-        // 6. Weekly Chart Card
-        AppCard {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Weekly trend",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = LogCalTheme.colors.primaryText
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "Total Calories",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = LogCalTheme.colors.mutedText
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            WeeklyBarChart(
-                values = uiState.weeklyStats.map { it.calories },
-                labels = uiState.weeklyStats.map { it.date.dayOfWeek.name.lowercase().replaceFirstChar { c -> c.uppercase() }.take(3) },
-                selectedIdx = uiState.weeklyStats.indexOfFirst { it.date == selectedDate },
-                onBarSelected = { idx ->
-                    uiState.weeklyStats.getOrNull(idx)?.let { stat ->
-                        viewModel.setSelectedDate(stat.date)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Customize",
+                            tint = LogCalTheme.colors.mutedText,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Customize Dashboard",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = LogCalTheme.colors.mutedText
+                        )
                     }
-                },
-                dailyGoal = uiState.dailyGoal.toInt()
-            )
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
         }
-
-        // 7. Daily Goal & Streak Tiles
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SmallStatTile(
-                modifier = Modifier.weight(1f),
-                icon = { Icon(Icons.Default.TrackChanges, contentDescription = null, tint = LogCalTheme.colors.primaryGreen) },
-                title = "Daily Goal",
-                value = NumberUtils.formatNumber(uiState.dailyGoal.toInt()),
-                suffix = "calories",
-                onClick = { showDailyGoalSheet = true }
-            )
-            
-            val hasStreak = uiState.streakDays > 0
-            val streakBrush = if (hasStreak) {
-                Brush.linearGradient(
-                    colors = listOf(Color(0xFFFF5E3A), Color(0xFFFF2A68))
-                )
-            } else null
-            
-            SmallStatTile(
-                modifier = Modifier.weight(1f),
-                icon = { 
-                    Icon(
-                        imageVector = if (hasStreak) Icons.Default.Whatshot else Icons.Default.TrendingUp,
-                        contentDescription = null,
-                        tint = if (hasStreak) Color.White else LogCalTheme.colors.mintGreen,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                title = "Streak",
-                value = uiState.streakDays.toString(),
-                suffix = if (uiState.streakDays == 1) "day" else "days",
-                backgroundBrush = streakBrush,
-                contentColor = if (hasStreak) Color.White else null
-            )
-        }
-    }
     }
 
     if (showDailyGoalSheet) {
@@ -529,6 +740,15 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 }
             )
         }
+    }
+
+    if (showCustomizeDashboardSheet) {
+        CustomizeDashboardBottomSheet(
+            onDismiss = { showCustomizeDashboardSheet = false },
+            onUpdated = {
+                refreshCustomizationTrigger += 1
+            }
+        )
     }
 }
 
@@ -552,96 +772,47 @@ private fun AppCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun SeparatorLine() {
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(LogCalTheme.colors.cardBorder))
-}
-
-@Composable
-private fun RowScope.MacroCard(label: String, value: String, percent: Int, progressColor: Color) {
-    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = LogCalTheme.colors.primaryText)
-        Text(label, style = MaterialTheme.typography.titleMedium, color = LogCalTheme.colors.mutedText)
-        Spacer(modifier = Modifier.height(6.dp))
-        RingProgress(
-            progress = (percent / 100f).coerceIn(0f, 1f),
-            percentageText = "${percent.coerceAtMost(999)}%",
-            size = 74.dp,
-            stroke = 8.dp,
-            progressColor = progressColor
-        )
-    }
-}
-
-@Composable
-private fun RingProgress(
-    progress: Float,
-    percentageText: String,
-    size: Dp,
-    stroke: Dp,
-    progressColor: Color,
-    showLeaf: Boolean = false
+private fun MacroLinearRow(
+    title: String,
+    current: Int,
+    target: Int,
+    percent: Int,
+    color: Color
 ) {
-    val cardBorderColor = LogCalTheme.colors.cardBorder
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokePx = stroke.toPx()
-            val arcSize = Size(size.toPx() - strokePx, size.toPx() - strokePx)
-            val topLeft = Offset(strokePx / 2, strokePx / 2)
-            drawArc(
-                color = cardBorderColor,
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = strokePx, cap = StrokeCap.Round)
-            )
-            drawArc(
-                color = progressColor,
-                startAngle = -90f,
-                sweepAngle = 360f * progress.coerceIn(0f, 1f),
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = strokePx, cap = StrokeCap.Round)
-            )
-        }
-        if (showLeaf) {
-            Icon(
-                imageVector = Icons.Default.Eco,
-                contentDescription = null,
-                tint = progressColor,
-                modifier = Modifier.size(size * 0.4f)
-            )
-        } else {
-            Text(percentageText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = LogCalTheme.colors.primaryText)
-        }
-    }
-}
+    val progress = if (target > 0) (current.toFloat() / target.toFloat()).coerceIn(0f, 1.5f) else 0f
 
-@Composable
-private fun MacroLinearRow(label: String, current: Int, goal: Int, percent: Int, progressColor: Color) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = LogCalTheme.colors.primaryText)
-            Spacer(modifier = Modifier.weight(1f))
-            Text("$current/${goal}g", style = MaterialTheme.typography.bodyMedium, color = LogCalTheme.colors.mutedText)
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("${percent.coerceAtMost(999)}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = progressColor)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = LogCalTheme.colors.primaryText
+            )
+            Text(
+                text = "$current / ${target}g (${percent}%)",
+                style = MaterialTheme.typography.bodySmall,
+                color = LogCalTheme.colors.mutedText
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(LogCalTheme.colors.cardBorder)
+                .clip(CircleShape)
+                .background(LogCalTheme.colors.softAccentBackground)
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(fraction = (percent / 100f).coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .background(progressColor)
+                    .fillMaxWidth(fraction = (progress / 1.5f).coerceIn(0f, 1f))
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(color)
             )
         }
     }
@@ -649,20 +820,22 @@ private fun MacroLinearRow(label: String, current: Int, goal: Int, percent: Int,
 
 @Composable
 private fun WeeklyBarChart(
-    values: List<Int>,
+    values: List<Double>,
     labels: List<String>,
     selectedIdx: Int,
     onBarSelected: (Int) -> Unit,
-    dailyGoal: Int
+    goal: Double,
+    nutrient: WeeklyTrendNutrient,
+    nutrientColor: Color
 ) {
-    val max = values.maxOrNull()?.coerceAtLeast(dailyGoal)?.coerceAtLeast(1) ?: 1
-    
+    val maxVal = maxOf(values.maxOrNull() ?: 1.0, goal, 1.0)
+
     Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
         // Goal Line
-        if (dailyGoal > 0) {
+        if (goal > 0) {
             val chartTopPadding = 30.dp
-            val availableHeight = 160.dp - chartTopPadding - 30.dp // 30dp for bottom labels
-            val goalY = chartTopPadding + availableHeight - (availableHeight * (dailyGoal.toFloat() / max.toFloat()))
+            val availableHeight = 160.dp - chartTopPadding - 30.dp
+            val goalY = chartTopPadding + availableHeight - (availableHeight * (goal.toFloat() / maxVal.toFloat()))
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawLine(
                     color = Color.Gray.copy(alpha = 0.4f),
@@ -681,14 +854,13 @@ private fun WeeklyBarChart(
         ) {
             val chartTopPadding = 30.dp
             val availableHeight = 160.dp - chartTopPadding - 30.dp
-            
+
             values.forEachIndexed { idx, value ->
-                val heightDp = if (value == 0) 4.dp else (value.toFloat() / max.toFloat() * availableHeight.value).coerceAtLeast(4f).dp
+                val heightDp = if (value <= 0.0) 4.dp else ((value.toFloat() / maxVal.toFloat()) * availableHeight.value).coerceAtLeast(4f).dp
                 val isSelected = idx == selectedIdx
-                val isOverGoal = value > dailyGoal && dailyGoal > 0
-                val barColor = if (isOverGoal) Color(0xFFE57373) else LogCalTheme.colors.primaryGreen
+                val barColor = nutrientColor
                 val displayColor = if (isSelected) barColor else barColor.copy(alpha = 0.5f)
-                
+
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -697,9 +869,14 @@ private fun WeeklyBarChart(
                 ) {
                     // Top label
                     Box(modifier = Modifier.height(20.dp), contentAlignment = Alignment.BottomCenter) {
-                        if (value > 0) {
+                        if (value > 0.0) {
+                            val labelText = if (nutrient == WeeklyTrendNutrient.CALORIES) {
+                                NumberUtils.formatNumber(value.roundToInt())
+                            } else {
+                                "${value.roundToInt()}g"
+                            }
                             Text(
-                                text = NumberUtils.formatNumber(value),
+                                text = labelText,
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) LogCalTheme.colors.primaryText else LogCalTheme.colors.mutedText,
@@ -707,7 +884,7 @@ private fun WeeklyBarChart(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Box(modifier = Modifier.height(availableHeight).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                         Box(
                             modifier = Modifier
@@ -783,5 +960,47 @@ private fun SmallStatTile(
                 footer?.invoke()
             }
         }
+    }
+}
+
+@Composable
+private fun RingProgress(
+    progress: Float,
+    percentageText: String,
+    size: Dp,
+    stroke: Dp,
+    progressColor: Color
+) {
+    val cardBorderColor = LogCalTheme.colors.cardBorder
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokePx = stroke.toPx()
+            val arcSize = Size(size.toPx() - strokePx, size.toPx() - strokePx)
+            val topLeft = Offset(strokePx / 2, strokePx / 2)
+            drawArc(
+                color = cardBorderColor,
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = progressColor,
+                startAngle = -90f,
+                sweepAngle = 360f * progress,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+        }
+        Text(
+            text = percentageText,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = LogCalTheme.colors.primaryText
+        )
     }
 }

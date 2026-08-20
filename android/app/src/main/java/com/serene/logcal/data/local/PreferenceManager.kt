@@ -147,4 +147,43 @@ class PreferenceManager(context: Context) {
     var lastActiveDateLog: String?
         get() = prefs.getString("lastActiveDateLog", null)
         set(value) = prefs.edit().putString("lastActiveDateLog", value).apply()
+
+    // Dashboard Customization
+    var dashboardSectionOrder: String
+        get() = prefs.getString("dashboardSectionOrder", "calories,macros,weekly_trend,goal_streak,activity")
+            ?: "calories,macros,weekly_trend,goal_streak,activity"
+        set(value) = prefs.edit().putString("dashboardSectionOrder", value).apply()
+
+    var showDashboardCalories: Boolean
+        get() = prefs.getBoolean("showDashboardCalories", true)
+        set(value) = prefs.edit().putBoolean("showDashboardCalories", value).apply()
+
+    var showDashboardMacros: Boolean
+        get() = prefs.getBoolean("showDashboardMacros", true)
+        set(value) = prefs.edit().putBoolean("showDashboardMacros", value).apply()
+
+    var showDashboardWeeklyTrend: Boolean
+        get() = prefs.getBoolean("showDashboardWeeklyTrend", true)
+        set(value) = prefs.edit().putBoolean("showDashboardWeeklyTrend", value).apply()
+
+    var showDashboardGoalStreak: Boolean
+        get() = prefs.getBoolean("showDashboardGoalStreak", true)
+        set(value) = prefs.edit().putBoolean("showDashboardGoalStreak", value).apply()
+
+    var showDashboardActivity: Boolean
+        get() = prefs.getBoolean("showDashboardActivity", true)
+        set(value) = prefs.edit().putBoolean("showDashboardActivity", value).apply()
+
+    // Health Connect
+    var isHealthConnectEnabled: Boolean
+        get() = prefs.getBoolean("isHealthConnectEnabled", false)
+        set(value) = prefs.edit().putBoolean("isHealthConnectEnabled", value).apply()
+
+    var adjustGoalWithActiveBurn: Boolean
+        get() = prefs.getBoolean("adjustGoalWithActiveBurn", false)
+        set(value) = prefs.edit().putBoolean("adjustGoalWithActiveBurn", value).apply()
+
+    var dismissedHealthConnectCard: Boolean
+        get() = prefs.getBoolean("dismissedHealthConnectCard", false)
+        set(value) = prefs.edit().putBoolean("dismissedHealthConnectCard", value).apply()
 }

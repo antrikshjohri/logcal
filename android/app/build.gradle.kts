@@ -92,5 +92,8 @@ dependencies {
     // Google Play In-App Review
     implementation("com.google.android.play:review:2.0.2")
     implementation("com.google.android.play:review-ktx:2.0.2")
+
+    // Google Health Connect
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
 }
 

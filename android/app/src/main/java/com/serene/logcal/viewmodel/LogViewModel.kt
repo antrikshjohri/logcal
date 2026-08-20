@@ -294,10 +294,11 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val totalCalories = response?.totalCalories ?: (savedMeal.totalCalories * servingMultiplier)
+        val effectiveTitle = savedMeal.title.ifBlank { savedMeal.foodText }
         val logFoodText = if (servingMultiplier == 1.0) {
-            savedMeal.foodText
+            effectiveTitle
         } else {
-            "${savedMeal.foodText} (${if (servingMultiplier % 1.0 == 0.0) servingMultiplier.toInt().toString() else String.format(Locale.US, "%.1f", servingMultiplier)}x serving)"
+            "$effectiveTitle (${if (servingMultiplier % 1.0 == 0.0) servingMultiplier.toInt().toString() else String.format(Locale.US, "%.1f", servingMultiplier)}x serving)"
         }
 
         val entryId = UUID.randomUUID().toString()
@@ -326,10 +327,11 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     id = entryId,
                     sourceSavedMealId = savedMeal.id
                 )
-                // Sync to Cloud
+                // Sync to Cloud & Health Connect
                 val mealEntry = localRepo.getMealEntryById(entryId)
                 if (mealEntry != null) {
                     syncService.syncMealToCloud(mealEntry)
+                    com.serene.logcal.service.HealthConnectService.getInstance(getApplication()).saveMealEntry(mealEntry)
                 }
                 val completedPreviews = if (response != null) {
                     val preview = CompletedMealPreview(
@@ -640,6 +642,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                             val mealEntry = localRepo.getMealEntryById(entryId)
                             if (mealEntry != null) {
                                 syncService.syncMealToCloud(mealEntry)
+                                com.serene.logcal.service.HealthConnectService.getInstance(getApplication()).saveMealEntry(mealEntry)
                             }
                             reminderService.rescheduleNotificationsIfNeeded()
                             DebugLogger.d("DEBUG: [LogViewModel] Meal saved to local DB foodTextLen=${storedLabel.length}")
@@ -713,6 +716,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                 val mealEntry = localRepo.getMealEntryById(id)
                 if (mealEntry != null) {
                     syncService.syncMealToCloud(mealEntry)
+                    com.serene.logcal.service.HealthConnectService.getInstance(getApplication()).saveMealEntry(mealEntry)
                 }
                 reminderService.rescheduleNotificationsIfNeeded()
 

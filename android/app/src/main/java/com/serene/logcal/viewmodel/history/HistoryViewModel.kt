@@ -68,6 +68,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     fun deleteMeal(id: String) {
         viewModelScope.launch {
             try {
+                com.serene.logcal.service.HealthConnectService.getInstance(getApplication()).deleteMealEntry(id)
                 // Trigger cloud delete
                 syncService.deleteMealFromCloud(id)
                 // Delete locally
