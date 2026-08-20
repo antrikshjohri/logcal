@@ -212,9 +212,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val remainingCalories = (goal - todayCalories).coerceAtLeast(0)
 
         val today = LocalDate.now(zone)
-        // Weekly stats: last 7 days ending today (inclusive)
+        // Weekly stats: last 7 days ending on selected date (inclusive)
         val weekly = (6 downTo 0).map { offset ->
-            val d = today.minusDays(offset.toLong())
+            val d = date.minusDays(offset.toLong())
             val dMeals = mealsByDate[d].orEmpty()
             WeeklyDayNutrientStat(
                 date = d,

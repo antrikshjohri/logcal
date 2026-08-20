@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,12 +27,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.TrackChanges
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Whatshot
@@ -65,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -73,7 +70,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -184,18 +180,6 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
     val isAnonymous = FirebaseAuth.getInstance().currentUser?.isAnonymous == true
     val isOverGoal = uiState.todayCalories > uiState.dailyGoal
     val dailyStatusColor = if (isOverGoal) LogCalTheme.colors.warningAmber else LogCalTheme.colors.primaryGreen
-
-    val statusCardTitle = when {
-        uiState.dailyGoal <= 0 -> "Set a daily goal"
-        isOverGoal -> "Over your daily target"
-        else -> "On track for your goal"
-    }
-
-    val statusCardSubtitle = when {
-        uiState.dailyGoal <= 0 -> "Track your progress by setting a goal."
-        isOverGoal -> "${NumberUtils.formatNumber((uiState.todayCalories - uiState.dailyGoal).toInt())} cal over target"
-        else -> "Great choices so far today!"
-    }
 
     // Format date headers
     val displayDateTitle = when (selectedDate) {
@@ -355,105 +339,116 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 when (sectionType) {
                     DashboardSectionType.CALORIES -> {
                         if (prefManager.showDashboardCalories) {
-                            // 3. Status & Calories Card
+                            // 3. Status & Calories Card (matching iOS TodaysCaloriesCard)
                             AppCard {
-                                // Status Banner
+                                // Top Row: Calories Eaten (Left) & Progress Ring with leaf (Right)
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(dailyStatusColor.copy(alpha = 0.15f))
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .background(dailyStatusColor, CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = statusCardTitle,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = LogCalTheme.colors.primaryText
+                                            text = NumberUtils.formatNumber(uiState.todayCalories),
+                                            fontSize = 48.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = LogCalTheme.colors.primaryText,
+                                            letterSpacing = (-1).sp
                                         )
+                                        Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = statusCardSubtitle,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            text = "of ${NumberUtils.formatNumber(uiState.dailyGoal)} cal eaten",
+                                            fontSize = 15.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = LogCalTheme.colors.mutedText
                                         )
                                     }
-                                    Icon(
-                                        imageVector = Icons.Default.Eco,
-                                        contentDescription = null,
-                                        tint = dailyStatusColor.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(24.dp))
-                                // Calories Main Content
-                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = NumberUtils.formatNumber(uiState.todayCalories),
-                                            style = MaterialTheme.typography.displayMedium,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = LogCalTheme.colors.primaryText
+
+                                    // Progress Ring with nested leaf & percentage
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(90.dp)) {
+                                        RingProgress(
+                                            progress = progress,
+                                            size = 90.dp,
+                                            stroke = 8.dp,
+                                            progressColor = dailyStatusColor
                                         )
-                                        Text(
-                                            text = "calories eaten",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = LogCalTheme.colors.mutedText
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                            Column {
-                                                Text(
-                                                    text = NumberUtils.formatNumber(uiState.dailyGoal),
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = LogCalTheme.colors.primaryText
-                                                )
-                                                Text(
-                                                    text = "Daily budget",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = LogCalTheme.colors.mutedText
-                                                )
-                                            }
-                                            Column {
-                                                val remaining = (uiState.dailyGoal - uiState.todayCalories).coerceAtLeast(0)
-                                                Text(
-                                                    text = NumberUtils.formatNumber(remaining),
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = LogCalTheme.colors.primaryGreen
-                                                )
-                                                Text(
-                                                    text = "Remaining",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = LogCalTheme.colors.mutedText
-                                                )
-                                            }
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Eco,
+                                                contentDescription = null,
+                                                tint = dailyStatusColor,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "${(progress * 100).roundToInt()}%",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = LogCalTheme.colors.primaryText
+                                            )
                                         }
                                     }
-                                    RingProgress(
-                                        progress = progress,
-                                        percentageText = "${(progress * 100).roundToInt()}%",
-                                        size = 110.dp,
-                                        stroke = 12.dp,
-                                        progressColor = dailyStatusColor
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Bottom Row: Status Pill/Badge spanning width
+                                val remainingUnderGoal = (uiState.dailyGoal - uiState.todayCalories).coerceAtLeast(0)
+                                val amountOverGoal = (uiState.todayCalories - uiState.dailyGoal).coerceAtLeast(0)
+                                val pillText = if (isOverGoal) {
+                                    "${NumberUtils.formatNumber(amountOverGoal)} cal over target"
+                                } else {
+                                    "${NumberUtils.formatNumber(remainingUnderGoal)} cal remaining"
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(dailyStatusColor.copy(alpha = 0.12f))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = dailyStatusColor,
+                                        modifier = Modifier.size(16.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = pillText,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = dailyStatusColor
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    if (activeBurn > 0) {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color(0xFFFFA500).copy(alpha = 0.15f))
+                                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Whatshot,
+                                                contentDescription = "Active Burn",
+                                                tint = Color(0xFFFFA500),
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "${activeBurn.roundToInt()} burned",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFFFA500)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -496,10 +491,15 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                                 val fatTarget = if (uiState.macroFatPercent > 0) (uiState.fatGrams * 100 / uiState.macroFatPercent) else 0
                                 val fiberTarget = uiState.fiberGoal.roundToInt()
 
-                                MacroLinearRow("Protein", uiState.proteinGrams, proteinTarget, uiState.macroProteinPercent, LogCalTheme.colors.protein)
-                                MacroLinearRow("Carbs", uiState.carbsGrams, carbsTarget, uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
-                                MacroLinearRow("Fat", uiState.fatGrams, fatTarget, uiState.macroFatPercent, LogCalTheme.colors.fat)
-                                MacroLinearRow("Fiber", uiState.fiberGrams.roundToInt(), fiberTarget, uiState.macroFiberPercent, LogCalTheme.colors.fiber)
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                                ) {
+                                    MacroLinearRow("Protein", uiState.proteinGrams, proteinTarget, uiState.macroProteinPercent, LogCalTheme.colors.protein)
+                                    MacroLinearRow("Carbs", uiState.carbsGrams, carbsTarget, uiState.macroCarbsPercent, LogCalTheme.colors.carbs)
+                                    MacroLinearRow("Fat", uiState.fatGrams, fatTarget, uiState.macroFatPercent, LogCalTheme.colors.fat)
+                                    MacroLinearRow("Fiber", uiState.fiberGrams.roundToInt(), fiberTarget, uiState.macroFiberPercent, LogCalTheme.colors.fiber)
+                                }
                             }
                         }
                     }
@@ -594,7 +594,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                                         color = LogCalTheme.colors.mutedText
                                     )
                                     val formattedAvg = if (selectedTrendNutrient == WeeklyTrendNutrient.CALORIES) {
-                                        "${NumberUtils.formatNumber(avgVal.roundToInt())} kcal / day"
+                                        "${NumberUtils.formatNumber(avgVal.roundToInt())} cal / day"
                                     } else {
                                         "${avgVal.roundToInt()}g / day"
                                     }
@@ -627,40 +627,111 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
 
                     DashboardSectionType.GOAL_STREAK -> {
                         if (prefManager.showDashboardGoalStreak) {
-                            // 7. Daily Goal & Streak Tiles
+                            // 7. Daily Goal & Streak Cards (Matching iOS layout)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                SmallStatTile(
-                                    modifier = Modifier.weight(1f),
-                                    icon = { Icon(Icons.Default.TrackChanges, contentDescription = null, tint = LogCalTheme.colors.primaryGreen) },
-                                    title = "Daily Goal",
-                                    value = NumberUtils.formatNumber(uiState.dailyGoal),
-                                    suffix = "calories",
-                                    onClick = { showDailyGoalSheet = true }
-                                )
-                                
-                                val hasStreak = uiState.streakDays > 0
-                                val streakBrush = if (hasStreak) {
-                                    Brush.linearGradient(
-                                        colors = listOf(Color(0xFFFF5E3A), Color(0xFFFF2A68))
-                                    )
-                                } else null
-                                
-                                SmallStatTile(
-                                    modifier = Modifier.weight(1f),
-                                    icon = { 
-                                        Icon(
-                                            imageVector = Icons.Default.Bolt,
-                                            contentDescription = null,
-                                            tint = if (hasStreak) Color.White else LogCalTheme.colors.warningAmber,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    },
-                                    title = "Streak",
-                                    value = uiState.streakDays.toString(),
-                                    suffix = if (uiState.streakDays == 1) "day" else "days",
-                                    backgroundBrush = streakBrush,
-                                    contentColor = if (hasStreak) Color.White else null
-                                )
+                                // Daily Goal Card
+                                AppCard(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(LogCalTheme.colors.softAccentBackground),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.TrackChanges,
+                                                contentDescription = "Goal",
+                                                tint = LogCalTheme.colors.primaryGreen,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Daily Goal",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = LogCalTheme.colors.mutedText
+                                            )
+                                            Text(
+                                                text = "${NumberUtils.formatNumber(uiState.dailyGoal)} cal",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = LogCalTheme.colors.primaryText
+                                            )
+                                            Row(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .clickable { showDailyGoalSheet = true }
+                                                    .padding(top = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Edit goal",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = LogCalTheme.colors.primaryGreen
+                                                )
+                                                Spacer(modifier = Modifier.width(2.dp))
+                                                Icon(
+                                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                    contentDescription = "Edit",
+                                                    tint = LogCalTheme.colors.primaryGreen,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Streak Card
+                                AppCard(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFFFFA500).copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Bolt,
+                                                contentDescription = "Streak",
+                                                tint = Color(0xFFFFA500),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Streak",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = LogCalTheme.colors.mutedText
+                                            )
+                                            Text(
+                                                text = "${uiState.streakDays} ${if (uiState.streakDays == 1) "day" else "days"}",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = LogCalTheme.colors.primaryText
+                                            )
+                                            Text(
+                                                text = "Keep it going!",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFFFFA500),
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -753,9 +824,12 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
 }
 
 @Composable
-private fun AppCard(content: @Composable ColumnScope.() -> Unit) {
+private fun AppCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 6.dp,
@@ -858,7 +932,8 @@ private fun WeeklyBarChart(
             values.forEachIndexed { idx, value ->
                 val heightDp = if (value <= 0.0) 4.dp else ((value.toFloat() / maxVal.toFloat()) * availableHeight.value).coerceAtLeast(4f).dp
                 val isSelected = idx == selectedIdx
-                val barColor = nutrientColor
+                val isOverGoal = nutrient == WeeklyTrendNutrient.CALORIES && goal > 0 && value > goal
+                val barColor = if (isOverGoal) LogCalTheme.colors.dangerRed else nutrientColor
                 val displayColor = if (isSelected) barColor else barColor.copy(alpha = 0.5f)
 
                 Column(
@@ -908,65 +983,8 @@ private fun WeeklyBarChart(
 }
 
 @Composable
-private fun SmallStatTile(
-    modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
-    title: String,
-    value: String,
-    suffix: String,
-    backgroundBrush: Brush? = null,
-    contentColor: Color? = null,
-    onClick: (() -> Unit)? = null,
-    footer: (@Composable () -> Unit)? = null
-) {
-    val finalContentColor = contentColor ?: LogCalTheme.colors.primaryText
-    val finalMutedColor = contentColor ?: LogCalTheme.colors.mutedText
-
-    Card(
-        modifier = modifier
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = LogCalTheme.colors.shadowColor,
-                spotColor = LogCalTheme.colors.shadowColor
-            )
-            .let {
-                if (onClick != null) it.clickable { onClick() } else it
-            },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (backgroundBrush == null) LogCalTheme.colors.cardBackground else Color.Transparent
-        ),
-        border = if (backgroundBrush == null) androidx.compose.foundation.BorderStroke(1.dp, LogCalTheme.colors.cardBorder) else null
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .let {
-                    if (backgroundBrush != null) it.background(backgroundBrush) else it
-                }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                icon()
-                Text(title, style = MaterialTheme.typography.titleMedium, color = finalMutedColor, textAlign = TextAlign.Center)
-                Text(value, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = finalContentColor)
-                Text(suffix, style = MaterialTheme.typography.bodyLarge, color = finalMutedColor)
-                footer?.invoke()
-            }
-        }
-    }
-}
-
-@Composable
 private fun RingProgress(
     progress: Float,
-    percentageText: String,
     size: Dp,
     stroke: Dp,
     progressColor: Color
@@ -996,11 +1014,5 @@ private fun RingProgress(
                 style = Stroke(width = strokePx, cap = StrokeCap.Round)
             )
         }
-        Text(
-            text = percentageText,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = LogCalTheme.colors.primaryText
-        )
     }
 }

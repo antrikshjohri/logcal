@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
@@ -93,7 +93,7 @@ fun TodaysActivityCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.DirectionsRun,
+                            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
                             contentDescription = "Activity",
                             tint = Color(0xFF4DC6F5),
                             modifier = Modifier.size(18.dp)
@@ -123,32 +123,32 @@ fun TodaysActivityCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 3-Tile Stat Grid
+            // 3-Tile Stat Grid (compact, left-aligned)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Tile 1: Active Calories
                 StatTile(
-                    title = "Active\nCalories",
+                    title = "Active Calories",
                     value = "${activeBurn.roundToInt()}",
-                    unit = "kcal",
+                    unit = "cal",
                     color = Color(0xFFF26161),
                     modifier = Modifier.weight(1f)
                 )
 
                 // Tile 2: Total Calories (by midnight)
                 StatTile(
-                    title = "Total Calories\n(by midnight)",
+                    title = "Total (midnight)",
                     value = "$totalBurn",
-                    unit = "kcal",
+                    unit = "cal",
                     color = Color(0xFFFFA500),
                     modifier = Modifier.weight(1f)
                 )
 
                 // Tile 3: Steps
                 StatTile(
-                    title = "Daily\nSteps",
+                    title = "Steps",
                     value = "$steps",
                     unit = "steps",
                     color = Color(0xFF4DC6F5),
@@ -156,7 +156,7 @@ fun TodaysActivityCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Estimated Net Deficit / Surplus Bar
             Column(
@@ -178,7 +178,7 @@ fun TodaysActivityCard(
                         color = colors.primaryText
                     )
                     Text(
-                        text = "${netBalance.absoluteValue} kcal ${if (isDeficit) "Deficit" else "Surplus"}",
+                        text = "${netBalance.absoluteValue} cal ${if (isDeficit) "Deficit" else "Surplus"}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isDeficit) Color(0xFF4E9F3D) else Color(0xFFF26161)
@@ -200,7 +200,7 @@ fun TodaysActivityCard(
 
             // Workouts List (if any)
             if (workouts.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     workouts.forEach { workout ->
                         Row(
@@ -228,7 +228,7 @@ fun TodaysActivityCard(
                                 )
                             }
                             Text(
-                                text = "${workout.durationMinutes} min • ${workout.caloriesBurned.roundToInt()} kcal",
+                                text = "${workout.durationMinutes} min • ${workout.caloriesBurned.roundToInt()} cal",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF4DC6F5)
@@ -257,31 +257,34 @@ private fun StatTile(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(colors.background)
-            .padding(10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.Start
     ) {
         Text(
             text = title,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             color = colors.mutedText,
-            lineHeight = 14.sp,
-            modifier = Modifier.height(28.dp)
+            maxLines = 1
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = unit,
-            fontSize = 10.sp,
-            color = colors.mutedText
-        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = value,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(
+                text = unit,
+                fontSize = 10.sp,
+                color = colors.mutedText,
+                modifier = Modifier.padding(bottom = 1.dp)
+            )
+        }
     }
 }
 
@@ -339,7 +342,7 @@ private fun ActivityExplanationBottomSheet(onDismiss: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
 
             ExplanationItem(
-                icon = Icons.Default.DirectionsRun,
+                icon = Icons.AutoMirrored.Filled.DirectionsRun,
                 iconColor = Color(0xFF4DC6F5),
                 title = "Steps & Workouts",
                 description = "Live step counts and workout sessions synced directly from connected devices (Pixel Watch, Galaxy Watch, etc.)."
