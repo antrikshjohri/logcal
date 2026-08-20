@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import com.serene.logcal.ui.components.ModernConfirmationDialog
 import com.serene.logcal.ui.components.QuickEditMealSection
+import com.serene.logcal.ui.components.RenameFavoriteDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -829,132 +830,19 @@ fun MealEditScreen(
         )
     }
 
-    // Alert: Save Favorite Dialog
+    // Rename/Save Favorite Dialog (1:1 with iOS)
     if (isSavingFavoriteAlert) {
-        Dialog(onDismissRequest = { isSavingFavoriteAlert = false }) {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = colors.cardBackground,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                border = BorderStroke(1.dp, colors.cardBorder)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Header Icon
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(colors.softAccentBackground),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Bookmark,
-                            contentDescription = null,
-                            tint = colors.primaryGreen,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    // Titles
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = "Save to Favorites",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.primaryText,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "Give this meal a name so you can quickly log it later.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.mutedText,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    // Input Field (Modern, rounded, premium border)
-                    OutlinedTextField(
-                        value = favoriteTitleText,
-                        onValueChange = { favoriteTitleText = it },
-                        singleLine = true,
-                        placeholder = { Text("e.g. Grandma's Lasagna", color = colors.quietText) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.primaryGreen,
-                            unfocusedBorderColor = colors.cardBorder,
-                            focusedContainerColor = colors.insetBackground,
-                            unfocusedContainerColor = colors.insetBackground,
-                            focusedTextColor = colors.primaryText,
-                            unfocusedTextColor = colors.primaryText
-                        ),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Buttons Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Cancel button
-                        TextButton(
-                            onClick = { isSavingFavoriteAlert = false },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = colors.mutedText
-                            )
-                        ) {
-                            Text(
-                                "Cancel",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        // Save button
-                        Button(
-                            onClick = {
-                                if (favoriteTitleText.isNotBlank()) {
-                                    viewModel.saveMealAsFavorite(mealId, favoriteTitleText)
-                                    isSavedToFavorites = true
-                                }
-                                isSavingFavoriteAlert = false
-                            },
-                            modifier = Modifier
-                                .weight(1.5f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colors.primaryGreen,
-                                contentColor = Color.White
-                            ),
-                            enabled = favoriteTitleText.isNotBlank()
-                        ) {
-                            Text(
-                                "Save",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
+        RenameFavoriteDialog(
+            title = "Rename Favourite Meal",
+            initialText = favoriteTitleText.ifBlank { activeMeal.foodText },
+            placeholder = "Name",
+            onDismiss = { isSavingFavoriteAlert = false },
+            onSave = { newName ->
+                viewModel.saveMealAsFavorite(mealId, newName)
+                isSavedToFavorites = true
+                isSavingFavoriteAlert = false
             }
-        }
+        )
     }
 
     // Modern Confirmation: Delete Favorite confirm

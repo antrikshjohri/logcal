@@ -50,6 +50,8 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.serene.logcal.ui.components.LogCalPullRefreshIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -321,9 +323,17 @@ private fun HistoryListScreen(
                 return@Scaffold
             }
 
+            val pullRefreshState = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = { viewModel.refreshData() },
+                state = pullRefreshState,
+                indicator = {
+                    LogCalPullRefreshIndicator(
+                        state = pullRefreshState,
+                        isRefreshing = isRefreshing
+                    )
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)

@@ -45,9 +45,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.serene.logcal.ui.components.LogCalPullRefreshIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -192,11 +194,19 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
 
     var dragAccumulator by remember { mutableStateOf(0f) }
 
+    val pullRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
             viewModel.refreshData()
             coroutineScope.launch { refreshHealthStats() }
+        },
+        state = pullRefreshState,
+        indicator = {
+            LogCalPullRefreshIndicator(
+                state = pullRefreshState,
+                isRefreshing = isRefreshing
+            )
         }
     ) {
         Column(
