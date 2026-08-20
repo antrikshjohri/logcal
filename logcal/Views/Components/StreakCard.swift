@@ -16,13 +16,13 @@ struct StreakCard: View {
         DashboardCard {
             if horizontalSizeClass == .regular {
                 VStack(alignment: .leading, spacing: 8) {
-                    // Flame Icon Circle
+                    // Lightning Bolt Icon Circle
                     ZStack {
                         Circle()
                             .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
                             .frame(width: 36, height: 36)
                         
-                        Image(systemName: "flame.fill")
+                        Image(systemName: "bolt.fill")
                             .font(.system(size: 16))
                             .foregroundColor(Theme.warningAmber)
                     }
@@ -49,13 +49,13 @@ struct StreakCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 HStack(spacing: 12) {
-                    // Flame Icon Circle
+                    // Lightning Bolt Icon Circle
                     ZStack {
                         Circle()
                             .fill(Theme.warningAmber.opacity(colorScheme == .dark ? 0.18 : 0.1))
                             .frame(width: 44, height: 44)
                         
-                        Image(systemName: "flame.fill")
+                        Image(systemName: "bolt.fill")
                             .font(.system(size: 20))
                             .foregroundColor(Theme.warningAmber)
                     }
