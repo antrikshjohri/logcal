@@ -34,6 +34,13 @@ struct DashboardView: View {
     @ObservedObject private var healthKit = HealthKitService.shared
     @AppStorage("dismissedHealthKitDashboardCard") private var dismissedHealthKitCard: Bool = false
     @State private var showAppleHealthSheet = false
+    @AppStorage("dashboardSectionOrder") private var dashboardSectionOrderRaw: String = "calories,macros,weeklyTrend,goalStreak,activity"
+    @AppStorage("showDashboardCalories") private var showCaloriesCard: Bool = true
+    @AppStorage("showDashboardMacros") private var showMacrosCard: Bool = true
+    @AppStorage("showDashboardWeeklyTrend") private var showWeeklyTrendCard: Bool = true
+    @AppStorage("showDashboardGoalStreak") private var showGoalStreakCard: Bool = true
+    @AppStorage("showDashboardActivity") private var showActivityCard: Bool = true
+    @State private var showCustomizeDashboardSheet = false
     @State private var selectedDateActiveBurn: Double = 0.0
     @State private var selectedDateBasalBurn: Double = 0.0
     @State private var selectedDateSteps: Int = 0
@@ -417,147 +424,68 @@ struct DashboardView: View {
                         HStack(alignment: .top, spacing: Constants.Spacing.extraLarge) {
                             // Left Column
                             VStack(spacing: Constants.Spacing.extraLarge) {
-                                TodaysCaloriesCard(
-                                    calories: todayCalories,
-                                    goal: dailyGoal,
-                                    progress: calorieProgressRatio,
-                                    activeBurned: healthKit.isHealthKitActiveBurnEnabled ? selectedDateActiveBurn : nil,
-                                    adjustGoalWithActiveBurn: healthKit.adjustGoalWithActiveBurn
-                                )
+                                if showCaloriesCard {
+                                    TodaysCaloriesCard(
+                                        calories: todayCalories,
+                                        goal: dailyGoal,
+                                        progress: calorieProgressRatio,
+                                        activeBurned: healthKit.isHealthKitActiveBurnEnabled ? selectedDateActiveBurn : nil,
+                                        adjustGoalWithActiveBurn: healthKit.adjustGoalWithActiveBurn
+                                    )
+                                }
                                 
-                                TodaysMacrosCard(
-                                    protein: todayProtein,
-                                    carbs: todayCarbs,
-                                    fat: todayFat,
-                                    fiber: todayFiber,
-                                    proteinGoal: proteinGoal,
-                                    carbsGoal: carbsGoal,
-                                    fatGoal: fatGoal,
-                                    fiberGoal: fiberGoal,
-                                    onDetailsTapped: {
-                                        navigateToDateTimestamp = selectedDate.timeIntervalSince1970
-                                        selectedTab = 2
-                                    }
-                                )
+                                if showMacrosCard {
+                                    TodaysMacrosCard(
+                                        protein: todayProtein,
+                                        carbs: todayCarbs,
+                                        fat: todayFat,
+                                        fiber: todayFiber,
+                                        proteinGoal: proteinGoal,
+                                        carbsGoal: carbsGoal,
+                                        fatGoal: fatGoal,
+                                        fiberGoal: fiberGoal,
+                                        onDetailsTapped: {
+                                            navigateToDateTimestamp = selectedDate.timeIntervalSince1970
+                                            selectedTab = 2
+                                        }
+                                    )
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             
                             // Right Column
                             VStack(spacing: Constants.Spacing.extraLarge) {
-                                ThisWeekCard(
-                                    weeklyData: weeklyDayData,
-                                    dailyGoal: dailyGoal,
-                                    proteinGoal: proteinGoal,
-                                    carbsGoal: carbsGoal,
-                                    fatGoal: fatGoal,
-                                    fiberGoal: fiberGoal
-                                )
+                                if showWeeklyTrendCard {
+                                    ThisWeekCard(
+                                        weeklyData: weeklyDayData,
+                                        dailyGoal: dailyGoal,
+                                        proteinGoal: proteinGoal,
+                                        carbsGoal: carbsGoal,
+                                        fatGoal: fatGoal,
+                                        fiberGoal: fiberGoal
+                                    )
+                                }
                                 
-                                HStack(spacing: Constants.Spacing.regular) {
-                                    Button(action: {
-                                        showEditGoalSheet = true
-                                    }) {
-                                        DailyGoalCard(goal: dailyGoal)
+                                if showGoalStreakCard {
+                                    HStack(spacing: Constants.Spacing.regular) {
+                                        Button(action: {
+                                            showEditGoalSheet = true
+                                        }) {
+                                            DailyGoalCard(goal: dailyGoal)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        
+                                        StreakCard(streak: streakDays)
                                     }
-                                    .buttonStyle(PlainButtonStyle())
-                                    
-                                    StreakCard(streak: streakDays)
                                 }
                             }
                             .frame(maxWidth: .infinity)
                         }
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                     } else {
-                        // Calories Card
-                        TodaysCaloriesCard(
-                            calories: todayCalories,
-                            goal: dailyGoal,
-                            progress: calorieProgressRatio,
-                            activeBurned: healthKit.isHealthKitActiveBurnEnabled ? selectedDateActiveBurn : nil,
-                            adjustGoalWithActiveBurn: healthKit.adjustGoalWithActiveBurn
-                        )
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                        
-                        // Today's Macros Card
-                        TodaysMacrosCard(
-                            protein: todayProtein,
-                            carbs: todayCarbs,
-                            fat: todayFat,
-                            fiber: todayFiber,
-                            proteinGoal: proteinGoal,
-                            carbsGoal: carbsGoal,
-                            fatGoal: fatGoal,
-                            fiberGoal: fiberGoal,
-                            onDetailsTapped: {
-                                navigateToDateTimestamp = selectedDate.timeIntervalSince1970
-                                selectedTab = 2
-                            }
-                        )
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                        
-                        // This Week Card
-                        ThisWeekCard(
-                            weeklyData: weeklyDayData,
-                            dailyGoal: dailyGoal,
-                            proteinGoal: proteinGoal,
-                            carbsGoal: carbsGoal,
-                            fatGoal: fatGoal,
-                            fiberGoal: fiberGoal
-                        )
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                        
-                        // Daily Goal and Streak Cards
-                        HStack(spacing: Constants.Spacing.regular) {
-                            Button(action: {
-                                showEditGoalSheet = true
-                            }) {
-                                DailyGoalCard(goal: dailyGoal)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            StreakCard(streak: streakDays)
+                        ForEach(orderedDashboardSections) { section in
+                            dashboardSectionView(for: section)
                         }
-                        .padding(.horizontal, Constants.Spacing.extraLarge)
-                    }
-                    
-                    // Apple Health Activity & Workouts / Discovery Section
-                    if healthKit.isHealthKitActiveBurnEnabled {
-                        VStack(spacing: Constants.Spacing.large) {
-                            Divider()
-                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                                .padding(.horizontal, Constants.Spacing.extraLarge)
-                            
-                            TodaysActivityCard(
-                                activeBurn: selectedDateActiveBurn,
-                                basalBurn: selectedDateBasalBurn,
-                                consumedCalories: todayCalories,
-                                steps: selectedDateSteps,
-                                workouts: selectedDateWorkouts
-                            )
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
-                        }
-                        .frame(maxWidth: 950)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    } else if !healthKit.isAuthorized && !dismissedHealthKitCard {
-                        VStack(spacing: Constants.Spacing.large) {
-                            Divider()
-                                .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
-                                .padding(.horizontal, Constants.Spacing.extraLarge)
-                            
-                            ConnectHealthDiscoveryCard(
-                                onConnect: {
-                                    showAppleHealthSheet = true
-                                },
-                                onDismiss: {
-                                    withAnimation(.easeInOut) {
-                                        dismissedHealthKitCard = true
-                                    }
-                                }
-                            )
-                            .padding(.horizontal, Constants.Spacing.extraLarge)
-                        }
-                        .frame(maxWidth: 950)
-                        .frame(maxWidth: .infinity, alignment: .center)
                     }
                     
                     // Today's Meals Section (iPad only)
@@ -612,22 +540,42 @@ struct DashboardView: View {
                         .frame(maxWidth: 950)
                         .frame(maxWidth: .infinity, alignment: .center)
                     }
+                    // Customize Dashboard Button
+                    Button {
+                        showCustomizeDashboardSheet = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Customize Dashboard")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 9)
+                        .background(Theme.insetBackground(colorScheme: colorScheme))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Theme.cardBorder(colorScheme: colorScheme).opacity(0.8), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, Constants.Spacing.medium)
                 }
                 .padding(.bottom, Constants.Spacing.extraLarge)
+            }
+            .sheet(isPresented: $showCustomizeDashboardSheet) {
+                CustomizeDashboardSheet()
             }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 25, coordinateSpace: .local)
                     .onEnded { value in
-                        let horizontal = value.translation.width
-                        let vertical = value.translation.height
-                        if abs(horizontal) > 40 && abs(horizontal) > abs(vertical) * 1.5 {
-                            if horizontal > 0 {
+                        if abs(value.translation.width) > abs(value.translation.height) {
+                            if value.translation.width < -50 {
+                                changeDate(by: 1)
+                            } else if value.translation.width > 50 {
                                 changeDate(by: -1)
-                            } else {
-                                let isToday = Calendar.current.isDateInToday(selectedDate)
-                                if !isToday {
-                                    changeDate(by: 1)
-                                }
                             }
                         }
                     }
@@ -704,6 +652,124 @@ struct DashboardView: View {
                 syncWatchState()
                 Task {
                     await refreshActiveBurn()
+                }
+            }
+        }
+    }
+    
+    private var orderedDashboardSections: [DashboardSectionType] {
+        let keys = dashboardSectionOrderRaw.split(separator: ",").map { String($0) }
+        var parsed: [DashboardSectionType] = []
+        for key in keys {
+            if let section = DashboardSectionType(rawValue: key), !parsed.contains(section) {
+                parsed.append(section)
+            }
+        }
+        for section in DashboardSectionType.allCases {
+            if !parsed.contains(section) {
+                parsed.append(section)
+            }
+        }
+        return parsed
+    }
+    
+    @ViewBuilder
+    private func dashboardSectionView(for section: DashboardSectionType) -> some View {
+        switch section {
+        case .calories:
+            if showCaloriesCard {
+                TodaysCaloriesCard(
+                    calories: todayCalories,
+                    goal: dailyGoal,
+                    progress: calorieProgressRatio,
+                    activeBurned: healthKit.isHealthKitActiveBurnEnabled ? selectedDateActiveBurn : nil,
+                    adjustGoalWithActiveBurn: healthKit.adjustGoalWithActiveBurn
+                )
+                .padding(.horizontal, Constants.Spacing.extraLarge)
+            }
+        case .macros:
+            if showMacrosCard {
+                TodaysMacrosCard(
+                    protein: todayProtein,
+                    carbs: todayCarbs,
+                    fat: todayFat,
+                    fiber: todayFiber,
+                    proteinGoal: proteinGoal,
+                    carbsGoal: carbsGoal,
+                    fatGoal: fatGoal,
+                    fiberGoal: fiberGoal,
+                    onDetailsTapped: {
+                        navigateToDateTimestamp = selectedDate.timeIntervalSince1970
+                        selectedTab = 2
+                    }
+                )
+                .padding(.horizontal, Constants.Spacing.extraLarge)
+            }
+        case .weeklyTrend:
+            if showWeeklyTrendCard {
+                ThisWeekCard(
+                    weeklyData: weeklyDayData,
+                    dailyGoal: dailyGoal,
+                    proteinGoal: proteinGoal,
+                    carbsGoal: carbsGoal,
+                    fatGoal: fatGoal,
+                    fiberGoal: fiberGoal
+                )
+                .padding(.horizontal, Constants.Spacing.extraLarge)
+            }
+        case .goalStreak:
+            if showGoalStreakCard {
+                HStack(spacing: Constants.Spacing.regular) {
+                    Button(action: {
+                        showEditGoalSheet = true
+                    }) {
+                        DailyGoalCard(goal: dailyGoal)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    StreakCard(streak: streakDays)
+                }
+                .padding(.horizontal, Constants.Spacing.extraLarge)
+            }
+        case .activity:
+            if showActivityCard {
+                if healthKit.isHealthKitActiveBurnEnabled {
+                    VStack(spacing: Constants.Spacing.large) {
+                        Divider()
+                            .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        TodaysActivityCard(
+                            activeBurn: selectedDateActiveBurn,
+                            basalBurn: selectedDateBasalBurn,
+                            consumedCalories: todayCalories,
+                            steps: selectedDateSteps,
+                            workouts: selectedDateWorkouts
+                        )
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                    }
+                    .frame(maxWidth: 950)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else if !healthKit.isAuthorized && !dismissedHealthKitCard {
+                    VStack(spacing: Constants.Spacing.large) {
+                        Divider()
+                            .background(Theme.cardBorder(colorScheme: colorScheme).opacity(0.5))
+                            .padding(.horizontal, Constants.Spacing.extraLarge)
+                        
+                        ConnectHealthDiscoveryCard(
+                            onConnect: {
+                                showAppleHealthSheet = true
+                            },
+                            onDismiss: {
+                                withAnimation(.easeInOut) {
+                                    dismissedHealthKitCard = true
+                                }
+                            }
+                        )
+                        .padding(.horizontal, Constants.Spacing.extraLarge)
+                    }
+                    .frame(maxWidth: 950)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
         }

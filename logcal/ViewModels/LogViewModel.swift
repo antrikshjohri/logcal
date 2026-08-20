@@ -170,9 +170,12 @@ class LogViewModel: ObservableObject {
         }
 
         let totalCalories = response?.totalCalories ?? (savedMeal.totalCalories * servingMultiplier)
-        let foodText = servingMultiplier == 1.0
+        let effectiveTitle = savedMeal.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? savedMeal.foodText
-            : "\(savedMeal.foodText) (\(SavedMealServing.label(for: servingMultiplier)) serving)"
+            : savedMeal.title
+        let foodText = servingMultiplier == 1.0
+            ? effectiveTitle
+            : "\(effectiveTitle) (\(SavedMealServing.label(for: servingMultiplier)) serving)"
 
         let entry = MealEntry(
             id: UUID(),

@@ -189,7 +189,7 @@ final class WatchSyncService: NSObject, ObservableObject {
             return
         }
         
-        let text = payload["foodText"] as? String ?? payload["title"] as? String ?? "Meal from Apple Watch"
+        var text = payload["title"] as? String ?? payload["foodText"] as? String ?? "Meal from Apple Watch"
         let calories = payload["calories"] as? Double ?? 0
         let protein = payload["protein"] as? Double ?? 0
         let carbs = payload["carbs"] as? Double ?? 0
@@ -209,6 +209,9 @@ final class WatchSyncService: NSObject, ObservableObject {
                 )
                 if let saved = try? context.fetch(descriptor).first {
                     rawJson = saved.rawResponseJson
+                    if !saved.title.isEmpty {
+                        text = saved.title
+                    }
                 }
             }
         }
