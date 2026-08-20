@@ -122,35 +122,41 @@ struct DashboardView: View {
         (dailyGoal / 1000.0) * 14.0
     }
     
-    // Weekly data centered around selectedDate
-    private var weeklyData: [(day: String, calories: Double, isToday: Bool)] {
+    // Weekly nutrient data centered around selectedDate
+    private var weeklyDayData: [WeeklyDayNutrientData] {
         let calendar = Calendar.current
         let anchorDate = calendar.startOfDay(for: selectedDate)
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "E" // Single letter day (M, T, W, etc.)
         
-        var weekData: [(day: String, calories: Double, isToday: Bool)] = []
+        var weekData: [WeeklyDayNutrientData] = []
         
         for i in 0..<7 {
             guard let date = calendar.date(byAdding: .day, value: -i, to: anchorDate) else { continue }
             let dayLabel = dateFormatter.string(from: date)
             let isSelected = calendar.isDate(date, inSameDayAs: anchorDate)
             
-            let dayCalories = activeMeals
-                .filter { calendar.isDate($0.timestamp, inSameDayAs: date) }
-                .reduce(0) { $0 + $1.totalCalories }
+            let dayMeals = activeMeals.filter { calendar.isDate($0.timestamp, inSameDayAs: date) }
+            let calories = dayMeals.reduce(0.0) { $0 + $1.totalCalories }
+            let protein = dayMeals.compactMap { $0.protein }.reduce(0.0, +)
+            let carbs = dayMeals.compactMap { $0.carbs }.reduce(0.0, +)
+            let fat = dayMeals.compactMap { $0.fat }.reduce(0.0, +)
+            let fiber = dayMeals.compactMap { $0.fiber }.reduce(0.0, +)
             
-            weekData.append((day: dayLabel, calories: dayCalories, isToday: isSelected))
+            weekData.append(
+                WeeklyDayNutrientData(
+                    day: dayLabel,
+                    calories: calories,
+                    protein: protein,
+                    carbs: carbs,
+                    fat: fat,
+                    fiber: fiber,
+                    isToday: isSelected
+                )
+            )
         }
         
-        // Reverse to show oldest to newest (left to right)
         return weekData.reversed()
-    }
-    
-    // Weekly average
-    private var weeklyAverage: Double {
-        let total = weeklyData.reduce(0) { $0 + $1.calories }
-        return total / 7.0
     }
     
     // Streak calculation
@@ -439,9 +445,12 @@ struct DashboardView: View {
                             // Right Column
                             VStack(spacing: Constants.Spacing.extraLarge) {
                                 ThisWeekCard(
-                                    weeklyData: weeklyData,
-                                    weeklyAverage: weeklyAverage,
-                                    dailyGoal: dailyGoal
+                                    weeklyData: weeklyDayData,
+                                    dailyGoal: dailyGoal,
+                                    proteinGoal: proteinGoal,
+                                    carbsGoal: carbsGoal,
+                                    fatGoal: fatGoal,
+                                    fiberGoal: fiberGoal
                                 )
                                 
                                 HStack(spacing: Constants.Spacing.regular) {
@@ -488,9 +497,12 @@ struct DashboardView: View {
                         
                         // This Week Card
                         ThisWeekCard(
-                            weeklyData: weeklyData,
-                            weeklyAverage: weeklyAverage,
-                            dailyGoal: dailyGoal
+                            weeklyData: weeklyDayData,
+                            dailyGoal: dailyGoal,
+                            proteinGoal: proteinGoal,
+                            carbsGoal: carbsGoal,
+                            fatGoal: fatGoal,
+                            fiberGoal: fiberGoal
                         )
                         .padding(.horizontal, Constants.Spacing.extraLarge)
                         

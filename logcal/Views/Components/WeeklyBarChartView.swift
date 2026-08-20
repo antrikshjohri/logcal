@@ -9,17 +9,19 @@ import SwiftUI
 
 struct WeeklyBarChartView: View {
     @Environment(\.colorScheme) private var colorScheme
-    let data: [(day: String, calories: Double, isToday: Bool)]
-    let dailyGoal: Double
+    let data: [WeeklyDayNutrientData]
+    let nutrient: WeeklyTrendNutrient
+    let goal: Double
     
     private var chartMax: Double {
-        let maxVal = data.map { $0.calories }.max() ?? 0
-        return max(maxVal, dailyGoal) * 1.25
+        let maxVal = data.map { $0.value(for: nutrient) }.max() ?? 0
+        return max(maxVal, goal, 10.0) * 1.25
     }
     
-    private func barColor(for dayData: (day: String, calories: Double, isToday: Bool)) -> Color {
-        let baseColor = dayData.calories > dailyGoal ? Theme.dangerRed : Theme.primaryGreen
-        if dayData.isToday {
+    private func barColor(for item: WeeklyDayNutrientData) -> Color {
+        let val = item.value(for: nutrient)
+        let baseColor = (nutrient == .calories && goal > 0 && val > goal) ? Theme.dangerRed : nutrient.color(colorScheme: colorScheme)
+        if item.isToday {
             return baseColor
         }
         return baseColor.opacity(colorScheme == .dark ? 0.7 : 0.55)
@@ -28,55 +30,61 @@ struct WeeklyBarChartView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // Dotted Goal Line
-            GeometryReader { chartGeo in
-                let chartHeight = chartGeo.size.height
-                let yPos = chartHeight * (1.0 - CGFloat(dailyGoal / chartMax))
-                
-                ZStack(alignment: .leading) {
-                    Path { path in
-                        path.move(to: CGPoint(x: 0, y: yPos))
-                        path.addLine(to: CGPoint(x: chartGeo.size.width - 45, y: yPos))
-                    }
-                    .stroke(
-                        Theme.mutedText(colorScheme: colorScheme).opacity(0.35),
-                        style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [4, 4])
-                    )
+            if goal > 0 {
+                GeometryReader { chartGeo in
+                    let chartHeight = chartGeo.size.height
+                    let yPos = chartHeight * (1.0 - CGFloat(goal / chartMax))
                     
-                    Text(formatNumber(dailyGoal))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                        .frame(width: 40, alignment: .trailing)
-                        .position(x: chartGeo.size.width - 20, y: yPos)
+                    ZStack(alignment: .leading) {
+                        Path { path in
+                            path.move(to: CGPoint(x: 0, y: yPos))
+                            path.addLine(to: CGPoint(x: chartGeo.size.width - 45, y: yPos))
+                        }
+                        .stroke(
+                            Theme.mutedText(colorScheme: colorScheme).opacity(0.35),
+                            style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [4, 4])
+                        )
+                        
+                        Text(formatValue(goal))
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            .frame(width: 42, alignment: .trailing)
+                            .position(x: chartGeo.size.width - 20, y: yPos)
+                    }
                 }
+                .frame(height: 80)
+                .padding(.bottom, 24)
             }
-            .frame(height: 80)
-            .padding(.bottom, 24)
             
             // HStack of bars
             HStack(alignment: .bottom, spacing: 0) {
-                ForEach(Array(data.enumerated()), id: \.offset) { index, dayData in
+                ForEach(data) { item in
+                    let val = item.value(for: nutrient)
                     VStack(spacing: 0) {
-                        Text(dayData.calories > 0 ? formatNumber(dayData.calories) : "0")
-                            .font(.system(size: 10, weight: dayData.isToday ? .bold : .medium))
-                            .foregroundColor(dayData.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
+                        Text(formatValue(val))
+                            .font(.system(size: 10, weight: item.isToday ? .bold : .medium, design: .rounded))
+                            .foregroundColor(item.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
                             .frame(height: 14)
                             .padding(.bottom, 4)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         
                         GeometryReader { barGeo in
                             VStack {
                                 Spacer()
                                 
                                 Capsule()
-                                    .fill(barColor(for: dayData))
-                                    .frame(width: 16, height: max(CGFloat(dayData.calories / chartMax) * barGeo.size.height, 6))
+                                    .fill(barColor(for: item))
+                                    .frame(width: 16, height: max(CGFloat(val / chartMax) * barGeo.size.height, 6))
+                                    .animation(.spring(response: 0.35, dampingFraction: 0.75), value: val)
                             }
                             .frame(width: barGeo.size.width, height: barGeo.size.height)
                         }
                         .frame(height: 80)
                         
-                        Text(dayData.day)
-                            .font(.system(size: 12, weight: dayData.isToday ? .bold : .medium))
-                            .foregroundColor(dayData.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
+                        Text(item.day)
+                            .font(.system(size: 12, weight: item.isToday ? .bold : .medium, design: .rounded))
+                            .foregroundColor(item.isToday ? Theme.primaryText(colorScheme: colorScheme) : Theme.mutedText(colorScheme: colorScheme))
                             .frame(height: 16)
                             .padding(.top, 8)
                     }
@@ -90,23 +98,13 @@ struct WeeklyBarChartView: View {
         }
     }
     
-    private func formatNumber(_ number: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: Int(number))) ?? "\(Int(number))"
+    private func formatValue(_ number: Double) -> String {
+        if nutrient == .calories {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            return formatter.string(from: NSNumber(value: Int(number))) ?? "\(Int(number))"
+        } else {
+            return "\(Int(number))g"
+        }
     }
-}
-
-#Preview {
-    WeeklyBarChartView(data: [
-        ("M", 1800, false),
-        ("T", 2200, false),
-        ("W", 1900, false),
-        ("T", 2100, false),
-        ("F", 2000, false),
-        ("S", 1850, false),
-        ("T", 1795, true)
-    ], dailyGoal: 2000)
-    .frame(height: 120)
-    .padding()
 }
