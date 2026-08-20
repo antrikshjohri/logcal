@@ -12,6 +12,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,19 +25,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.AddCircle
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -291,52 +291,34 @@ private fun AppRoot(
     }
 
     Scaffold(
-        containerColor = LogCalTheme.colors.background
+        containerColor = LogCalTheme.colors.background,
+        bottomBar = {
+            LogCalBottomNavigationBar(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it }
+            )
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = innerPadding.calculateBottomPadding()
+                )
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                when (selectedTab) {
-                    RootTab.HOME -> DashboardScreen(
-                        viewModel = dashboardViewModel,
-                        onNavigateToHistory = { selectedTab = RootTab.HISTORY }
-                    )
-                    RootTab.LOG -> LogMealScreen(viewModel = logViewModel)
-                    RootTab.HISTORY -> HistoryScreen(
-                        viewModel = historyViewModel,
-                        onNavigateToLogTab = { selectedTab = RootTab.LOG },
-                    )
-                    RootTab.PROFILE -> ProfileScreen()
-                }
+            when (selectedTab) {
+                RootTab.HOME -> DashboardScreen(
+                    viewModel = dashboardViewModel,
+                    onNavigateToHistory = { selectedTab = RootTab.HISTORY }
+                )
+                RootTab.LOG -> LogMealScreen(viewModel = logViewModel)
+                RootTab.HISTORY -> HistoryScreen(
+                    viewModel = historyViewModel,
+                    onNavigateToLogTab = { selectedTab = RootTab.LOG },
+                )
+                RootTab.PROFILE -> ProfileScreen()
             }
-
-            // Translucent gradient background for bottom navigation area (covering sides & bottom)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(110.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                LogCalTheme.colors.background.copy(alpha = 0.5f)
-                            )
-                        )
-                    )
-            )
-
-            CustomFloatingBottomNavigation(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
         }
     }
 }
@@ -355,92 +337,69 @@ private fun Intent?.requestedLogTarget(): LogNotificationTarget? {
 }
 
 @Composable
-private fun CustomFloatingBottomNavigation(
+private fun LogCalBottomNavigationBar(
     selectedTab: RootTab,
     onTabSelected: (RootTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LogCalTheme.colors
-    Box(
+
+    Column(
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 10.dp)
             .fillMaxWidth()
+            .background(colors.cardBackground)
     ) {
-        Card(
+        androidx.compose.material3.HorizontalDivider(
+            thickness = 0.5.dp,
+            color = colors.cardBorder.copy(alpha = 0.8f)
+        )
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .shadow(
-                    elevation = 4.dp,
-                    shape = CircleShape,
-                    ambientColor = colors.shadowColor,
-                    spotColor = colors.shadowColor
-                ),
-            shape = CircleShape,
-            colors = CardDefaults.cardColors(containerColor = colors.cardBackground.copy(alpha = 0.95f)),
-            border = BorderStroke(0.8.dp, colors.cardBorder.copy(alpha = 0.6f))
+                .navigationBarsPadding()
+                .padding(top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RootTab.entries.forEach { tab ->
-                    val isActive = selectedTab == tab
+            RootTab.entries.forEach { tab ->
+                val isActive = selectedTab == tab
+                val contentColor = if (isActive) colors.primaryGreen else colors.mutedText.copy(alpha = 0.8f)
+                val icon = when (tab) {
+                    RootTab.HOME -> if (isActive) Icons.Default.Home else Icons.Outlined.Home
+                    RootTab.LOG -> if (isActive) Icons.Default.AddCircle else Icons.Outlined.AddCircle
+                    RootTab.HISTORY -> if (isActive) Icons.AutoMirrored.Filled.List else Icons.AutoMirrored.Outlined.List
+                    RootTab.PROFILE -> if (isActive) Icons.Default.Person else Icons.Outlined.Person
+                }
+                val label = when (tab) {
+                    RootTab.HOME -> "Home"
+                    RootTab.LOG -> "Log"
+                    RootTab.HISTORY -> "History"
+                    RootTab.PROFILE -> "Profile"
+                }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val contentColor = if (isActive) colors.primaryGreen else colors.primaryText
-                        val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Bold
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { onTabSelected(tab) }
-                        ) {
-                            val icon = when (tab) {
-                                RootTab.HOME -> if (isActive) Icons.Default.Home else Icons.Outlined.Home
-                                RootTab.LOG -> if (isActive) Icons.Default.AddCircle else Icons.Outlined.AddCircle
-                                RootTab.HISTORY -> if (isActive) Icons.Default.List else Icons.Outlined.List
-                                RootTab.PROFILE -> if (isActive) Icons.Default.Person else Icons.Outlined.Person
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .width(56.dp)
-                                    .height(32.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isActive) colors.softAccentBackground else Color.Transparent),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = tab.name,
-                                    tint = contentColor,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = when (tab) {
-                                    RootTab.HOME -> "Home"
-                                    RootTab.LOG -> "Log"
-                                    RootTab.HISTORY -> "History"
-                                    RootTab.PROFILE -> "Profile"
-                                },
-                                fontWeight = fontWeight,
-                                fontSize = 12.sp,
-                                color = contentColor
-                            )
-                        }
-                    }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { onTabSelected(tab) }
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = label,
+                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                        fontSize = 11.5.sp,
+                        color = contentColor
+                    )
                 }
             }
         }

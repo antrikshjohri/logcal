@@ -224,7 +224,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                         }
                     )
                 }
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // 1. Date Header Navigation

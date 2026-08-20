@@ -2,6 +2,7 @@ package com.serene.logcal.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -9,37 +10,42 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-
-import androidx.compose.material3.Typography
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import com.serene.logcal.R
 
-val Nunito = FontFamily(
-    Font(R.font.nunito_regular, FontWeight.Normal),
-    Font(R.font.nunito_medium, FontWeight.Medium),
-    Font(R.font.nunito_semibold, FontWeight.SemiBold),
-    Font(R.font.nunito_bold, FontWeight.Bold)
+private val fontProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+val PlusJakartaSans = FontFamily(
+    Font(googleFont = GoogleFont("Plus Jakarta Sans"), fontProvider = fontProvider, weight = FontWeight.Normal),
+    Font(googleFont = GoogleFont("Plus Jakarta Sans"), fontProvider = fontProvider, weight = FontWeight.Medium),
+    Font(googleFont = GoogleFont("Plus Jakarta Sans"), fontProvider = fontProvider, weight = FontWeight.SemiBold),
+    Font(googleFont = GoogleFont("Plus Jakarta Sans"), fontProvider = fontProvider, weight = FontWeight.Bold)
 )
 
 val AppTypography = Typography().run {
     copy(
-        displayLarge = displayLarge.copy(fontFamily = Nunito),
-        displayMedium = displayMedium.copy(fontFamily = Nunito),
-        displaySmall = displaySmall.copy(fontFamily = Nunito),
-        headlineLarge = headlineLarge.copy(fontFamily = Nunito),
-        headlineMedium = headlineMedium.copy(fontFamily = Nunito),
-        headlineSmall = headlineSmall.copy(fontFamily = Nunito),
-        titleLarge = titleLarge.copy(fontFamily = Nunito),
-        titleMedium = titleMedium.copy(fontFamily = Nunito),
-        titleSmall = titleSmall.copy(fontFamily = Nunito),
-        bodyLarge = bodyLarge.copy(fontFamily = Nunito),
-        bodyMedium = bodyMedium.copy(fontFamily = Nunito),
-        bodySmall = bodySmall.copy(fontFamily = Nunito),
-        labelLarge = labelLarge.copy(fontFamily = Nunito),
-        labelMedium = labelMedium.copy(fontFamily = Nunito),
-        labelSmall = labelSmall.copy(fontFamily = Nunito)
+        displayLarge = displayLarge.copy(fontFamily = PlusJakartaSans),
+        displayMedium = displayMedium.copy(fontFamily = PlusJakartaSans),
+        displaySmall = displaySmall.copy(fontFamily = PlusJakartaSans),
+        headlineLarge = headlineLarge.copy(fontFamily = PlusJakartaSans),
+        headlineMedium = headlineMedium.copy(fontFamily = PlusJakartaSans),
+        headlineSmall = headlineSmall.copy(fontFamily = PlusJakartaSans),
+        titleLarge = titleLarge.copy(fontFamily = PlusJakartaSans),
+        titleMedium = titleMedium.copy(fontFamily = PlusJakartaSans),
+        titleSmall = titleSmall.copy(fontFamily = PlusJakartaSans),
+        bodyLarge = bodyLarge.copy(fontFamily = PlusJakartaSans),
+        bodyMedium = bodyMedium.copy(fontFamily = PlusJakartaSans),
+        bodySmall = bodySmall.copy(fontFamily = PlusJakartaSans),
+        labelLarge = labelLarge.copy(fontFamily = PlusJakartaSans),
+        labelMedium = labelMedium.copy(fontFamily = PlusJakartaSans),
+        labelSmall = labelSmall.copy(fontFamily = PlusJakartaSans)
     )
 }
 
@@ -140,7 +146,7 @@ fun LogCalTheme(
             onSurface = LightPrimaryText
         )
     }
-    
+
     CompositionLocalProvider(
         LocalLogCalColors provides logCalColors
     ) {

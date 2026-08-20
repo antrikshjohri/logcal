@@ -378,7 +378,7 @@ private fun HistoryListScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentPadding = PaddingValues(bottom = 100.dp),
+                        contentPadding = PaddingValues(bottom = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(sections, key = { it.date.toString() }) { section ->
