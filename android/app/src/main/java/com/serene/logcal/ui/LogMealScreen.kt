@@ -38,6 +38,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -155,7 +160,7 @@ import java.util.Locale
 
 private const val LOG_MEAL_LOADING_LABEL = "Analyzing your meal…"
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LogMealScreen(viewModel: LogViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -899,23 +904,30 @@ fun LogMealScreen(viewModel: LogViewModel) {
 
                                     Spacer(modifier = Modifier.width(12.dp))
 
-                                    // Waveform composition - orange dotted line
+                                    // Dynamic Pulsing Audio Waveform HUD
                                     androidx.compose.foundation.Canvas(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(12.dp)
+                                            .height(32.dp)
                                     ) {
-                                        val dotRadius = 3.dp.toPx()
-                                        val spacing = 8.dp.toPx()
-                                        val dotCount = (size.width / (dotRadius * 2 + spacing)).toInt()
-                                        for (i in 0 until dotCount) {
-                                            drawCircle(
+                                        val barWidth = 3.dp.toPx()
+                                        val gap = 3.dp.toPx()
+                                        val totalBarSlot = barWidth + gap
+                                        val numBars = (size.width / totalBarSlot).toInt().coerceAtLeast(1)
+                                        val samples = uiState.waveformSamples
+                                        val sampleStep = (samples.size.toFloat() / numBars).coerceAtLeast(1f)
+
+                                        for (i in 0 until numBars) {
+                                            val sampleIndex = (i * sampleStep).toInt().coerceIn(0, samples.lastIndex)
+                                            val amplitude = samples.getOrElse(sampleIndex) { 0.15f }
+                                            val barHeight = (size.height * amplitude).coerceIn(4.dp.toPx(), size.height)
+                                            val x = i * totalBarSlot
+                                            val y = (size.height - barHeight) / 2f
+                                            drawRoundRect(
                                                 color = Color(0xFFFFA33C),
-                                                radius = dotRadius,
-                                                center = androidx.compose.ui.geometry.Offset(
-                                                    x = i * (dotRadius * 2 + spacing) + dotRadius,
-                                                    y = size.height / 2
-                                                )
+                                                topLeft = Offset(x, y),
+                                                size = Size(barWidth, barHeight),
+                                                cornerRadius = CornerRadius(barWidth / 2, barWidth / 2)
                                             )
                                         }
                                     }
@@ -1180,7 +1192,10 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             },
                             onQuickEdit = { prompt ->
                                 viewModel.quickRefineCompletedPreview(preview.id, prompt)
-                            }
+                            },
+                            isListening = uiState.isListening && uiState.speechTarget == SpeechTarget.QUICK_EDIT,
+                            onToggleListening = { viewModel.toggleSpeechRecognition(SpeechTarget.QUICK_EDIT) },
+                            onCancelListening = { viewModel.cancelSpeechRecognition() }
                         )
                     }
 
@@ -1203,6 +1218,73 @@ fun LogMealScreen(viewModel: LogViewModel) {
                     }
 
                     Spacer(modifier = Modifier.height(100.dp))
+                }
+            }
+
+            // Pinned floating submit button above keyboard when IME is open
+            if (WindowInsets.isImeVisible) {
+                val canSubmit = (uiState.foodText.trim().isNotEmpty() || uiState.attachedImageUris.isNotEmpty()) && !uiState.isLoading
+                val isPreview = uiState.isPreviewMode
+                val primaryButtonColor = if (isPreview) colors.accentBlue else colors.primaryGreen
+                val submitButtonTitle = if (isPreview) "Preview Meal" else "Log Meal"
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .imePadding()
+                        .background(colors.background.copy(alpha = 0.96f))
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            focusManager.clearFocus()
+                            viewModel.logMeal()
+                        },
+                        enabled = canSubmit,
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (canSubmit) primaryButtonColor else primaryButtonColor.copy(alpha = 0.12f),
+                            contentColor = if (canSubmit) Color.White else primaryButtonColor.copy(alpha = 0.4f),
+                            disabledContainerColor = if (uiState.isLoading) Color.Gray.copy(alpha = 0.3f) else primaryButtonColor.copy(alpha = 0.12f),
+                            disabledContentColor = if (uiState.isLoading) Color.White else primaryButtonColor.copy(alpha = 0.4f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        if (uiState.isLoading) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    if (isPreview) "Estimating..." else "Logging...",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
+                                )
+                            }
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                if (isPreview) {
+                                    Icon(
+                                        Icons.Default.Visibility,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Text(submitButtonTitle, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp))
+                            }
+                        }
+                    }
                 }
             }
 

@@ -329,6 +329,71 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 }
             }
 
+            // Standalone Status Card (1:1 with iOS Status Card)
+            val isOverGoal = uiState.todayCalories > uiState.dailyGoal && uiState.dailyGoal > 0
+            val dailyStatusColor = if (isOverGoal) LogCalTheme.colors.warningAmber else LogCalTheme.colors.primaryGreen
+            val statusCardTitle = when {
+                uiState.dailyGoal <= 0 -> "Set a daily goal"
+                isOverGoal -> "Over your daily target"
+                else -> "On track for your goal"
+            }
+            val statusCardSubtitle = when {
+                uiState.dailyGoal <= 0 -> "Track your progress by setting a goal."
+                isOverGoal -> "${uiState.todayCalories - uiState.dailyGoal} cal over target"
+                else -> "Great choices so far today!"
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(dailyStatusColor.copy(alpha = 0.10f))
+                    .border(1.dp, dailyStatusColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(dailyStatusColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isOverGoal) Icons.Default.Warning else Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = statusCardTitle,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = LogCalTheme.colors.primaryText
+                    )
+                    Text(
+                        text = statusCardSubtitle,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                        color = LogCalTheme.colors.mutedText
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.Default.Eco,
+                    contentDescription = null,
+                    tint = dailyStatusColor.copy(alpha = 0.35f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
             // Read dynamic section order from preferences
             val sectionKeys = prefManager.dashboardSectionOrder.split(",").mapNotNull { DashboardSectionType.fromId(it.trim()) }
             val completeSections = sectionKeys.toMutableList()

@@ -62,6 +62,9 @@ fun MealPreviewCard(
     onDismiss: (() -> Unit)? = null,
     onBookmark: () -> Unit,
     onQuickEdit: (String) -> Unit,
+    isListening: Boolean = false,
+    onToggleListening: () -> Unit = {},
+    onCancelListening: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val colors = LogCalTheme.colors
@@ -293,64 +296,22 @@ fun MealPreviewCard(
 
             HorizontalDivider(color = colors.cardBorder)
 
-            // Quick Edit Section
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Quick Edit / Correction",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.mutedText
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = quickEditPrompt,
-                        onValueChange = { quickEditPrompt = it },
-                        placeholder = { Text("e.g. Actually had 2 cups", fontSize = 13.sp) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.primaryGreen,
-                            unfocusedBorderColor = colors.cardBorder
-                        )
-                    )
-
-                    Button(
-                        onClick = {
-                            if (quickEditPrompt.isNotBlank()) {
-                                onQuickEdit(quickEditPrompt)
-                                quickEditPrompt = ""
-                            }
-                        },
-                        enabled = quickEditPrompt.isNotBlank() && !preview.isRefining,
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        if (preview.isRefining) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.White
-                            )
-                        } else {
-                            Text("Update", fontWeight = FontWeight.Bold)
-                        }
+            // Quick Edit Section (1:1 with iOS QuickEditMealSection)
+            QuickEditMealSection(
+                prompt = quickEditPrompt,
+                onPromptChange = { quickEditPrompt = it },
+                isLoading = preview.isRefining,
+                errorMessage = preview.refineError,
+                isListening = isListening,
+                onToggleListening = onToggleListening,
+                onCancelListening = onCancelListening,
+                onApply = {
+                    if (quickEditPrompt.isNotBlank()) {
+                        onQuickEdit(quickEditPrompt)
+                        quickEditPrompt = ""
                     }
                 }
-
-                if (!preview.refineError.isNullOrBlank()) {
-                    Text(
-                        preview.refineError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.warningAmber
-                    )
-                }
-            }
+            )
         }
     }
 }

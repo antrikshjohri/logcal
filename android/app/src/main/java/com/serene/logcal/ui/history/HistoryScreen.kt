@@ -35,7 +35,12 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.WbTwilight
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Restaurant
+import com.serene.logcal.ui.components.ModernConfirmationDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -411,24 +416,18 @@ private fun HistoryListScreen(
     }
 
     if (showBulkDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showBulkDeleteDialog = false },
-            title = { Text("Delete ${selectedIds.size} meals?") },
-            text = { Text("This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val ids = selectedIds.toList()
-                        showBulkDeleteDialog = false
-                        editMode = false
-                        viewModel.deleteMeals(ids)
-                        selectedIds = emptySet()
-                    }
-                ) { Text("Delete", color = colors.dangerRed) }
+        ModernConfirmationDialog(
+            title = "Delete ${selectedIds.size} meals?",
+            message = "Are you sure you want to delete these meal logs? This action cannot be undone.",
+            confirmText = "Delete (${selectedIds.size})",
+            onConfirm = {
+                val ids = selectedIds.toList()
+                showBulkDeleteDialog = false
+                editMode = false
+                viewModel.deleteMeals(ids)
+                selectedIds = emptySet()
             },
-            dismissButton = {
-                TextButton(onClick = { showBulkDeleteDialog = false }) { Text("Cancel") }
-            }
+            onDismiss = { showBulkDeleteDialog = false }
         )
     }
 }
@@ -489,14 +488,14 @@ private fun DaySectionCard(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 6.dp,
+                elevation = 2.dp,
                 shape = RoundedCornerShape(16.dp),
                 ambientColor = colors.shadowColor,
                 spotColor = colors.shadowColor
             ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
-        border = BorderStroke(1.dp, colors.cardBorder)
+        border = BorderStroke(0.8.dp, colors.cardBorder.copy(alpha = 0.8f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
@@ -706,12 +705,12 @@ private fun HistoryMealRow(
     }
 
     val mealTypeLower = meal.mealType.lowercase(Locale.ROOT)
-    val (emoji, displayLabel) = when (mealTypeLower) {
-        "breakfast" -> Pair("🌅", "Breakfast")
-        "lunch" -> Pair("☀️", "Lunch")
-        "dinner" -> Pair("🌙", "Dinner")
-        "snack" -> Pair("🌿", "Snack")
-        else -> Pair("🍽️", meal.mealType.replaceFirstChar { it.uppercase() })
+    val (vectorIcon, displayLabel) = when (mealTypeLower) {
+        "breakfast" -> Pair(Icons.Default.WbTwilight, "Breakfast")
+        "lunch" -> Pair(Icons.Default.WbSunny, "Lunch")
+        "dinner" -> Pair(Icons.Default.NightsStay, "Dinner")
+        "snack" -> Pair(Icons.Default.Spa, "Snack")
+        else -> Pair(Icons.Default.Restaurant, meal.mealType.replaceFirstChar { it.uppercase() })
     }
 
     Row(
@@ -779,26 +778,79 @@ private fun HistoryMealRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .background(colors.softAccentBackground, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .background(colors.softAccentBackground, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Icon(
+                        imageVector = vectorIcon,
+                        contentDescription = null,
+                        tint = colors.primaryGreen,
+                        modifier = Modifier.size(11.dp)
+                    )
                     Text(
-                        text = "$emoji $displayLabel",
+                        text = displayLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.primaryGreen,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                if (macroCompact.isNotEmpty()) {
-                    Text(
-                        text = macroCompact,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.warningAmber,
-                        fontWeight = FontWeight.Medium
-                    )
+                // Dedicated Multi-Colored Macros
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (p != null) {
+                        Text(
+                            text = "P: ${p.toInt()}g",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.protein,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (c != null) {
+                        Text(
+                            text = "·",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.mutedText.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "C: ${c.toInt()}g",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.carbs,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (f != null) {
+                        Text(
+                            text = "·",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.mutedText.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "F: ${f.toInt()}g",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.fat,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (fib != null) {
+                        Text(
+                            text = "·",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.mutedText.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "Fib: ${fib.toInt()}g",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.fiber,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

@@ -90,6 +90,23 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         )
 
     private var speechRecognizer: SpeechRecognizer? = null
+    private var autoDismissJob: kotlinx.coroutines.Job? = null
+
+    private fun scheduleAutoDismiss() {
+        autoDismissJob?.cancel()
+        autoDismissJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(120_000L) // 120 seconds (2 minutes)
+            _uiState.value = _uiState.value.copy(
+                latestResult = null,
+                completedPreviews = emptyList()
+            )
+        }
+    }
+
+    private fun cancelAutoDismiss() {
+        autoDismissJob?.cancel()
+        autoDismissJob = null
+    }
 
     init {
         DebugLogger.d("DEBUG: [LogViewModel] init() start")
@@ -352,6 +369,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     foodText = "",
                     attachedImageUris = emptyList()
                 )
+                scheduleAutoDismiss()
                 AnalyticsService.trackMealLogged(
                     mealType = savedMeal.mealType,
                     totalCalories = totalCalories,
@@ -664,6 +682,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         sourceSavedMealId = null,
                         completedPreviews = listOf(preview) + _uiState.value.completedPreviews.filter { it.id != entryId }
                     )
+                    scheduleAutoDismiss()
                     updatePendingStatus(pending.id, PendingLogStatus.Completed(response, entryId))
 
                     if (!pending.isPreviewOnly) {
@@ -803,6 +822,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                         completedPreviews = finalPreviews,
                         latestResult = if (_uiState.value.lastLoggedMealId == id) refined else _uiState.value.latestResult
                     )
+                    scheduleAutoDismiss()
                 },
                 onFailure = { t ->
                     val finalPreviews = _uiState.value.completedPreviews.map {

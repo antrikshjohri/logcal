@@ -42,7 +42,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.serene.logcal.ui.components.ModernConfirmationDialog
+import com.serene.logcal.ui.components.QuickEditMealSection
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -615,136 +616,58 @@ fun MealEditScreen(
                         )
 
                         AnimatedVisibility(visible = showQuickEdit) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = quickEditPrompt,
-                                    onValueChange = { quickEditPrompt = it },
-                                    placeholder = { Text("Type correction...", color = colors.quietText) },
-                                    singleLine = true,
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.primaryText),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = colors.primaryGreen,
-                                        unfocusedBorderColor = colors.cardBorder,
-                                        focusedContainerColor = colors.insetBackground,
-                                        unfocusedContainerColor = colors.insetBackground
-                                    ),
-                                    modifier = Modifier.weight(1f),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                    keyboardActions = KeyboardActions(
-                                        onSend = {
-                                            if (quickEditPrompt.isNotBlank() && !isQuickEditLoading) {
-                                                isQuickEditLoading = true
-                                                quickEditErrorMessage = null
-                                                coroutineScope.launch {
-                                                    try {
-                                                        val repo = FirebaseMealRepository()
-                                                        val result = repo.refineMealLog(
-                                                            foodText = activeMeal.foodText,
-                                                            mealType = MealType.entries.find { it.rawValue == editedMealType } ?: MealType.BREAKFAST,
-                                                            previousEstimate = activeMeal.response,
-                                                            correctionPrompt = quickEditPrompt
+                            QuickEditMealSection(
+                                prompt = quickEditPrompt,
+                                onPromptChange = { quickEditPrompt = it },
+                                isLoading = isQuickEditLoading,
+                                errorMessage = quickEditErrorMessage,
+                                isListening = false,
+                                onApply = {
+                                    if (quickEditPrompt.isNotBlank() && !isQuickEditLoading) {
+                                        isQuickEditLoading = true
+                                        quickEditErrorMessage = null
+                                        coroutineScope.launch {
+                                            try {
+                                                val repo = FirebaseMealRepository()
+                                                val result = repo.refineMealLog(
+                                                    foodText = activeMeal.foodText,
+                                                    mealType = MealType.entries.find { it.rawValue == editedMealType } ?: MealType.BREAKFAST,
+                                                    previousEstimate = activeMeal.response,
+                                                    correctionPrompt = quickEditPrompt
+                                                )
+                                                result.fold(
+                                                    onSuccess = { response ->
+                                                        modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), response)
+                                                        editedCalories = response.totalCalories
+                                                        editedMealType = response.mealType
+                                                        viewModel.updateMeal(
+                                                            mealId = mealId,
+                                                            timestampMillis = editedDateMillis,
+                                                            mealType = response.mealType,
+                                                            totalCalories = response.totalCalories,
+                                                            rawResponseJson = modifiedResponseJson
                                                         )
-                                                        result.fold(
-                                                            onSuccess = { response ->
-                                                                modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), response)
-                                                                editedCalories = response.totalCalories
-                                                                editedMealType = response.mealType
-                                                                viewModel.updateMeal(
-                                                                    mealId = mealId,
-                                                                    timestampMillis = editedDateMillis,
-                                                                    mealType = response.mealType,
-                                                                    totalCalories = response.totalCalories,
-                                                                    rawResponseJson = modifiedResponseJson
-                                                                )
-                                                                mealState = activeMeal.copy(
-                                                                    mealType = response.mealType,
-                                                                    totalCalories = response.totalCalories,
-                                                                    response = response
-                                                                )
-                                                                quickEditPrompt = ""
-                                                                showQuickEdit = false
-                                                            },
-                                                            onFailure = { t ->
-                                                                quickEditErrorMessage = t.localizedMessage
-                                                            }
+                                                        mealState = activeMeal.copy(
+                                                            mealType = response.mealType,
+                                                            totalCalories = response.totalCalories,
+                                                            response = response
                                                         )
-                                                    } catch (e: Exception) {
-                                                        quickEditErrorMessage = e.localizedMessage
-                                                    } finally {
-                                                        isQuickEditLoading = false
+                                                        quickEditPrompt = ""
+                                                        showQuickEdit = false
+                                                    },
+                                                    onFailure = { t ->
+                                                        quickEditErrorMessage = t.localizedMessage
                                                     }
-                                                }
+                                                )
+                                            } catch (e: Exception) {
+                                                quickEditErrorMessage = e.localizedMessage
+                                            } finally {
+                                                isQuickEditLoading = false
                                             }
                                         }
-                                    )
-                                )
-
-                                IconButton(
-                                    onClick = {
-                                        if (quickEditPrompt.isNotBlank() && !isQuickEditLoading) {
-                                            isQuickEditLoading = true
-                                            quickEditErrorMessage = null
-                                            coroutineScope.launch {
-                                                try {
-                                                    val repo = FirebaseMealRepository()
-                                                    val result = repo.refineMealLog(
-                                                        foodText = activeMeal.foodText,
-                                                        mealType = MealType.entries.find { it.rawValue == editedMealType } ?: MealType.BREAKFAST,
-                                                        previousEstimate = activeMeal.response,
-                                                        correctionPrompt = quickEditPrompt
-                                                    )
-                                                    result.fold(
-                                                        onSuccess = { response ->
-                                                            modifiedResponseJson = json.encodeToString(MealLogResponse.serializer(), response)
-                                                            editedCalories = response.totalCalories
-                                                            editedMealType = response.mealType
-                                                            viewModel.updateMeal(
-                                                                mealId = mealId,
-                                                                timestampMillis = editedDateMillis,
-                                                                mealType = response.mealType,
-                                                                totalCalories = response.totalCalories,
-                                                                rawResponseJson = modifiedResponseJson
-                                                            )
-                                                            mealState = activeMeal.copy(
-                                                                mealType = response.mealType,
-                                                                totalCalories = response.totalCalories,
-                                                                response = response
-                                                            )
-                                                            quickEditPrompt = ""
-                                                            showQuickEdit = false
-                                                        },
-                                                        onFailure = { t ->
-                                                            quickEditErrorMessage = t.localizedMessage
-                                                        }
-                                                    )
-                                                } catch (e: Exception) {
-                                                    quickEditErrorMessage = e.localizedMessage
-                                                } finally {
-                                                    isQuickEditLoading = false
-                                                }
-                                            }
-                                        }
-                                    },
-                                    enabled = !isQuickEditLoading && quickEditPrompt.isNotBlank(),
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .background(colors.primaryGreen, CircleShape)
-                                ) {
-                                    if (isQuickEditLoading) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-                                    } else {
-                                        Icon(Icons.Default.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                                     }
                                 }
-                            }
-                        }
-
-                        quickEditErrorMessage?.let { err ->
-                            Text(err, color = colors.dangerRed, style = MaterialTheme.typography.bodySmall)
+                            )
                         }
                     }
                 }
@@ -872,49 +795,37 @@ fun MealEditScreen(
         }
     }
 
-    // Alert: Confirm calorie edit override
+    // Modern Confirmation: Calorie edit override
     if (showCalorieOverrideConfirm) {
-        AlertDialog(
-            onDismissRequest = { showCalorieOverrideConfirm = false },
-            title = { Text("Remove Items Breakdown?") },
-            text = { Text("Editing calories will remove the items breakdown. You can reset to default later.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val newCals = caloriesText.toDoubleOrNull() ?: editedCalories
-                        caloriesManuallyOverridden = true
-                        modifiedResponseJson = ""
-                        editedCalories = newCals
-                        isEditingCalories = false
-                        showCalorieOverrideConfirm = false
-                        autoSaveChanges(newCal = newCals)
-                    }
-                ) { Text("Yes", color = colors.dangerRed) }
+        ModernConfirmationDialog(
+            title = "Remove Items Breakdown?",
+            message = "Editing calories will remove the items breakdown. You can reset to default later.",
+            confirmText = "Remove Breakdown",
+            onConfirm = {
+                val newCals = caloriesText.toDoubleOrNull() ?: editedCalories
+                caloriesManuallyOverridden = true
+                modifiedResponseJson = ""
+                editedCalories = newCals
+                isEditingCalories = false
+                showCalorieOverrideConfirm = false
+                autoSaveChanges(newCal = newCals)
             },
-            dismissButton = {
-                TextButton(onClick = { showCalorieOverrideConfirm = false }) { Text("Cancel") }
-            }
+            onDismiss = { showCalorieOverrideConfirm = false }
         )
     }
 
-    // Alert: Delete meal confirm
+    // Modern Confirmation: Delete meal
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Meal") },
-            text = { Text("Are you sure you want to delete this meal? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirm = false
-                        viewModel.deleteMeal(mealId)
-                        onBack()
-                    }
-                ) { Text("Delete", color = colors.dangerRed) }
+        ModernConfirmationDialog(
+            title = "Delete Meal?",
+            message = "Are you sure you want to delete this meal? This action cannot be undone.",
+            confirmText = "Delete Meal",
+            onConfirm = {
+                showDeleteConfirm = false
+                viewModel.deleteMeal(mealId)
+                onBack()
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
-            }
+            onDismiss = { showDeleteConfirm = false }
         )
     }
 
@@ -1046,27 +957,21 @@ fun MealEditScreen(
         }
     }
 
-    // Alert: Delete Favorite confirm
+    // Modern Confirmation: Delete Favorite confirm
     if (showFavoriteDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showFavoriteDeleteConfirm = false },
-            title = { Text("Delete Favorite Meal") },
-            text = { Text("Are you sure you want to delete this favourite meal? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (linkedFavoriteId != null) {
-                            viewModel.deleteFavoriteMeal(linkedFavoriteId!!)
-                            isSavedToFavorites = false
-                            linkedFavoriteId = null
-                        }
-                        showFavoriteDeleteConfirm = false
-                    }
-                ) { Text("Delete", color = colors.dangerRed) }
+        ModernConfirmationDialog(
+            title = "Delete Favorite Meal?",
+            message = "Are you sure you want to delete this favourite meal? This action cannot be undone.",
+            confirmText = "Delete Favorite",
+            onConfirm = {
+                if (linkedFavoriteId != null) {
+                    viewModel.deleteFavoriteMeal(linkedFavoriteId!!)
+                    isSavedToFavorites = false
+                    linkedFavoriteId = null
+                }
+                showFavoriteDeleteConfirm = false
             },
-            dismissButton = {
-                TextButton(onClick = { showFavoriteDeleteConfirm = false }) { Text("Cancel") }
-            }
+            onDismiss = { showFavoriteDeleteConfirm = false }
         )
     }
 
