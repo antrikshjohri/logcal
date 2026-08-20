@@ -72,19 +72,24 @@ struct WatchAccessoryRectangularView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            // Header Row
-            HStack {
+        VStack(alignment: .leading, spacing: 4) {
+            // Header Row: Calories & Goal
+            HStack(alignment: .firstTextBaseline) {
                 Text("Calories")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                     .foregroundColor(Color(red: 0.18, green: 0.80, blue: 0.44))
+                    .lineLimit(1)
+                
                 Spacer()
+                
                 Text("\(Int(entry.todayCalories)) / \(Int(entry.dailyGoal))")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             
-            // Progress Bar
+            // Progress Bar (9pt height)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -98,24 +103,56 @@ struct WatchAccessoryRectangularView: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: max(geo.size.width * CGFloat(progress), 4))
+                            .frame(width: max(geo.size.width * CGFloat(progress), 8))
                     }
                 }
             }
-            .frame(height: 4)
+            .frame(height: 9)
             
-            // 3-4 Macros Row
-            HStack(spacing: 0) {
-                Text("P: \(Int(entry.protein))g")
-                    .foregroundColor(Color(red: 0.95, green: 0.38, blue: 0.38))
-                Spacer()
-                Text("C: \(Int(entry.carbs))g")
-                    .foregroundColor(Color(red: 0.95, green: 0.70, blue: 0.25))
-                Spacer()
-                Text("F: \(Int(entry.fat))g")
-                    .foregroundColor(Color(red: 0.30, green: 0.75, blue: 0.95))
+            // Macros Row (ViewThatFits: Protein/Carbs/Fats -> Prot/Carbs/Fats -> P/C/F)
+            ViewThatFits(in: .horizontal) {
+                // 1. Full "Protein" for large screens (45mm / 46mm / Ultra)
+                HStack(spacing: 0) {
+                    Text("Protein: \(Int(entry.protein))g")
+                        .foregroundColor(Color(red: 0.95, green: 0.38, blue: 0.38))
+                    Spacer()
+                    Text("Carbs: \(Int(entry.carbs))g")
+                        .foregroundColor(Color(red: 0.95, green: 0.70, blue: 0.25))
+                    Spacer()
+                    Text("Fats: \(Int(entry.fat))g")
+                        .foregroundColor(Color(red: 0.30, green: 0.75, blue: 0.95))
+                }
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                
+                // 2. "Prot" for medium screens
+                HStack(spacing: 0) {
+                    Text("Prot: \(Int(entry.protein))g")
+                        .foregroundColor(Color(red: 0.95, green: 0.38, blue: 0.38))
+                    Spacer()
+                    Text("Carbs: \(Int(entry.carbs))g")
+                        .foregroundColor(Color(red: 0.95, green: 0.70, blue: 0.25))
+                    Spacer()
+                    Text("Fats: \(Int(entry.fat))g")
+                        .foregroundColor(Color(red: 0.30, green: 0.75, blue: 0.95))
+                }
+                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                
+                // 3. "P / C / F" for smaller screens
+                HStack(spacing: 0) {
+                    Text("P: \(Int(entry.protein))g")
+                        .foregroundColor(Color(red: 0.95, green: 0.38, blue: 0.38))
+                    Spacer()
+                    Text("C: \(Int(entry.carbs))g")
+                        .foregroundColor(Color(red: 0.95, green: 0.70, blue: 0.25))
+                    Spacer()
+                    Text("F: \(Int(entry.fat))g")
+                        .foregroundColor(Color(red: 0.30, green: 0.75, blue: 0.95))
+                }
+                .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                .lineLimit(1)
             }
-            .font(.system(size: 10, weight: .bold, design: .rounded))
         }
         .widgetURL(URL(string: "logcal://home"))
     }
@@ -135,8 +172,9 @@ struct WatchAccessoryCircularView: View {
                 .foregroundColor(Color(red: 0.18, green: 0.80, blue: 0.44))
         } currentValueLabel: {
             Text("\(Int(entry.todayCalories))")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
+                .minimumScaleFactor(0.75)
         }
         .gaugeStyle(.accessoryCircular)
         .tint(Color(red: 0.18, green: 0.80, blue: 0.44))
