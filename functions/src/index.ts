@@ -2003,8 +2003,18 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
         inferredMealType = "Dinner";
       }
 
-      // Call OpenAI to parse meal (assume India as default country)
-      const openaiResponse = await callOpenAI(text.trim(), inferredMealType, undefined, undefined, "India", undefined);
+      // Call OpenAI to parse meal using the linked user's UID and entitlements (Luna / Web Search / country)
+      const userData = userDoc.data() || {};
+      const userCountry = userData.country || "India";
+      const openaiResponse = await callOpenAI(
+        text.trim(),
+        inferredMealType,
+        undefined,
+        undefined,
+        userCountry,
+        undefined,
+        uid
+      );
       
       // Save meal to user's collection in Firestore (UUID v4 format for client-side SwiftData UUID compatibility)
       const mealId = crypto.randomUUID().toUpperCase(); 
