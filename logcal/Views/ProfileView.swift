@@ -422,6 +422,8 @@ private struct SettingsGroupRow: View {
             Text(title)
                 .font(.system(size: 17, weight: .regular))
                 .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             
             if let badge = badge {
                 Text(badge)
@@ -439,6 +441,8 @@ private struct SettingsGroupRow: View {
                 Text(value)
                     .font(.system(size: 17, weight: .regular))
                     .foregroundColor(Theme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             
             Image(systemName: "chevron.right")

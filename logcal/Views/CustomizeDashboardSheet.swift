@@ -121,7 +121,8 @@ struct CustomizeDashboardSheet: View {
                                 Text(section.subtitle)
                                     .font(.system(size: 11.5, weight: .regular, design: .rounded))
                                     .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                                    .lineLimit(1)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             
                             Spacer()

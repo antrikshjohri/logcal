@@ -494,7 +494,7 @@ struct MealRowView: View {
                     Text(displayTitle)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                        .lineLimit(1)
+                        .lineLimit(2)
                     
                     if meal.hasImageValue {
                         Image(systemName: "photo")
@@ -523,27 +523,21 @@ struct MealRowView: View {
                     
                     // Micro macros
                     if let protein = meal.protein, let carbs = meal.carbs, let fat = meal.fat {
-                        HStack(spacing: 3) {
-                            Text("P: \(Int(protein))g")
-                                .foregroundColor(Theme.proteinColor)
-                            Text("·")
-                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                            Text("C: \(Int(carbs))g")
-                                .foregroundColor(Theme.carbsColor)
-                            Text("·")
-                                .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                            Text("F: \(Int(fat))g")
-                                .foregroundColor(Theme.fatColor)
-                            if let fiber = meal.fiber {
-                                Text("·")
-                                    .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
-                                Text("Fib: \(Int(fiber))g")
-                                    .foregroundColor(Theme.fiberColor)
-                            }
-                        }
+                        (
+                            Text("P: \(Int(protein))g").foregroundColor(Theme.proteinColor)
+                            + Text(" · ").foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            + Text("C: \(Int(carbs))g").foregroundColor(Theme.carbsColor)
+                            + Text(" · ").foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                            + Text("F: \(Int(fat))g").foregroundColor(Theme.fatColor)
+                            + (meal.fiber.map { 
+                                Text(" · ").foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                                + Text("Fib: \(Int($0))g").foregroundColor(Theme.fiberColor) 
+                            } ?? Text(""))
+                        )
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.65)
+                        .allowsTightening(true)
                     }
                 }
             }

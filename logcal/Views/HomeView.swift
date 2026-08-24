@@ -375,6 +375,7 @@ struct HomeView: View {
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.75)
                             Image(systemName: "calendar")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(Theme.primaryGreen)
@@ -449,6 +450,7 @@ struct HomeView: View {
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
                                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.75)
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(Theme.primaryGreen)
@@ -568,6 +570,8 @@ struct HomeView: View {
                 Text("What did you eat?")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(Theme.mutedText(colorScheme: colorScheme))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 
                 Spacer()
                 
@@ -575,6 +579,7 @@ struct HomeView: View {
                     Text("Preview")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(viewModel.isPreviewMode ? Theme.accentBlue : Theme.mutedText(colorScheme: colorScheme))
+                        .lineLimit(1)
                     
                     Toggle("", isOn: $viewModel.isPreviewMode.animation(.spring(response: 0.3, dampingFraction: 0.75)))
                         .labelsHidden()
@@ -803,7 +808,7 @@ struct HomeView: View {
     }
 
     private var previewModeBanner: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Theme.accentBlue)
@@ -811,10 +816,8 @@ struct HomeView: View {
             Text("Preview mode active — estimates calories without logging.")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(Theme.primaryText(colorScheme: colorScheme))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-            
-            Spacer()
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {

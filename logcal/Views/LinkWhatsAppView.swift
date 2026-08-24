@@ -411,6 +411,7 @@ struct WhatsAppVisualGuideView: View {
                             .font(.system(size: 11))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                         
                         Spacer()
                     }
