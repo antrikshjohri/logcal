@@ -75,6 +75,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,6 +97,7 @@ import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.ui.auth.AuthDialog
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.DebugLogger
+import kotlinx.coroutines.launch
 
 private enum class ProfileSubScreen {
     MAIN,
@@ -135,16 +137,20 @@ fun ProfileScreen() {
 
     val healthConnectService = remember { HealthConnectService.getInstance(context) }
     var isHealthConnectEnabled by remember { mutableStateOf(prefManager.isHealthConnectEnabled) }
+    val coroutineScope = rememberCoroutineScope()
 
     val healthPermissionLauncher = rememberLauncherForActivityResult(
         contract = PermissionController.createRequestPermissionResultContract()
-    ) { grantedPermissions ->
-        if (grantedPermissions.containsAll(HealthConnectService.PERMISSIONS)) {
-            prefManager.isHealthConnectEnabled = true
-            isHealthConnectEnabled = true
-            Toast.makeText(context, "Google Health Connect connected", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Health Connect permissions required", Toast.LENGTH_SHORT).show()
+    ) { _ ->
+        coroutineScope.launch {
+            val authorized = healthConnectService.checkPermissions()
+            if (authorized) {
+                prefManager.isHealthConnectEnabled = true
+                isHealthConnectEnabled = true
+                Toast.makeText(context, "Google Health Connect connected", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Health Connect permissions required", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

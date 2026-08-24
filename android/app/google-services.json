@@ -14,6 +14,30 @@
       },
       "oauth_client": [
         {
+          "client_id": "1023141890322-iuinnqeh5qcsel98brnqlu0ltkjl3nm1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.serene.logcal",
+            "certificate_hash": "2807c944f2adcbbc4718715500e004b3abbb103a"
+          }
+        },
+        {
+          "client_id": "1023141890322-m4rsi7bu3sosdpg9a9tlo4ukt06cp6b2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.serene.logcal",
+            "certificate_hash": "7eb4bf2b6d212642bd2ce91024f0cbf12ff62a54"
+          }
+        },
+        {
+          "client_id": "1023141890322-m624jtrvolcvhav5pv32s34146gaokml.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.serene.logcal",
+            "certificate_hash": "f897c8ebf35d4d82ffc512c7ab7a6e3b825cbcb5"
+          }
+        },
+        {
           "client_id": "1023141890322-i5ob5lajc097qdfs3fg22ebc6bapfboe.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -31,10 +55,11 @@
               "client_type": 3
             },
             {
-              "client_id": "1023141890322-empsla7r8hbflkbkrsjqsoqpcedo4cuh.apps.googleusercontent.com",
+              "client_id": "1023141890322-98qjopllj77ns282qa82940p6957h8h6.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.serene.logcal"
+                "bundle_id": "com.serene.logcal",
+                "app_store_id": "6757228315"
               }
             }
           ]

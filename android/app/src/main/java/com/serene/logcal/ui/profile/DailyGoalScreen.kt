@@ -254,14 +254,15 @@ fun DailyGoalScreen(
 
                     Slider(
                         value = currentGoal.toFloat(),
-                        onValueChange = { currentGoal = it.roundToInt().toDouble() },
+                        onValueChange = {
+                            currentGoal = (Math.round(it / 50.0) * 50).toDouble().coerceIn(100.0, 5000.0)
+                        },
                         valueRange = 100f..5000f,
-                        steps = ((5000 - 100) / 50) - 1,
                         modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(
-                            activeTrackColor = colors.primaryGreen,
+                            activeTrackColor = Color(0xFF007AFF),
                             inactiveTrackColor = colors.insetBackground,
-                            thumbColor = colors.primaryGreen
+                            thumbColor = Color.White
                         )
                     )
 

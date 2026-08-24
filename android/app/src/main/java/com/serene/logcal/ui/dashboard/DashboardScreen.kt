@@ -126,11 +126,15 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
     // Health Connect Permission Launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract()
-    ) { grantedPermissions ->
-        if (grantedPermissions.containsAll(HealthConnectService.PERMISSIONS)) {
-            prefManager.isHealthConnectEnabled = true
-            isHealthAuthorized = true
-            Toast.makeText(context, "Health Connect connected!", Toast.LENGTH_SHORT).show()
+    ) { _ ->
+        coroutineScope.launch {
+            val authorized = healthConnectService.checkPermissions()
+            if (authorized) {
+                prefManager.isHealthConnectEnabled = true
+                isHealthAuthorized = true
+                refreshHealthStats()
+                Toast.makeText(context, "Health Connect connected!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -138,7 +142,8 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
         if (healthConnectService.isAvailable()) {
             val authorized = healthConnectService.checkPermissions()
             isHealthAuthorized = authorized
-            if (authorized && prefManager.isHealthConnectEnabled) {
+            if (authorized) {
+                prefManager.isHealthConnectEnabled = true
                 activeBurn = healthConnectService.fetchActiveCalories(selectedDate)
                 basalBurn = healthConnectService.fetchBasalCalories(selectedDate)
                 steps = healthConnectService.fetchSteps(selectedDate)
