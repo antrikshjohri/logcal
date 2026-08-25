@@ -16,8 +16,8 @@ android {
         applicationId = "com.serene.logcal"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -96,4 +96,3 @@ dependencies {
     // Google Health Connect
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
 }
-

@@ -123,6 +123,20 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
     var workouts by remember { mutableStateOf<List<HealthWorkout>>(emptyList()) }
     var dismissedHealthCard by remember { mutableStateOf(prefManager.dismissedHealthConnectCard) }
 
+    suspend fun refreshHealthStats() {
+        if (healthConnectService.isAvailable()) {
+            val authorized = healthConnectService.checkPermissions()
+            isHealthAuthorized = authorized
+            if (authorized) {
+                prefManager.isHealthConnectEnabled = true
+                activeBurn = healthConnectService.fetchActiveCalories(selectedDate)
+                basalBurn = healthConnectService.fetchBasalCalories(selectedDate)
+                steps = healthConnectService.fetchSteps(selectedDate)
+                workouts = healthConnectService.fetchWorkouts(selectedDate)
+            }
+        }
+    }
+
     // Health Connect Permission Launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract()
@@ -134,20 +148,6 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
                 isHealthAuthorized = true
                 refreshHealthStats()
                 Toast.makeText(context, "Health Connect connected!", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    suspend fun refreshHealthStats() {
-        if (healthConnectService.isAvailable()) {
-            val authorized = healthConnectService.checkPermissions()
-            isHealthAuthorized = authorized
-            if (authorized) {
-                prefManager.isHealthConnectEnabled = true
-                activeBurn = healthConnectService.fetchActiveCalories(selectedDate)
-                basalBurn = healthConnectService.fetchBasalCalories(selectedDate)
-                steps = healthConnectService.fetchSteps(selectedDate)
-                workouts = healthConnectService.fetchWorkouts(selectedDate)
             }
         }
     }
