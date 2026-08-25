@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import { FeatureCard } from "../components/feature-card";
 import { FiveStarRating } from "../components/star-rating";
+import { StoreBadgeGroup } from "../components/store-link";
 
 const proofPoints = [
   {
@@ -96,9 +97,6 @@ const testimonials = [
   }
 ] as const;
 
-const appStoreUrl =
-  "https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315";
-
 function Icon({ name }: { name: string }) {
   return <span className={`icon icon-${name}`} aria-hidden="true" />;
 }
@@ -120,43 +118,6 @@ function ProofIcon({
       height={28}
       className={`proof-asset-icon ${className}`}
     />
-  );
-}
-
-function DownloadButton({ className = "" }: { className?: string }) {
-  return (
-    <a
-      className={`download-button ${className}`}
-      href={appStoreUrl}
-      target="_blank"
-      rel="noreferrer"
-    >
-      <ProofIcon
-        src="/icons/mobile.webp"
-        alt=""
-        className="proof-asset-icon-mobile"
-      />
-      <span>Download the app</span>
-    </a>
-  );
-}
-
-function StoreBadge() {
-  return (
-    <a
-      className="store-badge"
-      href={appStoreUrl}
-      aria-label="Download LogCalAI on the App Store"
-      target="_blank"
-      rel="noreferrer"
-    >
-      <img
-        src="/badges/app-store-badge.svg"
-        alt="Download on the App Store"
-        width={140}
-        height={42}
-      />
-    </a>
   );
 }
 
@@ -273,8 +234,8 @@ export default function HomePage() {
           <p>
           Track calories effortlessly. Speak, type, or snap your meal — LogCal estimates it in seconds. 
           </p>
-          <div className="hero-actions">
-            <DownloadButton />
+          <div className="hero-actions" id="download">
+            <StoreBadgeGroup className="store-row hero-store-row" />
             <a className="secondary-button" href="#how-it-works">
               <span>See how it works</span>
               <span className="arrow-mark" aria-hidden="true" />
@@ -391,16 +352,11 @@ export default function HomePage() {
           <h2>Start tracking smarter today.</h2>
           <p>Your next meal can be logged in seconds.</p>
           <div className="hero-actions">
-            <DownloadButton />
+            <StoreBadgeGroup className="store-row hero-store-row" />
             <a className="secondary-button" href="#how-it-works">
               <span>See how it works</span>
               <span className="arrow-mark" aria-hidden="true" />
             </a>
-          </div>
-          <div className="availability-row">
-            <span>Available on iOS</span>
-            <i />
-            <span>Coming soon to Android</span>
           </div>
         </div>
         <div className="final-visual">
@@ -429,9 +385,7 @@ export default function HomePage() {
             <span>LogCal AI</span>
           </a>
           <p>Download LogCal AI</p>
-          <div className="store-row">
-            <StoreBadge />
-          </div>
+          <StoreBadgeGroup />
         </div>
 
         <nav className="footer-column" aria-label="Legal">

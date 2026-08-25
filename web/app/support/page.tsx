@@ -108,7 +108,7 @@ export default function SupportPage() {
           <ul>
             <li>Description of the issue</li>
             <li>Steps to reproduce (if applicable)</li>
-            <li>Device model and iOS version</li>
+            <li>Device model and iOS/Android version</li>
             <li>Screenshots (if helpful)</li>
           </ul>
         </section>

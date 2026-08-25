@@ -120,6 +120,37 @@ main {
 
 .header-download {
   padding: 0 30px;
+  cursor: pointer;
+}
+
+.topbar-download-menu {
+  position: relative;
+}
+
+.topbar-download-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 30;
+  width: max-content;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 254, 250, 0.98);
+  box-shadow: var(--shadow);
+}
+
+.topbar-download-panel::before {
+  position: absolute;
+  top: -7px;
+  right: 36px;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: rgba(255, 254, 250, 0.98);
+  content: "";
+  transform: rotate(45deg);
 }
 
 .download-button {
@@ -2346,22 +2377,6 @@ main {
   font-size: 26px;
 }
 
-.availability-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 28px;
-  align-items: center;
-  margin-top: 74px;
-  color: var(--body);
-  font-size: 18px;
-}
-
-.availability-row i {
-  width: 1px;
-  height: 42px;
-  background: rgba(6, 27, 23, 0.28);
-}
-
 .final-visual {
   position: relative;
   display: grid;
@@ -2451,19 +2466,53 @@ main {
 .store-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.hero-store-row {
+  flex-basis: 100%;
+  justify-content: flex-start;
+}
+
+.header-store-row {
+  position: relative;
+  z-index: 1;
+  flex-wrap: nowrap;
   gap: 10px;
-  margin-top: 24px;
 }
 
 .store-badge {
   display: inline-flex;
+  align-items: center;
   transition: transform 160ms ease;
 }
 
 .store-badge img {
   display: block;
-  width: 140px;
-  height: auto;
+  width: auto;
+  height: 42px;
+}
+
+.header-store-row .store-badge img {
+  height: 38px;
+}
+
+.footer-brand .store-row,
+.footer-store-row,
+.article-store-row {
+  margin-top: 24px;
+}
+
+.article-final-cta .store-badge {
+  min-height: auto;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
 }
 
 .footer-column {
@@ -3163,14 +3212,17 @@ main {
   }
 
   .hero-actions,
-  .proof-row,
-  .availability-row {
+  .proof-row {
     gap: 16px;
     margin-top: 34px;
   }
 
   .hero-actions {
     width: 100%;
+    justify-content: center;
+  }
+
+  .hero-store-row {
     justify-content: center;
   }
 

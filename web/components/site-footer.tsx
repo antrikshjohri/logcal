@@ -1,5 +1,5 @@
 import { SUPPORT_EMAIL } from "../lib/site";
-import { StoreLink } from "./store-link";
+import { StoreBadgeGroup } from "./store-link";
 
 const footerLinks = [
   { href: "/features/", label: "Features" },
@@ -31,7 +31,7 @@ export function SiteFooter() {
 
         <div>
           <p className="footer-heading">Download</p>
-          <StoreLink className="store-badge footer-store-badge" />
+          <StoreBadgeGroup className="store-row footer-store-row" />
         </div>
 
         <div>

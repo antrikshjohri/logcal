@@ -6,9 +6,7 @@ import type { ReactNode } from "react";
 
 import type { BlogBlock } from "../../../lib/blog";
 import { blogPosts, getBlogPost } from "../../../lib/blog";
-
-const appStoreUrl =
-  "https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315";
+import { StoreBadgeGroup } from "../../../components/store-link";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -268,9 +266,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
               LogCal AI lets you track meals with text, voice, or photos, so
               calorie tracking can fit into real life.
             </p>
-            <a href={appStoreUrl} target="_blank" rel="noreferrer">
-              Download LogCal AI
-            </a>
+            <StoreBadgeGroup className="store-row article-store-row" />
           </section>
         </div>
       </div>

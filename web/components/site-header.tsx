@@ -1,4 +1,9 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+
+import { StoreBadgeGroup } from "./store-link";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -8,10 +13,39 @@ const navItems = [
   { href: "/#testimonials", label: "Testimonials" }
 ];
 
-const appStoreUrl =
-  "https://apps.apple.com/us/app/logcal-ai-calorie-tracker/id6757228315";
-
 export function SiteHeader() {
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDownloadOpen) {
+      return;
+    }
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (
+        downloadMenuRef.current &&
+        !downloadMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsDownloadOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsDownloadOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isDownloadOpen]);
+
   return (
     <header className="site-shell">
       <div className="topbar">
@@ -52,14 +86,28 @@ export function SiteHeader() {
         </details>
 
         <div className="topbar-cta">
-          <a
-            className="header-download"
-            href={appStoreUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Download the app
-          </a>
+          <div className="topbar-download-menu" ref={downloadMenuRef}>
+            <button
+              className="header-download"
+              type="button"
+              aria-expanded={isDownloadOpen}
+              aria-controls="header-download-panel"
+              onClick={() => setIsDownloadOpen((isOpen) => !isOpen)}
+            >
+              Download
+            </button>
+            {isDownloadOpen && (
+              <div
+                className="topbar-download-panel"
+                id="header-download-panel"
+              >
+                <StoreBadgeGroup
+                  className="store-row header-store-row"
+                  onClick={() => setIsDownloadOpen(false)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
