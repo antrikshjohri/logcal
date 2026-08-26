@@ -6,12 +6,26 @@
 //
 
 import Foundation
+import AppIntents
 
-enum MealType: String, CaseIterable {
+enum MealType: String, CaseIterable, AppEnum {
     case breakfast = "breakfast"
     case lunch = "lunch"
     case dinner = "dinner"
     case snack = "snack"
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation {
+        "Meal Type"
+    }
+
+    static var caseDisplayRepresentations: [MealType: DisplayRepresentation] {
+        [
+            .breakfast: "Breakfast",
+            .lunch: "Lunch",
+            .dinner: "Dinner",
+            .snack: "Snack"
+        ]
+    }
 }
 
 struct MealTypeInference {
@@ -68,4 +82,3 @@ struct MealTypeInference {
         return inferMealTypeFromISTNow()
     }
 }
-

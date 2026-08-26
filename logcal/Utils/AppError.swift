@@ -14,6 +14,7 @@ enum AppError: LocalizedError {
     case apiError(statusCode: Int, message: String)
     case parseError
     case dataConversionError
+    case invalidInput(String)
     case networkError(Error)
     case audioConfigurationError(String)
     case speechRecognitionError(String)
@@ -34,6 +35,8 @@ enum AppError: LocalizedError {
             return "Failed to parse response from server."
         case .dataConversionError:
             return "Failed to convert data."
+        case .invalidInput(let message):
+            return message
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
         case .audioConfigurationError(let message):

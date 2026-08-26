@@ -58,7 +58,7 @@ struct logcalApp: App {
         migrateToSharedContainerIfNeeded()
         
         // Initialize Firebase
-        FirebaseApp.configure()
+        FirebaseBootstrap.configureIfNeeded()
         print("DEBUG: Firebase configured")
         
         // Initialize Firebase Analytics
@@ -442,4 +442,3 @@ struct AppRootView: View {
         }
     }
 }
-
