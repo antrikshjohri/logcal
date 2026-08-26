@@ -127,12 +127,16 @@ fun DashboardScreen(viewModel: DashboardViewModel, onNavigateToHistory: () -> Un
         if (healthConnectService.isAvailable()) {
             val authorized = healthConnectService.checkPermissions()
             isHealthAuthorized = authorized
-            if (authorized) {
-                prefManager.isHealthConnectEnabled = true
+            if (authorized && prefManager.isHealthConnectEnabled) {
                 activeBurn = healthConnectService.fetchActiveCalories(selectedDate)
                 basalBurn = healthConnectService.fetchBasalCalories(selectedDate)
                 steps = healthConnectService.fetchSteps(selectedDate)
                 workouts = healthConnectService.fetchWorkouts(selectedDate)
+            } else {
+                activeBurn = 0.0
+                basalBurn = 1600.0
+                steps = 0L
+                workouts = emptyList()
             }
         }
     }

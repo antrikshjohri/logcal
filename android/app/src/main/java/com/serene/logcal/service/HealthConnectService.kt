@@ -86,9 +86,6 @@ class HealthConnectService private constructor(private val context: Context) {
             val granted = client.permissionController.getGrantedPermissions()
             val hasAll = granted.containsAll(PERMISSIONS)
             _isAuthorized.value = hasAll
-            if (hasAll && !prefManager.isHealthConnectEnabled) {
-                prefManager.isHealthConnectEnabled = true
-            }
             hasAll
         } catch (e: Exception) {
             DebugLogger.e("HealthConnectService: Error checking permissions", e)

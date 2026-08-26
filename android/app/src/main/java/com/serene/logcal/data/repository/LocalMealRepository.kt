@@ -58,6 +58,10 @@ class LocalMealRepository(
         mealDao.getById(id)
     }
 
+    suspend fun getAllActiveMealEntries(): List<MealEntryEntity> = withContext(Dispatchers.IO) {
+        mealDao.getAllMeals().filter { !it.deleted }
+    }
+
     suspend fun hasMealTypeBetween(
         mealType: String,
         startMillis: Long,

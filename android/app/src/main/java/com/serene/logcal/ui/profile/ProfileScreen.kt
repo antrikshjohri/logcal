@@ -1,5 +1,6 @@
 package com.serene.logcal.ui.profile
 
+import android.content.ActivityNotFoundException
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -8,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -44,13 +46,17 @@ import androidx.compose.material.icons.filled.TextFields
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import com.serene.logcal.service.HealthConnectService
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Sync
 import kotlin.math.roundToInt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,10 +69,13 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -101,6 +110,7 @@ import kotlinx.coroutines.launch
 
 private enum class ProfileSubScreen {
     MAIN,
+    HEALTH_CONNECT,
     EDIT_PROFILE,
     DAILY_GOAL,
     DIET_STYLE_HELPER,
@@ -117,10 +127,12 @@ fun ProfileScreen() {
     val auth = remember { FirebaseAuth.getInstance() }
     val firestoreService = remember { FirestoreService() }
     val prefManager = remember { AppGraph.preferenceManager(context) }
+    val localMealRepository = remember { AppGraph.localMealRepository(context) }
     val colors = LogCalTheme.colors
 
     var activeScreen by rememberSaveable { mutableStateOf(ProfileSubScreen.MAIN) }
     var recommendedDietStyle by remember { mutableStateOf<DietStyle?>(null) }
+    var isSyncingHealthHistory by remember { mutableStateOf(false) }
 
     // Dialog states
     var showAuthDialog by remember { mutableStateOf(false) }
@@ -137,6 +149,8 @@ fun ProfileScreen() {
 
     val healthConnectService = remember { HealthConnectService.getInstance(context) }
     var isHealthConnectEnabled by remember { mutableStateOf(prefManager.isHealthConnectEnabled) }
+    var isHealthAuthorized by remember { mutableStateOf(false) }
+    var showHealthActivityOnDashboard by remember { mutableStateOf(prefManager.showDashboardActivity) }
     val coroutineScope = rememberCoroutineScope()
 
     val healthPermissionLauncher = rememberLauncherForActivityResult(
@@ -144,6 +158,7 @@ fun ProfileScreen() {
     ) { _ ->
         coroutineScope.launch {
             val authorized = healthConnectService.checkPermissions()
+            isHealthAuthorized = authorized
             if (authorized) {
                 prefManager.isHealthConnectEnabled = true
                 isHealthConnectEnabled = true
@@ -172,6 +187,11 @@ fun ProfileScreen() {
 
     LaunchedEffect(activeScreen) {
         refreshUserDetails()
+        if (activeScreen == ProfileSubScreen.MAIN || activeScreen == ProfileSubScreen.HEALTH_CONNECT) {
+            isHealthAuthorized = healthConnectService.checkPermissions()
+            isHealthConnectEnabled = prefManager.isHealthConnectEnabled
+            showHealthActivityOnDashboard = prefManager.showDashboardActivity
+        }
         // Fetch WhatsApp linkage status from Firestore
         if (activeScreen == ProfileSubScreen.MAIN) {
             try {
@@ -290,23 +310,77 @@ fun ProfileScreen() {
                 profilePhotoUrl = profilePhotoUrl,
                 isWhatsAppLinked = isWhatsAppLinked,
                 isHealthConnectEnabled = isHealthConnectEnabled,
+                isHealthAuthorized = isHealthAuthorized,
                 dailyGoalCalories = dailyGoalCalories,
                 currentThemeName = prefManager.appTheme.replaceFirstChar { it.uppercase() },
                 onNavigate = { activeScreen = it },
                 onShowAuth = { showAuthDialog = true },
                 onShowFeedback = { showFeedbackDialog = true },
                 onShowTheme = { showThemeSelector = true },
-                onToggleHealthConnect = {
+                onOpenHealthConnect = { activeScreen = ProfileSubScreen.HEALTH_CONNECT }
+            )
+            ProfileSubScreen.HEALTH_CONNECT -> HealthConnectSettingsScreen(
+                isAvailable = healthConnectService.isAvailable(),
+                isAuthorized = isHealthAuthorized,
+                isSyncEnabled = isHealthConnectEnabled,
+                showActivityOnDashboard = showHealthActivityOnDashboard,
+                isSyncingHistory = isSyncingHealthHistory,
+                onBack = { activeScreen = ProfileSubScreen.MAIN },
+                onConnect = {
                     if (healthConnectService.isAvailable()) {
-                        if (prefManager.isHealthConnectEnabled) {
-                            prefManager.isHealthConnectEnabled = false
-                            isHealthConnectEnabled = false
-                            Toast.makeText(context, "Health Connect sync disabled", Toast.LENGTH_SHORT).show()
-                        } else {
-                            healthPermissionLauncher.launch(HealthConnectService.PERMISSIONS)
-                        }
+                        healthPermissionLauncher.launch(HealthConnectService.PERMISSIONS)
                     } else {
                         Toast.makeText(context, "Google Health Connect is not available on this device", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onOpenSettings = {
+                    try {
+                        context.startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS))
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(context, "Health Connect settings are not available on this device", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onSyncEnabledChange = { enabled ->
+                    if (enabled && !isHealthAuthorized) {
+                        healthPermissionLauncher.launch(HealthConnectService.PERMISSIONS)
+                    } else {
+                        prefManager.isHealthConnectEnabled = enabled
+                        isHealthConnectEnabled = enabled
+                        Toast.makeText(
+                            context,
+                            if (enabled) "Health Connect sync enabled" else "Health Connect sync disabled",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onShowActivityChange = { enabled ->
+                    prefManager.showDashboardActivity = enabled
+                    showHealthActivityOnDashboard = enabled
+                },
+                onSyncHistory = {
+                    coroutineScope.launch {
+                        if (!healthConnectService.isAvailable()) {
+                            Toast.makeText(context, "Google Health Connect is not available on this device", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+                        val authorized = healthConnectService.checkPermissions()
+                        isHealthAuthorized = authorized
+                        if (!authorized) {
+                            healthPermissionLauncher.launch(HealthConnectService.PERMISSIONS)
+                            return@launch
+                        }
+                        prefManager.isHealthConnectEnabled = true
+                        isHealthConnectEnabled = true
+                        isSyncingHealthHistory = true
+                        try {
+                            val meals = localMealRepository.getAllActiveMealEntries()
+                            meals.forEach { meal ->
+                                healthConnectService.saveMealEntry(meal)
+                            }
+                            Toast.makeText(context, "Synced ${meals.size} meals to Health Connect", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isSyncingHealthHistory = false
+                        }
                     }
                 }
             )
@@ -357,13 +431,14 @@ private fun MainProfileView(
     profilePhotoUrl: String?,
     isWhatsAppLinked: Boolean,
     isHealthConnectEnabled: Boolean,
+    isHealthAuthorized: Boolean,
     dailyGoalCalories: Double,
     currentThemeName: String,
     onNavigate: (ProfileSubScreen) -> Unit,
     onShowAuth: () -> Unit,
     onShowFeedback: () -> Unit,
     onShowTheme: () -> Unit,
-    onToggleHealthConnect: () -> Unit
+    onOpenHealthConnect: () -> Unit
 ) {
     val colors = LogCalTheme.colors
 
@@ -588,8 +663,12 @@ private fun MainProfileView(
                     SettingsActionRow(
                         title = "Google Health Connect",
                         icon = Icons.Default.Favorite,
-                        trailingValue = if (isHealthConnectEnabled) "Connected" else "Not Connected",
-                        onClick = onToggleHealthConnect
+                        trailingValue = when {
+                            isHealthConnectEnabled && isHealthAuthorized -> "Connected"
+                            isHealthConnectEnabled -> "Needs Permission"
+                            else -> "Not Connected"
+                        },
+                        onClick = onOpenHealthConnect
                     )
                     HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -654,6 +733,291 @@ private fun MainProfileView(
 
             Spacer(modifier = Modifier.height(100.dp))
         }
+    }
+}
+
+@Composable
+private fun HealthConnectSettingsScreen(
+    isAvailable: Boolean,
+    isAuthorized: Boolean,
+    isSyncEnabled: Boolean,
+    showActivityOnDashboard: Boolean,
+    isSyncingHistory: Boolean,
+    onBack: () -> Unit,
+    onConnect: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onSyncEnabledChange: (Boolean) -> Unit,
+    onShowActivityChange: (Boolean) -> Unit,
+    onSyncHistory: () -> Unit
+) {
+    val colors = LogCalTheme.colors
+    val connected = isAvailable && isAuthorized
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = colors.primaryText
+                )
+            }
+            Text(
+                text = "Google Health Connect",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.primaryText,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Sync meals and import activity from Android Health Connect.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.mutedText,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.cardBackground, RoundedCornerShape(16.dp))
+                    .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = if (connected) Icons.Default.CheckCircle else Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = if (connected) colors.primaryGreen else colors.warningAmber,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = when {
+                                !isAvailable -> "Health Connect unavailable"
+                                connected -> "Health Connect connected"
+                                else -> "Connection required"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primaryText
+                        )
+                        Text(
+                            text = when {
+                                !isAvailable -> "This Android device does not expose Health Connect to LogCal."
+                                connected -> "Nutrition and activity permissions granted."
+                                else -> "Grant permissions to sync health data."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.mutedText
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = { if (connected) onOpenSettings() else onConnect() },
+                    enabled = isAvailable,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primaryGreen)
+                ) {
+                    Text(
+                        text = if (connected) "Manage in Health Connect" else "Connect",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "SYNC OPTIONS",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.mutedText,
+                    modifier = Modifier.padding(horizontal = 6.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.cardBackground, RoundedCornerShape(12.dp))
+                        .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
+                ) {
+                    HealthConnectSwitchRow(
+                        icon = Icons.Default.Sync,
+                        title = "Sync LogCal meals",
+                        subtitle = "Write calories and macros.",
+                        checked = isSyncEnabled,
+                        enabled = isAvailable,
+                        onCheckedChange = onSyncEnabledChange
+                    )
+                    HorizontalDivider(color = colors.cardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HealthConnectSwitchRow(
+                        icon = Icons.Default.Favorite,
+                        title = "Show activity on Home",
+                        subtitle = "Read calories, steps, and workouts.",
+                        checked = showActivityOnDashboard,
+                        enabled = connected,
+                        onCheckedChange = onShowActivityChange
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "HISTORICAL DATA",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.mutedText,
+                    modifier = Modifier.padding(horizontal = 6.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.cardBackground, RoundedCornerShape(12.dp))
+                        .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Backfill existing meals. Future meals sync while enabled.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText
+                    )
+                    Button(
+                        onClick = onSyncHistory,
+                        enabled = isAvailable && !isSyncingHistory,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.softAccentBackground)
+                    ) {
+                        Text(
+                            text = if (isSyncingHistory) "Syncing meals..." else "Sync Existing Meals",
+                            color = colors.primaryGreen,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Security,
+                    contentDescription = null,
+                    tint = colors.mutedText,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "Health data stays on device and uses Android permissions.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.mutedText,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (connected) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenSettings() }
+                        .padding(horizontal = 6.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, tint = colors.primaryGreen, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = "Open Health Connect settings",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.primaryGreen
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+}
+
+@Composable
+private fun HealthConnectSwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val colors = LogCalTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (enabled) colors.primaryGreen else colors.mutedText,
+            modifier = Modifier.size(20.dp)
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = if (enabled) colors.primaryText else colors.mutedText
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.mutedText
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = if (enabled) onCheckedChange else null,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = colors.primaryGreen,
+                uncheckedThumbColor = colors.mutedText,
+                uncheckedTrackColor = colors.cardBorder
+            )
+        )
     }
 }
 
