@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -198,7 +197,6 @@ private fun HistoryListScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .statusBarsPadding()
                 .fillMaxSize()
                 .background(colors.background)
         ) {
@@ -206,7 +204,7 @@ private fun HistoryListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -252,7 +250,7 @@ private fun HistoryListScreen(
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = colors.primaryText,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             // Search field

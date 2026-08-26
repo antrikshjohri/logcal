@@ -309,10 +309,9 @@ fun LogMealScreen(viewModel: LogViewModel) {
                     .fillMaxSize()
                     .imePadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
                         text = "Log",
