@@ -7,6 +7,7 @@ import com.serene.logcal.model.MealType
 import com.serene.logcal.util.DebugLogger
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.Json
+import java.util.concurrent.TimeUnit
 
 class FirebaseMealRepository(
     private val functions: FirebaseFunctions = FirebaseFunctions.getInstance("asia-southeast1"),
@@ -15,6 +16,16 @@ class FirebaseMealRepository(
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+    }
+
+    suspend fun transcribeAudio(audioBase64: String): String {
+        val payload = mapOf("audioBase64" to audioBase64, "mimeType" to "audio/m4a")
+        val response = functions.getHttpsCallable("transcribeAudio")
+            .withTimeout(90, TimeUnit.SECONDS)
+            .call(payload)
+            .await()
+        return (response.data as? Map<*, *>)?.get("text") as? String
+            ?: error("Transcription response did not contain text")
     }
 
     suspend fun logMeal(

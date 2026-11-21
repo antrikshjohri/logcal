@@ -34,10 +34,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,14 +58,16 @@ fun MealPreviewCard(
     onDismiss: (() -> Unit)? = null,
     onBookmark: () -> Unit,
     onQuickEdit: (String) -> Unit,
+    quickEditPrompt: String,
+    onQuickEditPromptChange: (String) -> Unit,
     isListening: Boolean = false,
+    isTranscribing: Boolean = false,
     onToggleListening: () -> Unit = {},
     onCancelListening: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val colors = LogCalTheme.colors
     val result = preview.response
-    var quickEditPrompt by remember { mutableStateOf("") }
 
     Card(
         modifier = modifier
@@ -299,16 +297,17 @@ fun MealPreviewCard(
             // Quick Edit Section (1:1 with iOS QuickEditMealSection)
             QuickEditMealSection(
                 prompt = quickEditPrompt,
-                onPromptChange = { quickEditPrompt = it },
+                onPromptChange = onQuickEditPromptChange,
                 isLoading = preview.isRefining,
                 errorMessage = preview.refineError,
                 isListening = isListening,
+                isTranscribing = isTranscribing,
                 onToggleListening = onToggleListening,
                 onCancelListening = onCancelListening,
                 onApply = {
                     if (quickEditPrompt.isNotBlank()) {
                         onQuickEdit(quickEditPrompt)
-                        quickEditPrompt = ""
+                        onQuickEditPromptChange("")
                     }
                 }
             )

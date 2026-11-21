@@ -2,6 +2,9 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as https from "https";
 import * as crypto from "crypto";
+import { istDateKey, mealDateLabel, timestampDate, LogDateSelection } from "./whatsappDates";
+import { handleWhatsAppMealActions } from "./whatsappMealActions";
+import { downloadWhatsAppAudio, downloadWhatsAppImage, WhatsAppMediaError, whatsappMealId } from "./whatsappMedia";
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -11,7 +14,7 @@ admin.initializeApp();
 const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_LEGACY_MODEL = "gpt-4o-2024-08-06";
-const OPENAI_LUNA_MODEL = "gpt-5.6-luna";
+const OPENAI_LUNA_MODEL = "gpt-6-luna";
 const OPENAI_TEMPERATURE = 0.3;
 const FUNCTIONS_REGION = "asia-southeast1";
 const FALLBACK_LUNA_ALLOWLIST_UIDS = new Set([
@@ -20,11 +23,12 @@ const FALLBACK_LUNA_ALLOWLIST_UIDS = new Set([
 const FALLBACK_WEB_SEARCH_ALLOWLIST_UIDS = new Set([
   "NIDRscOVhuQRpSEzrgk5gMo2i8m1",
 ]);
-const OPENAI_PRICING_SNAPSHOT = "2026-07-19";
+const OPENAI_PRICING_SNAPSHOT = "2026-11-22";
 const OPENAI_WEB_SEARCH_COST_USD = 0.01;
 const OPENAI_MODEL_PRICING_USD_PER_1M: Record<string, {
   input: number;
   cachedInput: number;
+  cacheWriteInput?: number;
   output: number;
 }> = {
   [OPENAI_LEGACY_MODEL]: {
@@ -33,9 +37,10 @@ const OPENAI_MODEL_PRICING_USD_PER_1M: Record<string, {
     output: 10,
   },
   [OPENAI_LUNA_MODEL]: {
-    input: 1,
-    cachedInput: 0.1,
-    output: 6,
+    input: 0.10,
+    cachedInput: 0.01,
+    cacheWriteInput: 0.125,
+    output: 0.50,
   },
 };
 
@@ -52,10 +57,10 @@ const MAX_TRANSCRIBE_PER_MINUTE = 40; // Per user
 const ENABLE_CUSTOM_RATE_LIMITS = false;
 
 const MAX_TRANSCRIBE_AUDIO_BYTES = 4 * 1024 * 1024; // 4 MB — meal dictation clips
-const WHISPER_TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
+const OPENAI_TRANSCRIBE_MODEL = "gpt-transcribe";
 
 /** Speech-to-text `prompt`: nudges vocabulary toward meal logging (works best when audio is English or mixed with English food terms). */
-const WHISPER_MEAL_CONTEXT_PROMPT =
+const TRANSCRIBE_MEAL_CONTEXT_PROMPT =
   "The speaker is logging a meal: what they ate or drank, ingredients, and portions. Typical terms: breakfast, lunch, dinner, snack, calories, protein, carbs, fat, rice, roti, bread, dal, curry, chicken, fish, eggs, salad, vegetables, fruit, yogurt, coffee, tea, juice, water.";
 
 const CONCISE_ASSUMPTIONS_RULE =
@@ -74,7 +79,7 @@ interface LogMealRequest {
 interface TranscribeAudioRequest {
   audioBase64: string;
   mimeType?: string; // e.g. audio/m4a
-  /** ISO 639-1 (e.g. en, hi). Omit or "auto" for Whisper auto-detect. */
+  /** Optional ISO language hint from the client (e.g. en, hi). */
   language?: string;
 }
 
@@ -85,7 +90,7 @@ interface MealAnalyticsRequest {
   hasImage?: boolean;
 }
 
-interface MealLogResponse {
+export interface MealLogResponse {
   meal_type: string;
   total_calories: number;
   protein?: number;  // grams
@@ -474,6 +479,7 @@ function extractOpenAITokenUsage(data: any): {
   inputTokens: number;
   cachedInputTokens: number;
   uncachedInputTokens: number;
+  cacheWriteInputTokens: number;
   outputTokens: number;
   totalTokens: number;
 } {
@@ -487,11 +493,16 @@ function extractOpenAITokenUsage(data: any): {
     0
   ) || 0;
   const uncachedInputTokens = Math.max(inputTokens - cachedInputTokens, 0);
+  const cacheWriteInputTokens = Math.min(
+    Number(usage.input_tokens_details?.cache_write_tokens ?? 0) || 0,
+    uncachedInputTokens
+  );
 
   return {
     inputTokens,
     cachedInputTokens,
     uncachedInputTokens,
+    cacheWriteInputTokens,
     outputTokens,
     totalTokens,
   };
@@ -508,8 +519,9 @@ function logOpenAIMealUsage(
   const pricing = OPENAI_MODEL_PRICING_USD_PER_1M[route.model];
   const estimatedModelCostUsd = pricing
     ? (
-      (tokenUsage.uncachedInputTokens * pricing.input) +
+      ((tokenUsage.uncachedInputTokens - tokenUsage.cacheWriteInputTokens) * pricing.input) +
       (tokenUsage.cachedInputTokens * pricing.cachedInput) +
+      (tokenUsage.cacheWriteInputTokens * (pricing.cacheWriteInput ?? pricing.input)) +
       (tokenUsage.outputTokens * pricing.output)
     ) / 1_000_000
     : undefined;
@@ -527,6 +539,7 @@ function logOpenAIMealUsage(
     inputTokens: tokenUsage.inputTokens,
     cachedInputTokens: tokenUsage.cachedInputTokens,
     uncachedInputTokens: tokenUsage.uncachedInputTokens,
+    cacheWriteInputTokens: tokenUsage.cacheWriteInputTokens,
     outputTokens: tokenUsage.outputTokens,
     totalTokens: tokenUsage.totalTokens,
     webSearchUsed: webSearchMetadata.used,
@@ -607,7 +620,7 @@ async function trackUsage(uid: string, perf?: BackendPerf): Promise<{ allowed: b
 }
 
 /**
- * Rate limits for Whisper / transcribeAudio (separate from logMeal).
+ * Rate limits for transcribeAudio (separate from logMeal).
  */
 async function trackTranscribeUsage(uid: string, perf?: BackendPerf): Promise<{ allowed: boolean; reason?: string }> {
   try {
@@ -671,11 +684,8 @@ async function trackTranscribeUsage(uid: string, perf?: BackendPerf): Promise<{ 
   }
 }
 
-/**
- * Call OpenAI Whisper API (multipart) — API key stays on server.
- */
-/** Whisper `language` param: ISO 639-1 style; omit for auto-detect. */
-function normalizeWhisperLanguage(code: unknown): string | undefined {
+/** Normalize the existing client language hint. Omit it for auto-detection. */
+function normalizeTranscriptionLanguage(code: unknown): string | undefined {
   if (typeof code !== "string") {
     return undefined;
   }
@@ -687,13 +697,13 @@ function normalizeWhisperLanguage(code: unknown): string | undefined {
     t = t.split("-")[0] ?? t;
   }
   if (!/^[a-z]{2,3}$/.test(t)) {
-    console.warn("DEBUG: Ignoring invalid whisper language code:", code);
+    console.warn("DEBUG: Ignoring invalid transcription language code:", code);
     return undefined;
   }
   return t;
 }
 
-async function callOpenAIWhisperTranscription(
+async function callOpenAITranscription(
   audioBuffer: Buffer,
   filename: string,
   mimeType: string,
@@ -713,17 +723,17 @@ async function callOpenAIWhisperTranscription(
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
   formData.append("file", blob, filename);
-  formData.append("model", WHISPER_TRANSCRIBE_MODEL);
+  formData.append("model", OPENAI_TRANSCRIBE_MODEL);
   if (language) {
-    formData.append("language", language);
+    formData.append("languages[]", language);
   }
-  formData.append("prompt", WHISPER_MEAL_CONTEXT_PROMPT);
+  formData.append("prompt", TRANSCRIBE_MEAL_CONTEXT_PROMPT);
 
   console.log(
-    "DEBUG: transcribeAudio calling OpenAI Whisper, bytes=",
+    "DEBUG: Calling OpenAI transcription, bytes=",
     audioBuffer.length,
     "model=",
-    WHISPER_TRANSCRIBE_MODEL,
+    OPENAI_TRANSCRIBE_MODEL,
     "language=",
     language || "(auto)",
     "mealContextPrompt=yes"
@@ -732,7 +742,7 @@ async function callOpenAIWhisperTranscription(
   perf?.mark("openai_transcription_request_start", {
     bytes: audioBuffer.length,
     language: language || "auto",
-    model: WHISPER_TRANSCRIBE_MODEL,
+    model: OPENAI_TRANSCRIBE_MODEL,
   });
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -740,6 +750,7 @@ async function callOpenAIWhisperTranscription(
       Authorization: `Bearer ${apiKey}`,
     },
     body: formData,
+    signal: AbortSignal.timeout(60000),
   });
   perf?.mark("openai_transcription_response_headers", {
     status: response.status,
@@ -747,7 +758,7 @@ async function callOpenAIWhisperTranscription(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("ERROR: Whisper API status:", response.status, errorText);
+    console.error("ERROR: OpenAI transcription API status:", response.status, errorText);
     throw new functions.https.HttpsError(
       "internal",
       `Transcription service error: ${response.status}`
@@ -759,7 +770,7 @@ async function callOpenAIWhisperTranscription(
   perf?.mark("openai_transcription_body_parsed", {
     chars: text.length,
   });
-  console.log("DEBUG: Whisper transcription length:", text.length);
+  console.log("DEBUG: OpenAI transcription length:", text.length);
   return text;
 }
 
@@ -1443,7 +1454,7 @@ export const recordMealLogAnalytics = functions.region(FUNCTIONS_REGION).https.o
 );
 
 /**
- * Transcribe short meal dictation audio via OpenAI Whisper (server-side key).
+ * Transcribe short meal dictation audio via OpenAI (server-side key).
  * Client sends base64-encoded audio (e.g. M4A). Auth required.
  */
 export const transcribeAudio = functions.region(FUNCTIONS_REGION).runWith({
@@ -1521,10 +1532,10 @@ export const transcribeAudio = functions.region(FUNCTIONS_REGION).runWith({
 
     const ext = mimeType.includes("wav") ? "wav" : mimeType.includes("webm") ? "webm" : "m4a";
     const filename = `dictation.${ext}`;
-    const whisperLang = normalizeWhisperLanguage(data?.language);
+    const language = normalizeTranscriptionLanguage(data?.language);
 
     try {
-      const text = await callOpenAIWhisperTranscription(buffer, filename, mimeType, whisperLang, perf);
+      const text = await callOpenAITranscription(buffer, filename, mimeType, language, perf);
       return {
         text,
         _perf: perf.end("success", {
@@ -1560,6 +1571,22 @@ export const healthCheck = functions.region(FUNCTIONS_REGION).https.onRequest((r
     service: "logcal-functions",
   });
 });
+
+/** Split long meal details without dropping items or cutting emoji in half. */
+function splitWhatsAppMealDetails(text: string): string[] {
+  const chunks: string[] = [];
+  while (text.length > 1000) {
+    let splitAt = text.lastIndexOf("\n", 1000);
+    if (splitAt < 500) splitAt = 1000;
+    const previous = text.charCodeAt(splitAt - 1);
+    if (previous >= 0xd800 && previous <= 0xdbff) splitAt--;
+    chunks.push(text.slice(0, splitAt));
+    text = text.slice(splitAt);
+    if (text.startsWith("\n")) text = text.slice(1);
+  }
+  if (text) chunks.push(text);
+  return chunks;
+}
 
 function sendWhatsAppMessage(to: string, text: string, phoneNumberId: string, accessToken: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -1607,6 +1634,28 @@ function sendWhatsAppMessage(to: string, text: string, phoneNumberId: string, ac
     req.write(data);
     req.end();
   });
+}
+
+/** Reactions are best effort: never fail meal logging when Meta rejects one. */
+async function sendWhatsAppReaction(
+  to: string, messageId: string, emoji: string, phoneNumberId: string, accessToken: string,
+): Promise<void> {
+  if (!messageId) return;
+  try {
+    const response = await fetch(`https://graph.facebook.com/v23.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "reaction",
+        reaction: { message_id: messageId, emoji },
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) console.warn("WARN: WhatsApp reaction rejected:", response.status);
+    await response.body?.cancel();
+  } catch (error) {
+    console.warn("WARN: WhatsApp reaction failed:", error);
+  }
 }
 
 function sendWhatsAppTypingIndicator(messageId: string, phoneNumberId: string, accessToken: string): Promise<void> {
@@ -1725,29 +1774,66 @@ function sendWhatsAppButtons(
   });
 }
 
+/** Keep display rounding separate from stored nutrition and item sums. */
+function formatWhatsAppNutrition(value: number | undefined, decimals: number): string {
+  return Number.isFinite(value) ? String(Number(value!.toFixed(decimals))) : "0";
+}
+
+async function sendWhatsAppMealConfirmation(
+  from: string, mealId: string, description: string, openaiResponse: MealLogResponse,
+  phoneNumberId: string, accessToken: string, updated = false, timestamp?: admin.firestore.Timestamp,
+): Promise<void> {
+  const mealName = openaiResponse.meal_type || "Meal";
+  const calories = formatWhatsAppNutrition(openaiResponse.total_calories, 0);
+  const protein = formatWhatsAppNutrition(openaiResponse.protein, 1);
+  const carbs = formatWhatsAppNutrition(openaiResponse.carbs, 1);
+  const fat = formatWhatsAppNutrition(openaiResponse.fat, 1);
+  const fiber = formatWhatsAppNutrition(openaiResponse.fiber, 1);
+
+  const itemLines = (openaiResponse.items || []).map((item) => {
+    const name = item.name.replace(/\s+/g, " ").trim();
+    const quantity = item.quantity?.replace(/\s+/g, " ").trim();
+    return `• *${name}*${quantity ? ` (${quantity})` : ""} — ${formatWhatsAppNutrition(item.calories, 0)} kcal`;
+  });
+  const dateLabel = mealDateLabel(istDateKey(timestamp ? timestampDate(timestamp) : new Date()));
+  const mealDetails = `🍳 ${updated ? "Updated" : "Logged"} *${mealName} · ${dateLabel}*:\n"${description.trim()}"` +
+    (itemLines.length ? `\n\n${itemLines.join("\n")}` : "");
+  const totals = `🔥 *Total: ${calories} kcal*\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*\n🌿 Fiber: *${fiber}g*`;
+  let replyMessage = `${mealDetails}\n\n${totals}`;
+  // Button-message bodies allow 1024 characters. Send complete details in
+  // separate text messages when necessary, keeping totals and buttons last.
+  if (replyMessage.length > 1024) {
+    for (const chunk of splitWhatsAppMealDetails(mealDetails)) {
+      await sendWhatsAppMessage(from, chunk, phoneNumberId, accessToken);
+    }
+    replyMessage = totals;
+  }
+
+  await sendWhatsAppButtons(
+    from,
+    replyMessage,
+    [
+      { id: `meal:edit:${mealId}`, title: "Edit meal" },
+      { id: `meal:delete:${mealId}`, title: "Delete meal" },
+      { id: "summary", title: "Today's Progress" }
+    ],
+    phoneNumberId,
+    accessToken
+  );
+}
+
 function getISTDayBounds(): { start: Date; end: Date } {
-  const nowSystem = new Date();
-  const nowKolkata = new Date(nowSystem.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  
-  const start = new Date(nowKolkata);
-  start.setHours(0, 0, 0, 0);
-  
-  const end = new Date(nowKolkata);
-  end.setHours(23, 59, 59, 999);
-  
-  const diffMs = nowKolkata.getTime() - nowSystem.getTime();
-  
-  return {
-    start: new Date(start.getTime() - diffMs),
-    end: new Date(end.getTime() - diffMs)
-  };
+  const start = new Date(`${istDateKey()}T00:00:00+05:30`);
+  return { start, end: new Date(start.getTime() + 86400000 - 1) };
 }
 
 /**
- * WhatsApp chatbot webhook to log meals directly via text message.
+ * WhatsApp chatbot webhook for meal logging, corrections, and deletion.
  */
 export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
   secrets: ["OPENAI_API_KEY", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
+  timeoutSeconds: 300,
+  memory: "512MB",
 }).https.onRequest(async (req, res) => {
   const method = req.method;
 
@@ -1793,6 +1879,9 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
     }
 
     const from = message.from; // Sender's phone number
+    const isAudio = message.type === "audio";
+    const isImage = message.type === "image";
+    let imageDataUrl: string | undefined;
     
     // Parse message text from either direct text message or interactive button reply
     let text = "";
@@ -1802,7 +1891,9 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
       text = message.interactive?.button_reply?.id || message.interactive?.button_reply?.title;
     }
 
-    if (!from || !text) {
+    if (isImage) text = typeof message.image?.caption === "string" ? message.image.caption.trim() : "";
+
+    if (!from || (!isAudio && !isImage && !text)) {
       res.status(200).send("EVENT_RECEIVED");
       return;
     }
@@ -1817,10 +1908,15 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
       });
     }
 
+    let mealProcessing = false;
+    let mealSaved = false;
+    let processingMealRef: admin.firestore.DocumentReference | undefined;
+    const react = (emoji: string) => sendWhatsAppReaction(from, messageId, emoji, phoneNumberId, accessToken);
+
     try {
       // 1. Account linking check (handles custom sentence like "Please link my LogCal account with code: A1B2C3" or "link A1B2C3" or code in quotes)
       const linkRegex = /(?:(?:link|\/link|code)\s+|code\s*:\s*)"?([a-zA-Z0-9]{6})"?\b/i;
-      const match = text.trim().match(linkRegex);
+      const match = isAudio || isImage ? null : text.trim().match(linkRegex);
 
       if (match) {
         const code = match[1].toUpperCase();
@@ -1854,7 +1950,7 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
 
         await sendWhatsAppButtons(
           from,
-          "✅ *LogCal Account Linked!*\n\nYou can now log meals simply by typing them here (e.g. \"2 bananas\").",
+          "✅ *LogCal Account Linked!*\n\nLog meals by typing here, sending a voice note, or sharing a meal photo (e.g. \"2 bananas\").",
           [
             { id: "summary", title: "Today's Progress" },
             { id: "menu", title: "Main Menu" }
@@ -1888,7 +1984,80 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
 
       const userDoc = snapshot.docs[0];
       const uid = userDoc.id;
-      const lowerText = text.trim().toLowerCase();
+      const buttonId = message.type === "interactive" ? message.interactive?.button_reply?.id : undefined;
+      const loggingState: { dateSelection?: LogDateSelection } = {};
+      const handled = await handleWhatsAppMealActions({
+        uid, from, messageId, messageType: message.type, text, buttonId,
+        onLogDate: selection => { loggingState.dateSelection = selection; },
+        send: reply => sendWhatsAppMessage(from, reply, phoneNumberId, accessToken),
+        buttons: (reply, buttons) => sendWhatsAppButtons(from, reply, buttons, phoneNumberId, accessToken),
+        react,
+        refine: async (meal, correction) => {
+          if (ENABLE_CUSTOM_RATE_LIMITS) {
+            const usage = await trackUsage(uid);
+            if (!usage.allowed) throw new Error(usage.reason || "Rate limit exceeded");
+          }
+          return callOpenAIRefineMeal(meal.foodText, meal.mealType, JSON.parse(meal.rawResponseJson),
+            correction, userDoc.data().country || "India", uid);
+        },
+        confirm: (id, description, estimate, timestamp) => sendWhatsAppMealConfirmation(
+          from, id, description, estimate, phoneNumberId, accessToken, true, timestamp,
+        ),
+      });
+      if (handled) {
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+      // Reuse an ID for retries, including concurrent deliveries. The transaction
+      // below ensures only one delivery can save the meal and its sync record.
+      const mealId = typeof messageId === "string" && messageId
+        ? whatsappMealId(uid, messageId)
+        : crypto.randomUUID().toUpperCase();
+      if ((isAudio || isImage) && !messageId) {
+        throw new WhatsAppMediaError("I couldn't read that message. Please send it again.");
+      }
+      const mealRef = userDoc.ref.collection("meals").doc(mealId);
+      processingMealRef = mealRef;
+      if ((await mealRef.get()).exists) {
+        await react("✅");
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
+      if (isAudio) {
+        mealProcessing = true;
+        await react("⏳");
+        try {
+          if (ENABLE_CUSTOM_RATE_LIMITS) {
+            const usage = await trackTranscribeUsage(uid);
+            if (!usage.allowed) throw new WhatsAppMediaError(usage.reason || "Too many voice notes. Please try again later.");
+          }
+          const audio = await downloadWhatsAppAudio(
+            message.audio?.id || "", phoneNumberId, accessToken, MAX_TRANSCRIBE_AUDIO_BYTES,
+          );
+          text = await callOpenAITranscription(audio.buffer, audio.filename, audio.mimeType);
+          if (!text.trim()) {
+            throw new WhatsAppMediaError("I couldn't hear any words in that voice note. Please try again or type your meal.");
+          }
+        } catch (error) {
+          if (error instanceof WhatsAppMediaError) throw error;
+          console.error("ERROR: WhatsApp voice transcription failed:", error);
+          throw new WhatsAppMediaError("I couldn't transcribe that voice note. Please try again or type your meal.");
+        }
+      }
+      if (isImage) {
+        mealProcessing = true;
+        await react("⏳");
+        try {
+          const image = await downloadWhatsAppImage(message.image?.id || "", phoneNumberId, accessToken);
+          imageDataUrl = `data:${image.mimeType};base64,${image.buffer.toString("base64")}`;
+        } catch (error) {
+          if (error instanceof WhatsAppMediaError) throw error;
+          console.error("ERROR: WhatsApp image download failed:", error);
+          throw new WhatsAppMediaError("I couldn't download that photo. Please send it again or type your meal.");
+        }
+      }
+      // Media describes meals; captions/transcripts must not trigger commands.
+      const lowerText = isAudio || isImage ? "" : text.trim().toLowerCase();
 
       // ==========================================
       // COMMAND ROUTING
@@ -1897,13 +2066,17 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
       // A. HELP / MENU FLOW
       if (lowerText === "help" || lowerText === "menu" || lowerText === "hi") {
         const welcomeText = `🤖 *LogCal Assistant*\n\n` +
-          `• *Direct Log:* Type what you ate to log it instantly.\n` +
+          `📅 *Logging date:* Today (IST)\n\n` +
+          `• *Direct Log:* Type what you ate, send a voice note, or share a meal photo.\n` +
+          `• *Another day:* Choose a date before sending your meal.\n` +
+          `• *Edit / Delete:* Change food, change the date, or delete a meal.\n` +
           `• *Summary:* View your progress/goals for today.\n` +
           `• *Unlink:* Disconnect this WhatsApp number.`;
         await sendWhatsAppButtons(
           from,
           welcomeText,
           [
+            { id: "date:start", title: "Log for another day" },
             { id: "summary", title: "Today's Progress" },
             { id: "unlink", title: "Unlink Account" }
           ],
@@ -1988,9 +2161,12 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
       }
 
       // D. MEAL LOGGING FLOW (DEFAULT)
+      if (!mealProcessing) {
+        mealProcessing = true;
+        await react("⏳");
+      }
       // Infer the meal type based on current hour in IST (Asia/Kolkata timezone)
-      const dateInKolkata = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-      const hour = dateInKolkata.getHours();
+      const hour = new Date(Date.now() + 330 * 60000).getUTCHours();
       
       let inferredMealType = "Snack";
       if (hour >= 5 && hour < 11) {
@@ -2003,72 +2179,101 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
         inferredMealType = "Dinner";
       }
 
+      const selectedDate = loggingState.dateSelection;
+      const explicitType = text.match(/\b(breakfast|lunch|dinner|snack)\b/i)?.[1];
+      const historical = selectedDate && selectedDate.date !== istDateKey();
+      if (historical) {
+        inferredMealType = explicitType
+          ? explicitType[0].toUpperCase() + explicitType.slice(1).toLowerCase() : "Meal";
+      }
+      const mealTimestamp = selectedDate && selectedDate.date !== istDateKey()
+        ? admin.firestore.Timestamp.fromDate(new Date(`${selectedDate.date}T12:00:00+05:30`))
+        : admin.firestore.Timestamp.now();
+
       // Call OpenAI to parse meal using the linked user's UID and entitlements (Luna / Web Search / country)
       const userData = userDoc.data() || {};
       const userCountry = userData.country || "India";
       const openaiResponse = await callOpenAI(
         text.trim(),
         inferredMealType,
-        undefined,
+        imageDataUrl,
         undefined,
         userCountry,
         undefined,
         uid
       );
       
-      // Save meal to user's collection in Firestore (UUID v4 format for client-side SwiftData UUID compatibility)
-      const mealId = crypto.randomUUID().toUpperCase(); 
-      
+      if (historical) openaiResponse.meal_type = inferredMealType;
+      // Give image-only meals a useful description in the app and confirmation.
+      if (isImage && !text.trim()) {
+        text = (openaiResponse.items || []).map(item => item.name).join(", ") || "Meal photo";
+      }
+      // Save both copies atomically, using the stable UUID for webhook retries.
       const mealData = {
         id: mealId,
-        timestamp: admin.firestore.Timestamp.now(),
+        timestamp: mealTimestamp,
         createdAt: admin.firestore.Timestamp.now(),
         foodText: text.trim(),
         mealType: openaiResponse.meal_type || inferredMealType,
         totalCalories: openaiResponse.total_calories || 0,
         rawResponseJson: JSON.stringify(openaiResponse),
-        hasImage: false,
+        hasImage: isImage,
         deleted: false
       };
 
-      await userDoc.ref.collection("meals").doc(mealId).set(mealData);
-
-      // Save to mealLogs collection (for sync)
-      await admin.firestore().collection("mealLogs").doc(mealId).set({
+      const syncData = {
         uid: uid,
         foodText: text.trim(),
         mealType: openaiResponse.meal_type || inferredMealType,
         totalCalories: openaiResponse.total_calories || 0,
-        hasImage: false,
-        timestamp: admin.firestore.Timestamp.now(),
+        hasImage: isImage,
+        timestamp: mealTimestamp,
         deleted: false
+      };
+      const saved = await admin.firestore().runTransaction(async (transaction) => {
+        const existing = await transaction.get(mealRef);
+        if (existing.exists) return false;
+        const dateStateRef = userDoc.ref.collection("whatsappState").doc("edit");
+        if (selectedDate) {
+          const session = (await transaction.get(dateStateRef)).data();
+          if (session?.mode !== "logDate" || session?.stage !== "ready" || session?.requestId !== selectedDate.requestId ||
+              session?.token !== selectedDate.token || session?.date !== selectedDate.date || session?.from !== from || session?.expiresAt <= Date.now()) {
+            throw new WhatsAppMediaError("Your selected date changed, expired, or was used for another meal. Please select a date again and resend this meal.");
+          }
+        }
+        transaction.set(mealRef, mealData);
+        transaction.set(admin.firestore().collection("mealLogs").doc(mealId), syncData);
+        if (selectedDate) transaction.delete(dateStateRef);
+        return true;
       });
+      mealSaved = true;
+      await react("✅");
+      if (!saved) {
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
 
-      // Construct a confirmation reply showing the logged macros
-      const mealName = openaiResponse.meal_type || inferredMealType;
-      const calories = openaiResponse.total_calories || 0;
-      const protein = openaiResponse.protein || 0;
-      const carbs = openaiResponse.carbs || 0;
-      const fat = openaiResponse.fat || 0;
-      const fiber = openaiResponse.fiber || 0;
-
-      const replyMessage = `🍳 Logged *${mealName}*:\n"${text.trim()}"\n\n🔥 *${calories} kcal*\n💪 Protein: *${protein}g*\n🍞 Carbs: *${carbs}g*\n🥑 Fat: *${fat}g*\n🌿 Fiber: *${fiber}g*`;
-      
-      await sendWhatsAppButtons(
-        from,
-        replyMessage,
-        [
-          { id: "summary", title: "Today's Progress" },
-          { id: "menu", title: "Main Menu" }
-        ],
-        phoneNumberId,
-        accessToken
-      );
+      await sendWhatsAppMealConfirmation(from, mealId, text.trim(), openaiResponse, phoneNumberId, accessToken, false, mealTimestamp);
       
     } catch (err: any) {
       console.error("ERROR: Error processing WhatsApp message:", err);
+      if (mealProcessing) {
+        // Another delivery may have saved while this delivery failed.
+        if (!mealSaved && processingMealRef) {
+          try { mealSaved = (await processingMealRef.get()).exists; }
+          catch (readError) { console.warn("WARN: Could not verify meal save:", readError); }
+        }
+        await react(mealSaved ? "✅" : "⚠️");
+      }
       try {
-        await sendWhatsAppMessage(from, "⚠️ Sorry, I had trouble processing that meal description. Please try describing it differently.", phoneNumberId, accessToken);
+        const errorReply = mealSaved
+          ? "✅ Your meal was saved, but I couldn’t send its summary. Check LogCal to view it."
+          : err instanceof WhatsAppMediaError
+          ? `⚠️ ${err.message}`
+          : isImage
+          ? "⚠️ I couldn't estimate that meal from the photo. Please send a clearer food photo or type what you ate."
+          : "⚠️ Sorry, I had trouble processing that meal description. Please try describing it differently.";
+        await sendWhatsAppMessage(from, errorReply, phoneNumberId, accessToken);
       } catch (sendErr) {
         console.error("ERROR: Failed to send error message back:", sendErr);
       }

@@ -133,7 +133,11 @@ import androidx.compose.ui.text.style.TextDecoration
 
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.serene.logcal.ui.components.rememberDictationPermission
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -231,12 +235,10 @@ fun LogMealScreen(viewModel: LogViewModel) {
         }
     }
 
-    val micPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            viewModel.toggleSpeechRecognition()
-        } else {
-            Toast.makeText(context, "Microphone permission is required.", Toast.LENGTH_SHORT).show()
-        }
+    val withMicrophonePermission = rememberDictationPermission()
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.cancelSpeechRecognition() }
+    DisposableEffect(viewModel) {
+        onDispose { viewModel.cancelSpeechRecognition() }
     }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -966,10 +968,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                         colors = listOf(Color(0xFFFFA33C), Color(0xFFFF5E00))
                                                     )
                                                 )
-                                                .clickable {
-                                                    viewModel.stopSpeechRecognition()
-                                                    viewModel.logMeal()
-                                                },
+                                                .clickable { viewModel.logMeal() },
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
@@ -1072,15 +1071,7 @@ fun LogMealScreen(viewModel: LogViewModel) {
                                                 )
                                             )
                                             .clickable(enabled = !uiState.isTranscribingSpeech) {
-                                                val hasRecordPermission = ContextCompat.checkSelfPermission(
-                                                    context,
-                                                    Manifest.permission.RECORD_AUDIO
-                                                ) == PackageManager.PERMISSION_GRANTED
-                                                if (hasRecordPermission) {
-                                                    viewModel.toggleSpeechRecognition()
-                                                } else {
-                                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                                }
+                                                withMicrophonePermission { viewModel.toggleSpeechRecognition() }
                                             },
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1194,8 +1185,13 @@ fun LogMealScreen(viewModel: LogViewModel) {
                             onQuickEdit = { prompt ->
                                 viewModel.quickRefineCompletedPreview(preview.id, prompt)
                             },
-                            isListening = uiState.isListening && uiState.speechTarget == SpeechTarget.QUICK_EDIT,
-                            onToggleListening = { viewModel.toggleSpeechRecognition(SpeechTarget.QUICK_EDIT) },
+                            quickEditPrompt = uiState.quickEditDrafts[preview.id].orEmpty(),
+                            onQuickEditPromptChange = { viewModel.onQuickEditFoodTextChanged(preview.id, it) },
+                            isListening = uiState.isListening && uiState.speechFieldId == preview.id,
+                            isTranscribing = uiState.isTranscribingSpeech && uiState.speechFieldId == preview.id,
+                            onToggleListening = {
+                                withMicrophonePermission { viewModel.toggleSpeechRecognition(SpeechTarget.QUICK_EDIT, preview.id) }
+                            },
                             onCancelListening = { viewModel.cancelSpeechRecognition() }
                         )
                     }

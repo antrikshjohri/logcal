@@ -66,6 +66,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +87,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.gson.Gson
 import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.model.MealLogResponse
@@ -93,9 +97,12 @@ import com.serene.logcal.model.MealType
 import com.serene.logcal.service.FirebaseMealRepository
 import com.serene.logcal.ui.components.MealSourcesRow
 import com.serene.logcal.ui.components.CalendarBottomSheet
+import com.serene.logcal.ui.components.rememberDictationPermission
 import com.serene.logcal.ui.theme.LogCalTheme
 import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.history.HistoryViewModel
+import com.serene.logcal.viewmodel.LogViewModel
+import com.serene.logcal.viewmodel.SpeechTarget
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.time.Instant
@@ -111,6 +118,7 @@ private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 fun MealEditScreen(
     mealId: String,
     viewModel: HistoryViewModel,
+    dictationViewModel: LogViewModel,
     onBack: () -> Unit
 ) {
     val colors = LogCalTheme.colors
@@ -144,7 +152,24 @@ fun MealEditScreen(
 
     // Quick edit prompt
     var showQuickEdit by remember { mutableStateOf(false) }
-    var quickEditPrompt by remember { mutableStateOf("") }
+    val dictation by dictationViewModel.uiState.collectAsStateWithLifecycle()
+    val dictationFieldId = "history:$mealId"
+    val isDictatingHere = dictation.speechFieldId == dictationFieldId
+    val quickEditPrompt = dictation.quickEditDrafts[dictationFieldId].orEmpty()
+    val withMicrophonePermission = rememberDictationPermission()
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        if (dictationViewModel.uiState.value.speechFieldId == dictationFieldId) {
+            dictationViewModel.cancelSpeechRecognition()
+        }
+    }
+    DisposableEffect(dictationViewModel, dictationFieldId) {
+        onDispose {
+            if (dictationViewModel.uiState.value.speechFieldId == dictationFieldId) {
+                dictationViewModel.cancelSpeechRecognition()
+            }
+            dictationViewModel.onQuickEditFoodTextChanged(dictationFieldId, "")
+        }
+    }
     var isQuickEditLoading by remember { mutableStateOf(false) }
     var quickEditErrorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -585,7 +610,10 @@ fun MealEditScreen(
                                 modifier = Modifier
                                     .clip(CircleShape)
                                     .background(colors.softAccentBackground)
-                                    .clickable { showQuickEdit = !showQuickEdit }
+                                    .clickable {
+                                        if (showQuickEdit && isDictatingHere) dictationViewModel.cancelSpeechRecognition()
+                                        showQuickEdit = !showQuickEdit
+                                    }
                                     .padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -619,10 +647,17 @@ fun MealEditScreen(
                         AnimatedVisibility(visible = showQuickEdit) {
                             QuickEditMealSection(
                                 prompt = quickEditPrompt,
-                                onPromptChange = { quickEditPrompt = it },
+                                onPromptChange = { dictationViewModel.onQuickEditFoodTextChanged(dictationFieldId, it) },
                                 isLoading = isQuickEditLoading,
-                                errorMessage = quickEditErrorMessage,
-                                isListening = false,
+                                errorMessage = quickEditErrorMessage ?: dictation.speechErrorMessage.takeIf { isDictatingHere },
+                                isListening = isDictatingHere && dictation.isListening,
+                                isTranscribing = isDictatingHere && dictation.isTranscribingSpeech,
+                                onToggleListening = {
+                                    withMicrophonePermission {
+                                        dictationViewModel.toggleSpeechRecognition(SpeechTarget.QUICK_EDIT, dictationFieldId)
+                                    }
+                                },
+                                onCancelListening = dictationViewModel::cancelSpeechRecognition,
                                 onApply = {
                                     if (quickEditPrompt.isNotBlank() && !isQuickEditLoading) {
                                         isQuickEditLoading = true
@@ -653,7 +688,7 @@ fun MealEditScreen(
                                                             totalCalories = response.totalCalories,
                                                             response = response
                                                         )
-                                                        quickEditPrompt = ""
+                                                        dictationViewModel.onQuickEditFoodTextChanged(dictationFieldId, "")
                                                         showQuickEdit = false
                                                     },
                                                     onFailure = { t ->

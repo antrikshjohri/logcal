@@ -94,6 +94,7 @@ import com.serene.logcal.util.HistoryDaySection
 import com.serene.logcal.util.buildDaySections
 import com.serene.logcal.util.NumberUtils
 import com.serene.logcal.viewmodel.history.HistoryViewModel
+import com.serene.logcal.viewmodel.LogViewModel
 import com.serene.logcal.ui.theme.LogCalTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -104,6 +105,7 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
+    dictationViewModel: LogViewModel,
     onNavigateToLogTab: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -125,6 +127,7 @@ fun HistoryScreen(
             MealEditScreen(
                 mealId = mealId,
                 viewModel = viewModel,
+                dictationViewModel = dictationViewModel,
                 onBack = { navController.popBackStack() }
             )
         }

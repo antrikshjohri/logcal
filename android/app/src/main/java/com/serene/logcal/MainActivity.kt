@@ -315,6 +315,7 @@ private fun AppRoot(
                 RootTab.LOG -> LogMealScreen(viewModel = logViewModel)
                 RootTab.HISTORY -> HistoryScreen(
                     viewModel = historyViewModel,
+                    dictationViewModel = logViewModel,
                     onNavigateToLogTab = { selectedTab = RootTab.LOG },
                 )
                 RootTab.PROFILE -> ProfileScreen()

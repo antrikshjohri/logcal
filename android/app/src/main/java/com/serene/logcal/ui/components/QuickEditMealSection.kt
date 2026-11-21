@@ -49,13 +49,14 @@ fun QuickEditMealSection(
     isLoading: Boolean,
     errorMessage: String? = null,
     isListening: Boolean = false,
+    isTranscribing: Boolean = false,
     onToggleListening: () -> Unit = {},
     onCancelListening: () -> Unit = {},
     onApply: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LogCalTheme.colors
-    val canSubmit = prompt.isNotBlank() && !isLoading
+    val canSubmit = prompt.isNotBlank() && !isLoading && !isListening && !isTranscribing
 
     Column(
         modifier = modifier
@@ -104,6 +105,7 @@ fun QuickEditMealSection(
         // 2. Inset Input Box with Multiline Text and Mic Action Button
         val placeholder = when {
             isListening -> "Listening..."
+            isTranscribing -> "Transcribing..."
             else -> "Correct the food description"
         }
 
@@ -137,14 +139,14 @@ fun QuickEditMealSection(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Normal
                         ),
-                        enabled = !isLoading,
+                        enabled = !isLoading && !isTranscribing,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (canSubmit) onApply() })
                     )
                 }
 
                 // Listening Cancel Button
-                if (isListening) {
+                if (isListening || isTranscribing) {
                     Box(
                         modifier = Modifier
                             .size(34.dp)
@@ -168,15 +170,19 @@ fun QuickEditMealSection(
                         .size(34.dp)
                         .clip(CircleShape)
                         .background(if (isListening) colors.primaryGreen else colors.softAccentBackground)
-                        .clickable { onToggleListening() },
+                        .clickable(enabled = !isTranscribing && !isLoading) { onToggleListening() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (isListening) Icons.Default.ArrowUpward else Icons.Default.Mic,
-                        contentDescription = if (isListening) "Send dictation" else "Start dictation",
-                        tint = if (isListening) Color.White else colors.primaryGreen,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (isTranscribing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = colors.primaryGreen, strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            imageVector = if (isListening) Icons.Default.ArrowUpward else Icons.Default.Mic,
+                            contentDescription = if (isListening) "Send dictation" else "Start dictation",
+                            tint = if (isListening) Color.White else colors.primaryGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }

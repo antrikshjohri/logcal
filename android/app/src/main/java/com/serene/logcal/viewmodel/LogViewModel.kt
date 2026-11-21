@@ -1,12 +1,11 @@
 package com.serene.logcal.viewmodel
 
 import android.app.Application
-import android.content.Intent
+import android.media.MediaRecorder
 import android.net.Uri
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
+import android.os.Build
+import android.os.SystemClock
+import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -26,18 +25,23 @@ import com.serene.logcal.service.AnalyticsService
 import com.serene.logcal.service.RatingService
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.MealImageEncoder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.sqrt
 
 enum class SpeechTarget {
     MAIN, QUICK_EDIT
@@ -51,7 +55,7 @@ data class LogUiState(
     val selectedMealType: MealType = MealType.BREAKFAST,
     val isMealTypeManuallySet: Boolean = false,
     val foodText: String = "",
-    val quickEditFoodText: String = "",
+    val quickEditDrafts: Map<String, String> = emptyMap(),
     val attachedImageUris: List<String> = emptyList(),
     val latestResult: MealLogResponse? = null,
     val lastLoggedMealId: String? = null,
@@ -63,6 +67,7 @@ data class LogUiState(
     val isTranscribingSpeech: Boolean = false,
     val speechErrorMessage: String? = null,
     val speechTarget: SpeechTarget = SpeechTarget.MAIN,
+    val speechFieldId: String? = null,
     val waveformSamples: List<Float> = List(64) { 0.08f },
     val showRatingPrompt: Boolean = false,
     val isPreviewMode: Boolean = false
@@ -89,16 +94,24 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
-    private var speechRecognizer: SpeechRecognizer? = null
+    private data class DictationRecording(val recorder: MediaRecorder, val file: File)
+
+    private var recording: DictationRecording? = null
+    private var waveformJob: Job? = null
+    private var transcriptionJob: Job? = null
     private var autoDismissJob: kotlinx.coroutines.Job? = null
 
     private fun scheduleAutoDismiss() {
         autoDismissJob?.cancel()
         autoDismissJob = viewModelScope.launch {
             kotlinx.coroutines.delay(120_000L) // 120 seconds (2 minutes)
-            _uiState.value = _uiState.value.copy(
+            val previewIds = _uiState.value.completedPreviews.map { it.id }
+            if (_uiState.value.speechFieldId in previewIds) cancelSpeechRecognition()
+            val state = _uiState.value
+            _uiState.value = state.copy(
                 latestResult = null,
-                completedPreviews = emptyList()
+                completedPreviews = emptyList(),
+                quickEditDrafts = state.quickEditDrafts - previewIds
             )
         }
     }
@@ -422,99 +435,145 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Speech Recognition ---
 
-    fun toggleSpeechRecognition(target: SpeechTarget = SpeechTarget.MAIN) {
-        if (_uiState.value.isTranscribingSpeech) return
+    fun toggleSpeechRecognition(target: SpeechTarget = SpeechTarget.MAIN, fieldId: String? = null) {
+        val state = _uiState.value
+        if (state.isTranscribingSpeech) return
 
-        if (_uiState.value.isListening) {
+        if (state.isListening && state.speechTarget == target && state.speechFieldId == fieldId) {
             stopSpeechRecognition()
         } else {
-            startSpeechRecognition(target)
+            cancelSpeechRecognition()
+            startSpeechRecognition(target, fieldId)
         }
     }
 
-    private fun startSpeechRecognition(target: SpeechTarget = SpeechTarget.MAIN) {
+    @Suppress("DEPRECATION") // MediaRecorder(Context) is available from API 31.
+    private fun startSpeechRecognition(target: SpeechTarget, fieldId: String?) {
+        if (!_uiState.value.isAuthReady) {
+            _uiState.value = _uiState.value.copy(speechErrorMessage = "Sign-in is still loading. Try voice input again in a moment.")
+            return
+        }
+        val context = getApplication<Application>()
+        var file: File? = null
+        var recorder: MediaRecorder? = null
+        val capture: DictationRecording
+        try {
+            val output = File.createTempFile("meal-dictation-", ".m4a", context.cacheDir)
+            file = output
+            val input = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else MediaRecorder()
+            recorder = input
+            input.apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioChannels(1)
+                setAudioSamplingRate(24_000)
+                setAudioEncodingBitRate(48_000)
+                setOutputFile(output.absolutePath)
+                setOnErrorListener { source, _, _ ->
+                    if (recording?.recorder === source) {
+                        cancelSpeechRecognition()
+                        _uiState.value = _uiState.value.copy(speechErrorMessage = "Audio recording failed. Please try again.")
+                    }
+                }
+                prepare()
+                start()
+            }
+            capture = DictationRecording(input, output)
+        } catch (e: Exception) {
+            recorder?.release()
+            file?.delete()
+            DebugLogger.e("Could not start meal dictation", e)
+            _uiState.value = _uiState.value.copy(
+                speechErrorMessage = "Could not initialize voice input."
+            )
+            return
+        }
+
+        recording = capture
         AnalyticsService.trackSpeechRecognitionStarted()
         _uiState.value = _uiState.value.copy(
             isListening = true,
             speechTarget = target,
+            speechFieldId = fieldId,
             speechErrorMessage = null,
             waveformSamples = List(64) { 0.08f }
         )
-
-        val context = getApplication<Application>()
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-        }
-
-        try {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-                setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) {}
-                    override fun onBeginningOfSpeech() {}
-                    override fun onRmsChanged(rmsdB: Float) {
-                        val amplitude = ((rmsdB + 2f) / 12f).coerceIn(0.08f, 1.0f)
-                        val current = _uiState.value.waveformSamples
-                        val next = current.drop(1) + amplitude
-                        _uiState.value = _uiState.value.copy(waveformSamples = next)
-                    }
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() {
-                        _uiState.value = _uiState.value.copy(isTranscribingSpeech = true, isListening = false)
-                    }
-                    override fun onError(error: Int) {
-                        val message = when (error) {
-                            SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected."
-                            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error."
-                            SpeechRecognizer.ERROR_NETWORK -> "Network error."
-                            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout."
-                            else -> "Voice input failed."
-                        }
-                        _uiState.value = _uiState.value.copy(
-                            isListening = false,
-                            isTranscribingSpeech = false,
-                            speechErrorMessage = message
-                        )
-                    }
-                    override fun onResults(results: Bundle?) {
-                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull().orEmpty()
-                        if (text.isNotBlank()) {
-                            if (_uiState.value.speechTarget == SpeechTarget.QUICK_EDIT) {
-                                appendQuickEditFoodText(text)
-                            } else {
-                                appendFoodText(text)
-                            }
-                        }
-                        _uiState.value = _uiState.value.copy(isTranscribingSpeech = false)
-                    }
-                    override fun onPartialResults(partialResults: Bundle?) {}
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
-                startListening(intent)
+        waveformJob = viewModelScope.launch {
+            val startedAt = SystemClock.elapsedRealtime()
+            while (recording === capture) {
+                delay(75)
+                if (SystemClock.elapsedRealtime() - startedAt >= 60_000) {
+                    stopSpeechRecognition()
+                    break
+                }
+                val amplitude = sqrt(capture.recorder.maxAmplitude / 32768f).coerceIn(0.08f, 1f)
+                val samples = _uiState.value.waveformSamples.drop(1) + amplitude
+                _uiState.value = _uiState.value.copy(waveformSamples = samples)
             }
-        } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(
-                isListening = false,
-                speechErrorMessage = "Could not initialize voice input."
-            )
         }
     }
 
-    fun stopSpeechRecognition() {
-        if (!_uiState.value.isListening) return
+    fun stopSpeechRecognition(logAfterTranscription: Boolean = false) {
+        val capture = recording ?: return
+        val fieldId = _uiState.value.speechFieldId
+        recording = null
+        waveformJob?.cancel()
+        waveformJob = null
         AnalyticsService.trackSpeechRecognitionStopped()
-        speechRecognizer?.stopListening()
+        try {
+            capture.recorder.stop()
+        } catch (e: RuntimeException) {
+            capture.file.delete()
+            _uiState.value = _uiState.value.copy(isListening = false, speechErrorMessage = "No audio recorded. Please try again.")
+            return
+        } finally {
+            capture.recorder.release()
+        }
+
         _uiState.value = _uiState.value.copy(isListening = false, isTranscribingSpeech = true)
+        transcriptionJob = viewModelScope.launch {
+            val transcript = try {
+                val audioBase64 = withContext(Dispatchers.IO) {
+                    Base64.encodeToString(capture.file.readBytes(), Base64.NO_WRAP)
+                }
+                repo.transcribeAudio(audioBase64).trim()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                DebugLogger.e("Could not transcribe meal dictation", e)
+                _uiState.value = _uiState.value.copy(
+                    isTranscribingSpeech = false,
+                    speechErrorMessage = "Could not transcribe your recording. Please try again."
+                )
+                return@launch
+            }
+            ensureActive()
+            _uiState.value = _uiState.value.copy(isTranscribingSpeech = false)
+            if (transcript.isEmpty()) {
+                _uiState.value = _uiState.value.copy(speechErrorMessage = "No speech detected.")
+            } else if (fieldId != null) {
+                val draft = _uiState.value.quickEditDrafts[fieldId].orEmpty().trim()
+                onQuickEditFoodTextChanged(fieldId, if (draft.isEmpty()) transcript else "$draft $transcript")
+            } else {
+                appendFoodText(transcript)
+                if (logAfterTranscription) logMeal()
+            }
+        }.also { job -> job.invokeOnCompletion { capture.file.delete() } }
     }
 
     fun cancelSpeechRecognition() {
-        if (!_uiState.value.isListening) return
-        AnalyticsService.trackSpeechRecognitionStopped()
-        speechRecognizer?.cancel()
-        speechRecognizer?.destroy()
-        speechRecognizer = null
+        if (!_uiState.value.isListening && !_uiState.value.isTranscribingSpeech) return
+        waveformJob?.cancel()
+        waveformJob = null
+        transcriptionJob?.cancel()
+        transcriptionJob = null
+        recording?.let { capture ->
+            recording = null
+            AnalyticsService.trackSpeechRecognitionStopped()
+            capture.recorder.release()
+            capture.file.delete()
+        }
         _uiState.value = _uiState.value.copy(
             isListening = false,
             isTranscribingSpeech = false,
@@ -522,16 +581,11 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun onQuickEditFoodTextChanged(newText: String) {
-        _uiState.value = _uiState.value.copy(quickEditFoodText = newText)
-    }
-
-    private fun appendQuickEditFoodText(recognizedText: String) {
-        val incoming = recognizedText.trim()
-        if (incoming.isEmpty()) return
-        val current = _uiState.value.quickEditFoodText.trim()
-        val next = if (current.isEmpty()) incoming else "$current $incoming"
-        _uiState.value = _uiState.value.copy(quickEditFoodText = next)
+    fun onQuickEditFoodTextChanged(fieldId: String, text: String) {
+        val drafts = _uiState.value.quickEditDrafts
+        _uiState.value = _uiState.value.copy(
+            quickEditDrafts = if (text.isEmpty()) drafts - fieldId else drafts + (fieldId to text)
+        )
     }
 
     // --- Logging ---
@@ -543,9 +597,10 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // Cancel and merge voice in progress if any
+        if (state.isTranscribingSpeech) return
         if (state.isListening) {
-            stopSpeechRecognition()
+            if (state.speechTarget == SpeechTarget.MAIN) stopSpeechRecognition(logAfterTranscription = true)
+            return
         }
 
         val trimmed = state.foodText.trim()
@@ -574,7 +629,6 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
         // Reset composer instantly so user can immediately log another meal
         _uiState.value = state.copy(
             foodText = "",
-            quickEditFoodText = "",
             attachedImageUris = emptyList(),
             isMealTypeManuallySet = false,
             errorMessage = null,
@@ -763,6 +817,8 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun dismissCompletedPreview(id: String) {
+        if (_uiState.value.speechFieldId == id) cancelSpeechRecognition()
+        onQuickEditFoodTextChanged(id, "")
         val remaining = _uiState.value.completedPreviews.filter { it.id != id }
         _uiState.value = _uiState.value.copy(
             completedPreviews = remaining,
@@ -886,7 +942,6 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = _uiState.value.copy(
                         isRefiningMeal = false,
                         latestResult = response,
-                        quickEditFoodText = "",
                         errorMessage = null
                     )
                 },
@@ -919,7 +974,7 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        cancelSpeechRecognition()
         super.onCleared()
-        speechRecognizer?.destroy()
     }
 }
