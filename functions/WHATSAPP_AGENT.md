@@ -53,7 +53,7 @@ a question accidentally treated as a meal. Non-pilot users are unaffected.
 ## Deploy / restore
 
 ```sh
-firebase deploy --only functions:whatsappWebhook,functions:whatsappAgentWorker --project logcal-ai
+firebase deploy --only functions:whatsappWebhook,functions:whatsappAgentWorker --project logcal-ai --non-interactive --force
 ```
 
 Fast rollback: disable the flag, or send `/legacy` from the pilot account.
@@ -66,7 +66,7 @@ node functions/scripts/whatsapp-agent.cjs disable
 node functions/scripts/whatsapp-agent.cjs rollback-code
 ```
 
-The script verifies and extracts the original source archive into a temporary
+The script disables the pilot, verifies and extracts the original source archive into a temporary
 directory, installs the pinned dependencies, and deploys only whatsappWebhook.
 It does not check out another branch, reset local work, redeploy app functions,
 restore the database, or remove previously saved meals. Disable the agent first
@@ -80,6 +80,9 @@ the agent work. A per-user queue/lease orders messages. Meal writes, sync record
 and their inbox audit result commit together. The global flag, user override,
 account linkage, and pending selected date are rechecked inside that transaction.
 Each inbound message can save at most one meal; multiple foods can be one meal.
+Agent and legacy paths share deterministic meal IDs. The router recognizes prior
+agent inbox events before considering legacy fallback, so redelivered questions
+cannot become legacy meals after rollback.
 The worker retries up to three processing attempts; model rounds/tool calls and
 query range are bounded. No model failure falls through to legacy meal logging.
 
@@ -104,3 +107,14 @@ agent with “How much protein did I log yesterday?”, a hypothetical meal, a m
 log-and-question request, a voice question, a captionless food photo, a workout
 request, and “Actually, make that one banana” using the meal's Edit button.
 Use `/legacy` and `/agent`, and verify the operator disable flag stops writes.
+
+## Validation completed before private activation
+
+The full local suite passes, including the original legacy tests and the archived
+production-definition checks. Live OpenAI smoke tests used fixture-only tools for
+a personal data question, mixed logging + question, and workout coaching; they
+made no database writes and sent no WhatsApp messages. The deployed operator flag
+was enabled, disabled, and read back as disabled before activation. All five
+existing non-WhatsApp functions retained their original deployed source reference.
+Only the verified pilot account will be enabled for human WhatsApp testing.
+The first worker deployment needs --force to accept its idempotent retry policy.

@@ -108,11 +108,11 @@ test('disabled pilot uses legacy; /legacy blocks queued work; /agent opts back i
   await routeWhatsAppAgent(uid,phone,message('/legacy'),svc);
   await processWhatsAppAgentJob(id,svc);
   assert.equal(docs.get(`whatsappAgentInbox/${id}`).status,'cancelled');assert.equal(meals().length,0);
-  assert.equal(await routeWhatsAppAgent(uid,phone,message('rice'),svc),false);
+  assert.equal(await routeWhatsAppAgent(uid,phone,message('rice','fresh-rice'),svc),false);
   await routeWhatsAppAgent(uid,phone,message('/agent'),svc);
   assert.equal(docs.get(`whatsappAgentPreferences/${uid}`).legacy,false);
   docs.get('app/whatsappAgent').enabled=false;
-  assert.equal(await routeWhatsAppAgent(uid,phone,message('rice'),svc),false);
+  assert.equal(await routeWhatsAppAgent(uid,phone,message('rice','fresh-rice'),svc),false);
 });
 test('webhook queues duplicate event once and preserves arrival order',async()=>{
   const id=await enqueue();await enqueue();
@@ -274,4 +274,25 @@ test('agent transcription preserves general questions and workout vocabulary sep
   assert.equal(request.options.body.get('file').name,'voice.ogg');
   assert.match(request.options.body.get('prompt'),/exercise names/);
   assert.equal(request.options.body.get('model'),'test-speech-model');
+});
+
+test('rollback cannot turn a redelivered agent question into a legacy meal',async()=>{
+  const msg=message('How much protein did I log?','original-question');
+  await routeWhatsAppAgent(uid,phone,msg,svc);
+  docs.get('app/whatsappAgent').enabled=false;
+  assert.equal(await routeWhatsAppAgent(uid,phone,msg,svc),true);
+  assert.equal(meals().length,0);
+  assert.equal(await routeWhatsAppAgent(uid,phone,message('two bananas','fresh-message'),svc),false);
+});
+test('agent and legacy paths use the same meal ID across switches',async()=>{
+  const {whatsappMealId}=require('../lib/whatsappMedia');
+  const id=await enqueue();modelResponses=[call('record_meal',recordArgs),reply('Logged.')];
+  await processWhatsAppAgentJob(id,svc);
+  assert.equal(meals()[0][1].id,whatsappMealId(uid,'message-1'));
+});
+test('a delayed pre-pilot meal delivery does not create a second record',async()=>{
+  const {whatsappMealId}=require('../lib/whatsappMedia');
+  const mealId=whatsappMealId(uid,'message-1');seedMeal(mealId);
+  const id=await enqueue();modelResponses=[call('record_meal',recordArgs),reply('That meal was already saved.')];
+  await processWhatsAppAgentJob(id,svc);assert.equal(meals().length,1);
 });

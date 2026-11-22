@@ -14,6 +14,8 @@ const baseline = require('../releases/whatsapp-prod-before-agent-2026-11-22.json
  if (command === 'rollback-code') {
    const archive = path.join(root, 'deployments/whatsapp/whatsapp-prod-before-agent-2026-11-22.zip');
    if (crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex') !== baseline.sourceZipSha256) throw Error('Baseline archive checksum mismatch');
+   // Full restore also stops queued agent work before replacing the webhook.
+   execFileSync(process.execPath, [__filename, 'disable'], { stdio: 'inherit' });
    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'logcal-whatsapp-rollback-'));
    fs.mkdirSync(path.join(dir, 'functions'));
    execFileSync('unzip', ['-q', archive, '-d', path.join(dir, 'functions')]);

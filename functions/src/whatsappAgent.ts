@@ -40,6 +40,8 @@ export async function routeWhatsAppAgent(uid: string, from: string, message: any
       }
       return true;
     }
+    // A redelivered agent message must not become a legacy meal after rollback.
+    if (message.id && (await db.collection(inboxPath).doc(whatsappMealId(uid, message.id)).get()).exists) return true;
     if (!await enabled(uid)) return false;
   } catch (error) {
     console.warn("WHATSAPP_AGENT_GATE_UNAVAILABLE", { error });
@@ -186,7 +188,7 @@ export async function processWhatsAppAgentJob(id: string, svc: AgentServices): P
       if (name === "get_nutrition_data") return nutritionData(job.uid, args);
       if (!["estimate_meal", "record_meal"].includes(name)) throw new Error("Unsupported tool");
       if (typeof args.food_text !== "string" || (!args.food_text.trim() && !image) || args.food_text.length > 4000 || !["Breakfast", "Lunch", "Dinner", "Snack", "Meal"].includes(String(args.meal_type))) throw new Error("Invalid meal arguments");
-      if (name === "record_meal" && job.mealResult) return { saved: true, ...job.mealResult };
+      if (name === "record_meal" && job.mealResult) return { saved: !job.mealResult.deleted, ...job.mealResult };
       const date = name === "record_meal" ? args.date === null ? selected?.date || istDateKey() : checkedDate(args.date) : istDateKey();
       if (name === "record_meal" && date !== istDateKey() && date !== selected?.date) {
         const candidates = text.match(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+[a-z]+\s+\d{4}\b/gi) || [];
@@ -197,7 +199,7 @@ export async function processWhatsAppAgentJob(id: string, svc: AgentServices): P
       const type = String(args.meal_type);
       const estimate = await svc.estimate(job.uid, args.food_text, type, user.country || "India", image);
       if (name === "estimate_meal") return { saved: false, estimate };
-      const mealId = whatsappMealId(job.uid, `${job.message.id}:agent-meal`), mealRef = userRef.collection("meals").doc(mealId);
+      const mealId = whatsappMealId(job.uid, job.message.id), mealRef = userRef.collection("meals").doc(mealId);
       const timestamp = date === istDateKey() ? admin.firestore.Timestamp.now() : admin.firestore.Timestamp.fromDate(new Date(`${date}T12:00:00+05:30`));
       const description = args.food_text.trim() || estimate.items.map(item => item.name).join(", ") || "Meal photo";
       const result = { id: mealId, foodText: description, date, calories: estimate.total_calories };
@@ -210,7 +212,13 @@ export async function processWhatsAppAgentJob(id: string, svc: AgentServices): P
         const state = selected ? (await tx.get(dateRef)).data() : undefined;
         if (!agentAllowed(flag, job.uid) || pref?.legacy === true || account?.whatsappPhoneNumber !== job.from ||
             (flag?.generation || "") !== job.generation || (pref?.epoch || "") !== job.preferenceEpoch || latest?.status !== "processing") throw new Error("Agent pilot was disabled or account changed; nothing new saved");
-        if (latest?.mealResult || meal.exists) return;
+        if (latest?.mealResult) return;
+        if (meal.exists) {
+          const existing = meal.data()!;
+          tx.update(jobRef, { mealResult: { id: mealId, foodText: existing.foodText, calories: existing.totalCalories,
+            date: istDateKey(existing.timestamp.toDate()), deleted: existing.deleted === true } });
+          return;
+        }
         if (selected && (state?.requestId !== selected.requestId || state?.token !== selected.token || state?.date !== selected.date || state?.expiresAt <= Date.now())) throw new Error("Date selection changed; choose a date again before logging");
         const data = { id: mealId, timestamp, createdAt: admin.firestore.Timestamp.now(), foodText: description,
           mealType: estimate.meal_type || type, totalCalories: estimate.total_calories || 0,
@@ -222,13 +230,13 @@ export async function processWhatsAppAgentJob(id: string, svc: AgentServices): P
         if (selected) tx.delete(dateRef);
       });
       job.mealResult = (await jobRef.get()).data()?.mealResult;
-      return { saved: Boolean(job.mealResult), ...job.mealResult };
+      return { saved: Boolean(job.mealResult) && !job.mealResult.deleted, ...job.mealResult };
     };
     const reply = job.reply || await runAgentTurn({ text, imageDataUrl: image, history, profile: profile(user), selectedDate: selected?.date,
       alreadyLogged: job.mealResult, model: svc.model, apiKey: process.env.OPENAI_API_KEY || "", execute });
     await jobRef.update({ reply });
     if (!await enabled(job.uid, job)) { await jobRef.update({ status: "cancelled" }); return; }
-    if (job.mealResult && !job.confirmationSent) {
+    if (job.mealResult && !job.mealResult.deleted && !job.confirmationSent) {
       const meal = (await userRef.collection("meals").doc(job.mealResult.id).get()).data()!;
       await svc.confirm(job.from, job.mealResult.id, meal.foodText, JSON.parse(meal.rawResponseJson), meal.timestamp);
       await jobRef.update({ confirmationSent: true });
