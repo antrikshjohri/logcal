@@ -2,6 +2,8 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as https from "https";
 import * as crypto from "crypto";
+import { transcribeWhatsAppAgentAudio } from "./whatsappAgentCore";
+import { routeWhatsAppAgent, processWhatsAppAgentJob, AgentServices } from "./whatsappAgent";
 import { istDateKey, mealDateLabel, timestampDate, LogDateSelection } from "./whatsappDates";
 import { handleWhatsAppMealActions } from "./whatsappMealActions";
 import { downloadWhatsAppAudio, downloadWhatsAppImage, WhatsAppMediaError, whatsappMealId } from "./whatsappMedia";
@@ -1984,6 +1986,17 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
 
       const userDoc = snapshot.docs[0];
       const uid = userDoc.id;
+      try {
+        if (await routeWhatsAppAgent(uid, from, message, whatsAppAgentServices())) {
+          res.status(200).send("EVENT_RECEIVED");
+          return;
+        }
+      } catch (error) {
+        console.error("WHATSAPP_AGENT_QUEUE_FAILED", { error });
+        await sendWhatsAppMessage(from, "I couldn't queue that request. No new meal was saved. Please retry, or send /legacy to use the existing bot.", phoneNumberId, accessToken);
+        res.status(200).send("EVENT_RECEIVED");
+        return;
+      }
       const buttonId = message.type === "interactive" ? message.interactive?.button_reply?.id : undefined;
       const loggingState: { dateSelection?: LogDateSelection } = {};
       const handled = await handleWhatsAppMealActions({
@@ -2284,4 +2297,26 @@ export const whatsappWebhook = functions.region(FUNCTIONS_REGION).runWith({
   }
 
   res.status(405).send("Method Not Allowed");
+});
+
+
+// The pilot worker is separate from app-facing callable functions and legacy chat state.
+function whatsAppAgentServices(): AgentServices {
+  const phone = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim() || "";
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim() || "";
+  return {
+    model: OPENAI_LUNA_MODEL,
+    transcribe: (buffer, filename, mime) => transcribeWhatsAppAgentAudio(buffer, filename, mime, OPENAI_TRANSCRIBE_MODEL),
+    estimate: (uid, text, type, country, image) => callOpenAI(text, type, image, undefined, country, undefined, uid),
+    send: (to, text) => sendWhatsAppMessage(to, text, phone, token),
+    buttons: (to, text, buttons) => sendWhatsAppButtons(to, text, buttons, phone, token),
+    react: (to, id, emoji) => sendWhatsAppReaction(to, id, emoji, phone, token),
+    confirm: (to, id, text, estimate, timestamp) => sendWhatsAppMealConfirmation(to, id, text, estimate, phone, token, false, timestamp),
+  };
+}
+export const whatsappAgentWorker = functions.region(FUNCTIONS_REGION).runWith({
+  secrets: ["OPENAI_API_KEY", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
+  timeoutSeconds: 300, memory: "512MB", failurePolicy: true,
+}).firestore.document("whatsappAgentInbox/{id}").onCreate(async (_snapshot, context) => {
+  await processWhatsAppAgentJob(context.params.id, whatsAppAgentServices());
 });

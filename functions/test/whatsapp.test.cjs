@@ -47,7 +47,7 @@ const firestore = () => ({
   },
 });
 firestore.Timestamp = { now: () => new Date(), fromDate: date => date };
-const builder = { runWith: () => builder, https: { onCall: (fn) => fn, onRequest: (fn) => fn } };
+const builder = { firestore: { document: () => ({ onCreate: fn => fn }) }, runWith: () => builder, https: { onCall: (fn) => fn, onRequest: (fn) => fn } };
 const fakeHttps = {
   request: (_options, callback) => {
     const req = new EventEmitter();
