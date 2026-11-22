@@ -2,5 +2,7 @@
     <string name="app_name">LogCal</string>
     <string name="log_meal">Log Meal</string>
     <string name="date">Date</string>
+    <string name="meal_edit_sync_failed">Your changes are saved on this device. Sync failed.</string>
+    <string name="retry_meal_sync">Retry sync</string>
 </resources>
 

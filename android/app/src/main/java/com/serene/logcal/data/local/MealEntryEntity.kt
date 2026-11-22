@@ -18,6 +18,7 @@ data class MealEntryEntity(
     val hasImage: Boolean = false,
     val sourceSavedMealId: String? = null,
     val deleted: Boolean = false,
+    val pendingCloudEditId: String? = null,
 )
 
 data class HistoryMeal(
@@ -30,4 +31,5 @@ data class HistoryMeal(
     val response: MealLogResponse,
     val hasImage: Boolean = false,
     val sourceSavedMealId: String? = null,
+    val pendingCloudEditId: String? = null,
 )

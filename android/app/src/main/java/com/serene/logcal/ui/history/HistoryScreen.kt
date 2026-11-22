@@ -77,6 +77,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,6 +89,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
+import com.serene.logcal.R
 import com.serene.logcal.data.local.HistoryMeal
 import com.serene.logcal.util.DebugLogger
 import com.serene.logcal.util.HistoryDaySection
@@ -143,6 +145,7 @@ private fun HistoryListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val uploadingMealEdits by viewModel.uploadingMealEdits.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val colors = LogCalTheme.colors
     var lastErrorShown by remember { mutableStateOf<String?>(null) }
@@ -416,6 +419,8 @@ private fun HistoryListScreen(
                                     selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
                                 },
                                 onMealClick = onMealClick,
+                                uploadingMealEdits = uploadingMealEdits,
+                                onRetryMealEdit = viewModel::retryMealEdit,
                                 dailyGoal = dailyGoal,
                                 onNavigateToLogTab = onNavigateToLogTab
                             )
@@ -482,6 +487,8 @@ private fun DaySectionCard(
     selectedIds: Set<String>,
     onToggleSelect: (String) -> Unit,
     onMealClick: (String) -> Unit,
+    uploadingMealEdits: Set<String>,
+    onRetryMealEdit: (String) -> Unit,
     dailyGoal: Double,
     onNavigateToLogTab: () -> Unit
 ) {
@@ -674,6 +681,22 @@ private fun DaySectionCard(
                             onToggleSelect = { onToggleSelect(meal.id) },
                             onOpen = { onMealClick(meal.id) }
                         )
+                        if (!editMode && meal.pendingCloudEditId != null && meal.id !in uploadingMealEdits) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.meal_edit_sync_failed),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.mutedText,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { onRetryMealEdit(meal.id) }) {
+                                    Text(stringResource(R.string.retry_meal_sync))
+                                }
+                            }
+                        }
                         if (index < section.meals.lastIndex) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = colors.cardBorder.copy(alpha = 0.5f))
                         }

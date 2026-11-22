@@ -51,10 +51,11 @@ enum MealQuickRefine {
         } else {
             print("DEBUG: [MealQuickRefine] foodText unchanged (no items to summarize)")
         }
+        cloudSyncService.markMealEditForSync(entry)
         try modelContext.save()
         print("DEBUG: [MealQuickRefine] saved refined meal id=\(entry.id) cal=\(refined.totalCalories)")
         Task {
-            await cloudSyncService.syncMealToCloud(entry)
+            await cloudSyncService.retryMealEdit(entry, modelContext: modelContext)
         }
         Task {
             await NotificationService.shared.rescheduleNotificationsIfNeeded(modelContext: modelContext)

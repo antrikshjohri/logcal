@@ -40,6 +40,7 @@ class LocalMealRepository(
                 response = response,
                 hasImage = row.hasImage,
                 sourceSavedMealId = row.sourceSavedMealId,
+                pendingCloudEditId = row.pendingCloudEditId,
             )
         } catch (t: Throwable) {
             DebugLogger.e("DEBUG: [LocalMealRepository] Failed to decode rawResponseJson for id=${row.id}", t)
@@ -128,10 +129,10 @@ class LocalMealRepository(
         mealDao.deleteAll()
     }
 
-    suspend fun insertMeals(meals: List<MealEntryEntity>) = withContext(Dispatchers.IO) {
-        DebugLogger.d("DEBUG: [LocalMealRepository] insertMeals() count=${meals.size}")
-        meals.forEach { mealDao.insertMeal(it) }
-    }
+    suspend fun mergeCloudMeals(meals: List<MealEntryEntity>, beforeFetch: Map<String, MealEntryEntity>) =
+        mealDao.mergeCloudMeals(meals, beforeFetch)
+
+    suspend fun confirmCloudEdit(id: String, editId: String) = mealDao.confirmCloudEdit(id, editId)
 
     suspend fun getAllMealEntries(): List<MealEntryEntity> = withContext(Dispatchers.IO) {
         mealDao.getAllMeals()

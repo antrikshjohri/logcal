@@ -20,6 +20,7 @@ final class MealEntry: Identifiable {
     var hasImage: Bool?           // Indicates if an image was used for this meal (optional for backward compatibility)
     var sourceSavedMealId: UUID? = nil
     var deleted: Bool = false
+    var pendingCloudEditId: String? = nil
     
     init(
         id: UUID = UUID(),
@@ -76,6 +77,37 @@ final class MealEntry: Identifiable {
 
     var fiber: Double? {
         response?.resolvedMealMacrosForDisplay()?.fiber
+    }
+
+    struct CloudSyncState: Equatable {
+        let timestamp: Date
+        let foodText: String
+        let mealType: String
+        let totalCalories: Double
+        let rawResponseJson: String
+        let hasImage: Bool
+        let deleted: Bool
+        let pendingEditId: String?
+    }
+
+    var cloudSyncState: CloudSyncState {
+        CloudSyncState(timestamp: timestamp, foodText: foodText, mealType: mealType,
+                       totalCalories: totalCalories, rawResponseJson: rawResponseJson,
+                       hasImage: hasImageValue, deleted: deleted, pendingEditId: pendingCloudEditId)
+    }
+
+    /// Preserve pending edits and changes made after a cloud refresh began.
+    func mergeCloudVersion(_ cloud: MealEntry, unchangedSince baseline: CloudSyncState?) -> Bool {
+        guard pendingCloudEditId == nil, cloudSyncState == baseline,
+              cloudSyncState != cloud.cloudSyncState else { return false }
+        deleted = cloud.deleted
+        foodText = cloud.foodText
+        mealType = cloud.mealType
+        totalCalories = cloud.totalCalories
+        rawResponseJson = cloud.rawResponseJson
+        timestamp = cloud.timestamp
+        hasImage = cloud.hasImage
+        return true
     }
 }
 

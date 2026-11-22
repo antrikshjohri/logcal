@@ -48,7 +48,7 @@ class LogViewModel: ObservableObject {
     private var openAIService: OpenAIService?
     private var openAIServiceError: AppError?
     private var modelContext: ModelContext?
-    private let cloudSyncService = CloudSyncService()
+    private var cloudSyncService = CloudSyncService()
     let speechService = SpeechRecognitionService()
     let appConfigService = AppConfigService()
     @Published var showUpdateRequiredAlert = false
@@ -131,7 +131,8 @@ class LogViewModel: ObservableObject {
         isListening || !foodText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty
     }
     
-    func setModelContext(_ context: ModelContext) {
+    func setModelContext(_ context: ModelContext, cloudSyncService: CloudSyncService) {
+        self.cloudSyncService = cloudSyncService
         self.modelContext = context
     }
 

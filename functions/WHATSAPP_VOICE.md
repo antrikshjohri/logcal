@@ -108,9 +108,9 @@ are harmless. It cannot be edited after deletion.
 
 Both app sync services now merge content changes in existing cloud meals, in
 addition to deletions. These native changes require new iOS/Android app builds;
-deploying the webhook alone cannot change installed app behavior. Cloud values
-win when an existing local meal differs; the current clients have no general
-version-based resolution for unsynced offline edits.
+deploying the webhook alone cannot change installed app behavior. The apps keep
+phone edits on the device until Firestore confirms the upload. If the upload
+fails, History shows **Retry sync** on the affected meal.
 
 Live checks: log two different meals, edit the older one's portion, and confirm
 only that record changes. Cancel an edit and then log a new meal. Delete one meal

@@ -38,6 +38,47 @@ struct FirestoreService {
             return
         }
         
+        do {
+            try await db.collection("users").document(userId).collection("meals").document(entry.id.uuidString).setData(mealData(entry))
+            print("DEBUG: Successfully saved meal entry to Firestore: \(entry.id)")
+            try await saveMealToMealLogs(entry: entry, userId: userId)
+        } catch {
+            print("DEBUG: Error saving meal to Firestore: \(error)")
+            throw AppError.unknown(error)
+        }
+    }
+
+    func saveMealEdit(_ entry: MealEntry, userId: String) async throws {
+        let meals = db.collection("users").document(userId).collection("meals")
+        let logs = db.collection("mealLogs")
+        let id = entry.id.uuidString
+        let data = mealData(entry)
+        let summary = mealLogData(entry: entry, userId: userId)
+        _ = try await db.runTransaction { transaction, errorPointer in
+            do {
+                let upper = try transaction.getDocument(meals.document(id))
+                let current = upper.exists || id == id.lowercased()
+                    ? upper : try transaction.getDocument(meals.document(id.lowercased()))
+                guard current.data()?["deleted"] as? Bool != true else {
+                    throw NSError(domain: "MealSync", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Meal was deleted in the cloud"
+                    ])
+                }
+                // Older Android clients use lowercase UUIDs as document IDs.
+                let mealId = current.exists ? current.documentID : id
+                var edit = data
+                edit["id"] = mealId
+                edit["updatedAt"] = FieldValue.serverTimestamp()
+                transaction.setData(edit, forDocument: meals.document(mealId), merge: true)
+                transaction.setData(summary, forDocument: logs.document(mealId), merge: true)
+            } catch {
+                errorPointer?.pointee = error as NSError
+            }
+            return nil
+        }
+    }
+
+    private func mealData(_ entry: MealEntry) -> [String: Any] {
         var mealData: [String: Any] = [
             "id": entry.id.uuidString,
             "timestamp": Timestamp(date: entry.timestamp),
@@ -53,20 +94,11 @@ struct FirestoreService {
             mealData["sourceSavedMealId"] = sourceSavedMealId.uuidString
         }
         
-        do {
-            try await db.collection("users").document(userId).collection("meals").document(entry.id.uuidString).setData(mealData)
-            print("DEBUG: Successfully saved meal entry to Firestore: \(entry.id)")
-            // Also write to mealLogs so all meals (with or without images) appear there
-            try await saveMealToMealLogs(entry: entry, userId: userId)
-        } catch {
-            print("DEBUG: Error saving meal to Firestore: \(error)")
-            throw AppError.unknown(error)
-        }
+        return mealData
     }
     
-    /// Write to mealLogs collection so it stays in sync with users/meals (for viewing all logs in one place).
-    private func saveMealToMealLogs(entry: MealEntry, userId: String) async throws {
-        let mealLogData: [String: Any] = [
+    private func mealLogData(entry: MealEntry, userId: String) -> [String: Any] {
+        [
             "uid": userId,
             "foodText": entry.foodText,
             "mealType": entry.mealType,
@@ -75,9 +107,13 @@ struct FirestoreService {
             "timestamp": Timestamp(date: entry.timestamp),
             "deleted": entry.deleted
         ]
+    }
+
+    /// Write to mealLogs collection so it stays in sync with users/meals (for viewing all logs in one place).
+    private func saveMealToMealLogs(entry: MealEntry, userId: String) async throws {
         let mealLogRef = db.collection("mealLogs").document(entry.id.uuidString)
         do {
-            try await mealLogRef.setData(mealLogData)
+            try await mealLogRef.setData(mealLogData(entry: entry, userId: userId))
             print("DEBUG: Successfully saved meal to mealLogs: \(entry.id)")
         } catch {
             print("DEBUG: Warning - Failed to save to mealLogs (non-critical): \(error.localizedDescription)")
@@ -85,17 +121,14 @@ struct FirestoreService {
     }
     
     /// Fetch all meal entries from Firestore for the current user
-    func fetchMealEntries() async throws -> [MealEntry] {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            print("DEBUG: No authenticated user, cannot fetch from Firestore")
-            return []
-        }
-        
+    func fetchMealEntries(userId: String) async throws -> [MealEntry] {
         do {
             let snapshot = try await db.collection("users").document(userId).collection("meals").getDocuments()
+            guard !snapshot.metadata.isFromCache else { return [] }
             
             var entries: [MealEntry] = []
             for document in snapshot.documents {
+                guard !document.metadata.hasPendingWrites else { continue }
                 let data = document.data()
                 
                 guard let idString = data["id"] as? String,

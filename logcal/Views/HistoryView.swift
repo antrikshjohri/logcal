@@ -563,6 +563,8 @@ struct MealRowView: View {
 
 struct DayCardView: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var cloudSyncService: CloudSyncService
     @AppStorage("dailyGoal") private var dailyGoal: Double = 2000
     let dayGroup: (date: Date, meals: [MealEntry], totalCalories: Double)
     @Binding var isExpanded: Bool
@@ -725,6 +727,24 @@ struct DayCardView: View {
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(PlainButtonStyle())
+                                }
+
+                                if editMode != .active, meal.pendingCloudEditId != nil,
+                                   !cloudSyncService.uploadingMealEdits.contains(meal.id) {
+                                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                        Text("Your changes are saved on this device. Sync failed.")
+                                            .foregroundStyle(Theme.mutedText(colorScheme: colorScheme))
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Button("Retry sync") {
+                                            Task { await cloudSyncService.retryMealEdit(meal, modelContext: modelContext) }
+                                        }
+                                        .buttonStyle(.plain)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(Theme.primaryGreen)
+                                    }
+                                    .font(.footnote)
+                                    .padding(.horizontal, 16)
+                                    .padding(.bottom, 10)
                                 }
                                 
                                 if mealIndex < dayGroup.meals.count - 1 {

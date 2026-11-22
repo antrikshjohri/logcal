@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,6 +18,22 @@ interface MealDao {
 
     @Query("SELECT * FROM meal_entries WHERE id = :id AND deleted = 0 LIMIT 1")
     suspend fun getById(id: String): MealEntryEntity?
+
+    @Query("SELECT * FROM meal_entries WHERE id = :id LIMIT 1")
+    suspend fun getIncludingDeleted(id: String): MealEntryEntity?
+
+    @Query("UPDATE meal_entries SET pendingCloudEditId = NULL WHERE id = :id AND pendingCloudEditId = :editId")
+    suspend fun confirmCloudEdit(id: String, editId: String)
+
+    @Transaction
+    suspend fun mergeCloudMeals(cloudMeals: List<MealEntryEntity>, beforeFetch: Map<String, MealEntryEntity>) {
+        for (cloudMeal in cloudMeals) {
+            val current = getIncludingDeleted(cloudMeal.id)
+            if (current == beforeFetch[cloudMeal.id] && current?.pendingCloudEditId == null && current != cloudMeal) {
+                insertMeal(cloudMeal)
+            }
+        }
+    }
 
     @Query(
         """
@@ -40,7 +57,7 @@ interface MealDao {
     @Query("UPDATE meal_entries SET sourceSavedMealId = NULL WHERE sourceSavedMealId = :sourceSavedMealId")
     suspend fun clearSourceSavedMealId(sourceSavedMealId: String)
 
-    @Query("UPDATE meal_entries SET deleted = 1 WHERE id = :id")
+    @Query("UPDATE meal_entries SET deleted = 1, pendingCloudEditId = NULL WHERE id = :id")
     suspend fun deleteById(id: String)
 
     @Query("DELETE FROM meal_entries")

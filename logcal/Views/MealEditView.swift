@@ -799,12 +799,13 @@ struct MealEditView: View {
         updateLinkedFavoriteIfNeeded()
         
         do {
+            cloudSyncService.markMealEditForSync(meal)
             try modelContext.save()
             WidgetCenter.shared.reloadAllTimelines()
             
             // Sync to cloud
             Task {
-                await cloudSyncService.syncMealToCloud(meal)
+                await cloudSyncService.retryMealEdit(meal, modelContext: modelContext)
                 await HealthKitService.shared.updateMealEntry(meal)
             }
             

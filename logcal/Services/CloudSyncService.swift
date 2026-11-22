@@ -17,6 +17,7 @@ class CloudSyncService: ObservableObject {
     @Published var isSyncing: Bool = false
     @Published var syncError: String?
     @Published var lastSyncTime: Date = Date() // Trigger view updates when sync completes
+    @Published private(set) var uploadingMealEdits: Set<UUID> = []
     private var currentUserId: String? // Track current authenticated user ID
     private var isAnonymousSession: Bool = false // Track if we're in anonymous mode
     private let userDefaults = UserDefaults.standard
@@ -36,6 +37,39 @@ class CloudSyncService: ObservableObject {
         } catch {
             print("DEBUG: Error syncing meal to cloud: \(error)")
             syncError = "Failed to sync to cloud: \(error.localizedDescription)"
+        }
+    }
+
+    func markMealEditForSync(_ entry: MealEntry) {
+        if let user = Auth.auth().currentUser, !user.isAnonymous {
+            entry.pendingCloudEditId = "\(user.uid)/\(UUID().uuidString)"
+        } else {
+            entry.pendingCloudEditId = nil
+        }
+    }
+
+    func retryMealEdit(_ entry: MealEntry, modelContext: ModelContext) async {
+        guard let user = Auth.auth().currentUser, !user.isAnonymous,
+              !entry.deleted, entry.pendingCloudEditId?.hasPrefix("\(user.uid)/") == true,
+              uploadingMealEdits.insert(entry.id).inserted else { return }
+        defer { uploadingMealEdits.remove(entry.id) }
+        while !entry.deleted, Auth.auth().currentUser?.uid == user.uid,
+              let editId = entry.pendingCloudEditId, editId.hasPrefix("\(user.uid)/") {
+            do {
+                try await firestoreService.saveMealEdit(entry, userId: user.uid)
+                if entry.pendingCloudEditId == editId {
+                    entry.pendingCloudEditId = nil
+                    do {
+                        try modelContext.save()
+                    } catch {
+                        entry.pendingCloudEditId = editId
+                        throw error
+                    }
+                }
+            } catch {
+                print("DEBUG: Could not upload meal edit: \(error)")
+                return
+            }
         }
     }
     
@@ -92,40 +126,44 @@ class CloudSyncService: ObservableObject {
         }
         
         isSyncing = true
+        defer { isSyncing = false }
         syncError = nil
         
         do {
             // #region agent log
             DebugLogger.log(location: "CloudSyncService.swift:80", message: "Starting fetch from Firestore", data: ["userId": newUserId], hypothesisId: "B")
             // #endregion
-            // Fetch from Firestore
-            let cloudMeals = try await firestoreService.fetchMealEntries()
+            // Keep the local state from before the request so an older response
+            // cannot replace an edit that was saved or uploaded during the request.
+            let descriptor = FetchDescriptor<MealEntry>()
+            let beforeFetch = Dictionary(
+                try modelContext.fetch(descriptor).map { ($0.id, $0.cloudSyncState) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            let cloudMeals = try await firestoreService.fetchMealEntries(userId: newUserId)
+            guard Auth.auth().currentUser?.uid == newUserId else { return }
             // #region agent log
             DebugLogger.log(location: "CloudSyncService.swift:82", message: "Fetched meals from Firestore", data: ["mealCount": cloudMeals.count], hypothesisId: "B")
             // #endregion
             print("DEBUG: Fetched \(cloudMeals.count) meals from cloud")
             
             // Get local meals
-            let descriptor = FetchDescriptor<MealEntry>()
             let localMeals = try modelContext.fetch(descriptor)
             print("DEBUG: Found \(localMeals.count) local meals")
             
             // Create a set of local meal IDs for quick lookup
-            let localMealIds = Set(localMeals.map { $0.id })
+            let localMealsById = Dictionary(localMeals.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             
             // Add cloud meals that don't exist locally, and merge deletions/updates
             var addedCount = 0
             for cloudMeal in cloudMeals {
-                if !localMealIds.contains(cloudMeal.id) {
+                if let localMeal = localMealsById[cloudMeal.id] {
+                    if localMeal.mergeCloudVersion(cloudMeal, unchangedSince: beforeFetch[cloudMeal.id]) {
+                        addedCount += 1
+                    }
+                } else if beforeFetch[cloudMeal.id] == nil {
                     modelContext.insert(cloudMeal)
                     addedCount += 1
-                } else {
-                    if let localMeal = localMeals.first(where: { $0.id == cloudMeal.id }) {
-                        if localMeal.deleted != cloudMeal.deleted {
-                            localMeal.deleted = cloudMeal.deleted
-                            addedCount += 1
-                        }
-                    }
                 }
             }
             
@@ -204,7 +242,6 @@ class CloudSyncService: ObservableObject {
                 print("DEBUG: Error syncing favorites from cloud (non-blocking): \(error.localizedDescription)")
             }
             
-            isSyncing = false
             WidgetCenter.shared.reloadAllTimelines()
             // Update lastSyncTime even if no meals were added to trigger any pending updates
             if addedCount == 0 {
@@ -213,7 +250,6 @@ class CloudSyncService: ObservableObject {
         } catch {
             print("DEBUG: Error syncing from cloud: \(error)")
             syncError = "Failed to sync from cloud: \(error.localizedDescription)"
-            isSyncing = false
         }
     }
     
@@ -231,7 +267,7 @@ class CloudSyncService: ObservableObject {
         do {
             // Get all local meals
             let descriptor = FetchDescriptor<MealEntry>()
-            let localMeals = try modelContext.fetch(descriptor)
+            let localMeals = try modelContext.fetch(descriptor).filter { $0.pendingCloudEditId == nil }
             print("DEBUG: Migrating \(localMeals.count) local meals to cloud")
             
             if !localMeals.isEmpty {
@@ -280,6 +316,7 @@ class CloudSyncService: ObservableObject {
     
     /// Delete meal from cloud
     func deleteMealFromCloud(_ entry: MealEntry) async {
+        entry.pendingCloudEditId = nil
         // Only delete from cloud if user is signed in (not anonymous)
         guard let user = Auth.auth().currentUser, !user.isAnonymous else {
             print("DEBUG: User is anonymous or not signed in, skipping cloud delete")

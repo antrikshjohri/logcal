@@ -7,13 +7,19 @@ import com.serene.logcal.data.local.SavedMealEntity
 import com.serene.logcal.data.repository.AppGraph
 import com.serene.logcal.model.DietStyle
 import com.serene.logcal.util.DebugLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class CloudSyncService(private val context: Context) {
     private val firestoreService = FirestoreService()
@@ -31,6 +37,9 @@ class CloudSyncService(private val context: Context) {
 
     private val _lastSyncTimeMillis = MutableStateFlow(0L)
     val lastSyncTimeMillis: StateFlow<Long> = _lastSyncTimeMillis.asStateFlow()
+    private val _uploadingMealEdits = MutableStateFlow<Set<String>>(emptySet())
+    val uploadingMealEdits = _uploadingMealEdits.asStateFlow()
+    private val editUploadLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun syncMealToCloud(entry: MealEntryEntity) {
         val user = auth.currentUser
@@ -43,6 +52,33 @@ class CloudSyncService(private val context: Context) {
         } catch (e: Exception) {
             DebugLogger.e("DEBUG: [CloudSyncService] Error syncing meal to cloud", e)
             _syncError.value = "Failed to sync meal: ${e.localizedMessage}"
+        }
+    }
+
+    suspend fun saveMealEdit(entry: MealEntryEntity) {
+        val uid = auth.currentUser?.takeUnless { it.isAnonymous }?.uid
+        val pendingEdit = uid?.let { "$it/${UUID.randomUUID()}" }
+        localRepo.updateMeal(entry.copy(pendingCloudEditId = pendingEdit))
+        if (pendingEdit != null) retryMealEdit(entry.id)
+    }
+
+    suspend fun retryMealEdit(id: String) {
+        editUploadLocks.getOrPut(id) { Mutex() }.withLock {
+            val uid = auth.currentUser?.takeUnless { it.isAnonymous }?.uid ?: return
+            val entry = localRepo.getMealEntryById(id) ?: return
+            val editId = entry.pendingCloudEditId?.takeIf { it.startsWith("$uid/") } ?: return
+            if (auth.currentUser?.uid != uid) return
+            _uploadingMealEdits.update { it + id }
+            try {
+                firestoreService.saveMealEdit(entry, uid)
+                localRepo.confirmCloudEdit(id, editId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                DebugLogger.e("Could not upload meal edit", e)
+            } finally {
+                _uploadingMealEdits.update { it - id }
+            }
         }
     }
 
@@ -75,24 +111,10 @@ class CloudSyncService(private val context: Context) {
 
         try {
             // 1. Sync meals
-            val cloudMeals = firestoreService.fetchMealEntries()
-            val localEntries = localRepo.getAllMealEntries()
-            val localEntryMap = localEntries.associateBy { it.id }
-
-            val toAdd = mutableListOf<MealEntryEntity>()
-            for (cloudMeal in cloudMeals) {
-                val local = localEntryMap[cloudMeal.id]
-                if (local == null) {
-                    toAdd.add(cloudMeal)
-                } else if (local.deleted != cloudMeal.deleted) {
-                    toAdd.add(cloudMeal) // REPLACE strategy updates the row
-                }
-            }
-
-            if (toAdd.isNotEmpty()) {
-                localRepo.insertMeals(toAdd)
-                DebugLogger.d("DEBUG: [CloudSyncService] Merged ${toAdd.size} meals from cloud to local Room DB")
-            }
+            val beforeFetch = localRepo.getAllMealEntries().associateBy { it.id }
+            val cloudMeals = firestoreService.fetchMealEntries(newUserId)
+            if (auth.currentUser?.uid != newUserId) return
+            localRepo.mergeCloudMeals(cloudMeals, beforeFetch)
 
             // 2. Sync favorites
             val cloudFavs = firestoreService.fetchSavedMealsFromCloud()
@@ -119,10 +141,10 @@ class CloudSyncService(private val context: Context) {
             restoreUserSettingsFromCloud()
 
             _lastSyncTimeMillis.value = System.currentTimeMillis()
-            _isSyncing.value = false
         } catch (e: Exception) {
             DebugLogger.e("DEBUG: [CloudSyncService] Error syncing from cloud", e)
             _syncError.value = "Failed to sync from cloud: ${e.localizedMessage}"
+        } finally {
             _isSyncing.value = false
         }
     }
@@ -146,7 +168,7 @@ class CloudSyncService(private val context: Context) {
 
         try {
             // Migrate meals
-            val localMeals = localRepo.observeHistoryMeals().first()
+            val localMeals = localRepo.observeHistoryMeals().first().filter { it.pendingCloudEditId == null }
             if (localMeals.isNotEmpty()) {
                 val entities = localMeals.map { meal ->
                     MealEntryEntity(

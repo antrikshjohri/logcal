@@ -46,7 +46,31 @@ class FirestoreService {
 
     suspend fun saveMealEntry(entry: MealEntryEntity) {
         val userId = currentUserId ?: return
-        val mealData = hashMapOf(
+        try {
+            db.collection("users").document(userId)
+                .collection("meals").document(entry.id)
+                .set(mealData(entry)).await()
+            DebugLogger.d("DEBUG: [FirestoreService] Successfully saved meal entry: ${entry.id}")
+            saveMealToMealLogs(entry, userId)
+        } catch (e: Exception) {
+            DebugLogger.e("DEBUG: [FirestoreService] Error saving meal to Firestore", e)
+            throw e
+        }
+    }
+
+    suspend fun saveMealEdit(entry: MealEntryEntity, userId: String) {
+        val meal = db.collection("users").document(userId).collection("meals").document(entry.id)
+        val log = db.collection("mealLogs").document(entry.id)
+        val edit = mealData(entry).apply { put("updatedAt", FieldValue.serverTimestamp()) }
+        db.runTransaction { transaction ->
+            check(transaction.get(meal).getBoolean("deleted") != true) { "Meal was deleted in the cloud" }
+            transaction.set(meal, edit, SetOptions.merge())
+            transaction.set(log, mealLogData(entry, userId), SetOptions.merge())
+        }.await()
+    }
+
+    private fun mealData(entry: MealEntryEntity): HashMap<String, Any> {
+        val mealData = hashMapOf<String, Any>(
             "id" to entry.id,
             "timestamp" to Timestamp(Date(entry.timestampMillis)),
             "createdAt" to Timestamp(Date(entry.createdAtMillis)),
@@ -58,21 +82,11 @@ class FirestoreService {
             "deleted" to entry.deleted
         )
         entry.sourceSavedMealId?.let { mealData["sourceSavedMealId"] = it }
-
-        try {
-            db.collection("users").document(userId)
-                .collection("meals").document(entry.id)
-                .set(mealData).await()
-            DebugLogger.d("DEBUG: [FirestoreService] Successfully saved meal entry: ${entry.id}")
-            saveMealToMealLogs(entry, userId)
-        } catch (e: Exception) {
-            DebugLogger.e("DEBUG: [FirestoreService] Error saving meal to Firestore", e)
-            throw e
-        }
+        return mealData
     }
 
-    private suspend fun saveMealToMealLogs(entry: MealEntryEntity, userId: String) {
-        val mealLogData = hashMapOf(
+    private fun mealLogData(entry: MealEntryEntity, userId: String) =
+        hashMapOf(
             "uid" to userId,
             "foodText" to entry.foodText,
             "mealType" to entry.mealType,
@@ -81,22 +95,25 @@ class FirestoreService {
             "timestamp" to Timestamp(Date(entry.timestampMillis)),
             "deleted" to entry.deleted
         )
+
+    private suspend fun saveMealToMealLogs(entry: MealEntryEntity, userId: String) {
         try {
-            db.collection("mealLogs").document(entry.id).set(mealLogData).await()
+            db.collection("mealLogs").document(entry.id).set(mealLogData(entry, userId)).await()
             DebugLogger.d("DEBUG: [FirestoreService] Saved to mealLogs: ${entry.id}")
         } catch (e: Exception) {
             DebugLogger.e("DEBUG: [FirestoreService] Warning - Failed to save to mealLogs: ${e.localizedMessage}")
         }
     }
 
-    suspend fun fetchMealEntries(): List<MealEntryEntity> {
-        val userId = currentUserId ?: return emptyList()
+    suspend fun fetchMealEntries(userId: String): List<MealEntryEntity> {
         try {
             val snapshot = db.collection("users").document(userId)
                 .collection("meals").get().await()
+            if (snapshot.metadata.isFromCache) return emptyList()
 
             val entries = mutableListOf<MealEntryEntity>()
             for (doc in snapshot.documents) {
+                if (doc.metadata.hasPendingWrites()) continue
                 val data = doc.data ?: continue
                 val id = data["id"] as? String ?: continue
                 val timestamp = (data["timestamp"] as? Timestamp)?.toDate()?.time ?: continue

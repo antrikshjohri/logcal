@@ -1531,13 +1531,14 @@ struct HomeViewModifiers: ViewModifier {
 }
 
 struct HomeViewAppearModifier: ViewModifier {
+    @EnvironmentObject private var cloudSyncService: CloudSyncService
     let viewModel: LogViewModel
     let modelContext: ModelContext
     
     func body(content: Content) -> some View {
         content
             .onAppear {
-                viewModel.setModelContext(modelContext)
+                viewModel.setModelContext(modelContext, cloudSyncService: cloudSyncService)
             }
             .scrollDismissesKeyboard(.interactively)
     }

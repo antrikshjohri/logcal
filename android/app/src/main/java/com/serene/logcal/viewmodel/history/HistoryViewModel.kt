@@ -38,6 +38,11 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
     val isRefreshing: StateFlow<Boolean> = syncService.isSyncing
+    val uploadingMealEdits = syncService.uploadingMealEdits
+
+    fun retryMealEdit(id: String) {
+        viewModelScope.launch { syncService.retryMealEdit(id) }
+    }
 
     fun refreshData() {
         viewModelScope.launch {
@@ -142,8 +147,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                         hasImage = existing.hasImage,
                         sourceSavedMealId = existing.sourceSavedMealId
                     )
-                    localRepo.updateMeal(updated)
-                    syncService.syncMealToCloud(updated)
+                    syncService.saveMealEdit(updated)
 
                     // Also check if there's a linked favorite that needs updating
                     val favorites = favRepo.getAll()

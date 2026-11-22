@@ -850,21 +850,13 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess = { refined ->
                     if (!preview.isPreviewOnly) {
                         try {
-                            val mealEntry = localRepo.getMealById(id)
+                            val mealEntry = localRepo.getMealEntryById(id)
                             if (mealEntry != null) {
-                                localRepo.saveMeal(
-                                    timestampMillis = mealEntry.timestampMillis,
-                                    foodText = mealEntry.foodText,
+                                syncService.saveMealEdit(mealEntry.copy(
                                     mealType = refined.mealType,
-                                    response = refined,
-                                    hasImage = mealEntry.hasImage,
-                                    id = id,
-                                    sourceSavedMealId = mealEntry.sourceSavedMealId
-                                )
-                                val updated = localRepo.getMealEntryById(id)
-                                if (updated != null) {
-                                    syncService.syncMealToCloud(updated)
-                                }
+                                    totalCalories = refined.totalCalories,
+                                    rawResponseJson = json.encodeToString(MealLogResponse.serializer(), refined)
+                                ))
                             }
                         } catch (t: Throwable) {
                             DebugLogger.e("DEBUG: [LogViewModel] Failed to update quick-refined meal in local DB", t)
@@ -919,21 +911,13 @@ class LogViewModel(application: Application) : AndroidViewModel(application) {
             result.fold(
                 onSuccess = { response ->
                     try {
-                        val mealEntry = localRepo.getMealById(mealId)
+                        val mealEntry = localRepo.getMealEntryById(mealId)
                         if (mealEntry != null) {
-                            localRepo.saveMeal(
-                                timestampMillis = mealEntry.timestampMillis,
-                                foodText = mealEntry.foodText,
+                            syncService.saveMealEdit(mealEntry.copy(
                                 mealType = response.mealType,
-                                response = response,
-                                hasImage = mealEntry.hasImage,
-                                id = mealId,
-                                sourceSavedMealId = mealEntry.sourceSavedMealId
-                            )
-                            val updated = localRepo.getMealEntryById(mealId)
-                            if (updated != null) {
-                                syncService.syncMealToCloud(updated)
-                            }
+                                totalCalories = response.totalCalories,
+                                rawResponseJson = json.encodeToString(MealLogResponse.serializer(), response)
+                            ))
                         }
                     } catch (e: Exception) {
                         DebugLogger.e("DEBUG: [LogViewModel] Failed to update refined meal in DB", e)
